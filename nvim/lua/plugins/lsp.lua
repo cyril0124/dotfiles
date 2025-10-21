@@ -29,21 +29,23 @@ return {
         end
     },
 
-    {
-        "mason-org/mason.nvim",
-        config = function()
-            require("mason").setup({})
-        end
-    },
+    -- {
+    --     "mason-org/mason.nvim",
+    --     config = function()
+    --         require("mason").setup({})
+    --     end
+    -- },
 
     {
         "mason-org/mason-lspconfig.nvim",
-        opts = {},
+        -- opts = {},
+        version = "2.*",
         dependencies = {
-            { "mason-org/mason.nvim", opts = {} },
+            { "mason-org/mason.nvim", opts = {}, version = "2.*" },
             "neovim/nvim-lspconfig",
         },
         config = function()
+            require("mason").setup({})
             require("mason-lspconfig").setup({
                 ensure_installed = {
                     "emmylua_ls",
