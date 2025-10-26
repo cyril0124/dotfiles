@@ -3,7 +3,7 @@ return {
     build = ':TSUpdate',
     config = function()
         require('nvim-treesitter.configs').setup {
-            ensure_installed = { 'c', 'cpp', 'lua', 'python', 'rust' },
+            ensure_installed = { 'c', 'cpp', 'lua', 'python', 'rust', 'scala', 'markdown' },
             -- highlight = { enable = true },
             highlight = { enable = false },
             fold = {
@@ -11,9 +11,9 @@ return {
             },
         }
 
-        vim.wo.foldmethod  = 'expr'
-        vim.wo.foldexpr    = 'v:lua.vim.treesitter.foldexpr()'
-        vim.o.foldlevel    = 99
-        vim.o.foldminlines = 1
+        -- vim.wo.foldmethod  = 'expr'
+        -- vim.wo.foldexpr    = 'v:lua.vim.treesitter.foldexpr()'
+        -- vim.o.foldlevel    = 99
+        -- vim.o.foldminlines = 1
     end
 }
