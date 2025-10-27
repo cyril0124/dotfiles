@@ -143,8 +143,9 @@ install_pixi() {
     fi
 
     # Install global pixi packages
-    pixi_manifest_dir=$HOME/.pixi/manifests/pixi-global.toml
-    link_file "$DOTFILES_ROOT/pixi/pixi-global.toml" "$pixi_manifest_dir"
+    pixi_manifest_dir=$HOME/.pixi/manifests
+    mkdir -p $pixi_manifest_dir
+    link_file "$DOTFILES_ROOT/pixi/pixi-global.toml" "$pixi_manifest_dir/pixi-global.toml"
     pixi global sync
 }
 
