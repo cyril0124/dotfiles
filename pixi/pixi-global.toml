@@ -1,0 +1,101 @@
+version = 1
+
+[envs.fd-find]
+channels = ["conda-forge"]
+dependencies = { fd-find = "*" }
+exposed = { fd = "fd" }
+
+[envs.gawk]
+channels = ["conda-forge"]
+dependencies = { gawk = "*" }
+exposed = { awk = "awk", gawk = "gawk", "gawk-5.3.1" = "gawk-5.3.1", gawkbug = "gawkbug" }
+
+[envs.tealdeer]
+channels = ["conda-forge"]
+dependencies = { tealdeer = "*" }
+exposed = { tldr = "tldr" }
+
+[envs.hyperfine]
+channels = ["conda-forge"]
+dependencies = { hyperfine = "*" }
+exposed = { hyperfine = "hyperfine" }
+
+[envs.nodejs]
+channels = ["conda-forge"]
+dependencies = { nodejs = "*" }
+exposed = { corepack = "corepack", node = "node", npm = "npm", npx = "npx" }
+
+[envs.fzf]
+channels = ["conda-forge"]
+dependencies = { fzf = "*" }
+exposed = { fzf = "fzf" }
+
+[envs.bat]
+channels = ["conda-forge"]
+dependencies = { bat = "*" }
+exposed = { bat = "bat" }
+
+[envs.peco]
+channels = ["conda-forge"]
+dependencies = { peco = "*" }
+exposed = { peco = "peco" }
+
+[envs.hstr]
+channels = ["conda-forge"]
+dependencies = { hstr = "*" }
+exposed = { hh = "hh", hstr = "hstr" }
+
+[envs.dust]
+channels = ["conda-forge"]
+dependencies = { dust = "*" }
+exposed = { dust = "dust" }
+
+[envs.gh]
+channels = ["conda-forge"]
+dependencies = { gh = "*" }
+exposed = { gh = "gh" }
+
+[envs.cmake]
+channels = ["conda-forge"]
+dependencies = { cmake = "*" }
+exposed = { ccmake = "ccmake", cmake = "cmake", cpack = "cpack", ctest = "ctest" }
+
+[envs.help2man]
+channels = ["conda-forge"]
+dependencies = { help2man = "*" }
+exposed = { help2man = "help2man" }
+
+[envs.tokei]
+channels = ["conda-forge"]
+dependencies = { tokei = "*" }
+exposed = { tokei = "tokei" }
+
+[envs.git-lfs]
+channels = ["conda-forge"]
+dependencies = { git-lfs = "*" }
+exposed = { git-lfs = "git-lfs" }
+
+[envs.direnv]
+channels = ["conda-forge"]
+dependencies = { direnv = "*" }
+exposed = { direnv = "direnv" }
+
+[envs.bear]
+channels = ["conda-forge"]
+dependencies = { bear = "*" }
+exposed = { bear = "bear" }
+
+[envs.clang-tools]
+channels = ["conda-forge"]
+dependencies = { clang-tools = "*" }
+exposed = { amdgpu-arch = "amdgpu-arch", analyze-build = "analyze-build", c-index-test = "c-index-test", clang-apply-replacements = "clang-apply-replacements", clang-apply-replacements-21 = "clang-apply-replacements-21", clang-change-namespace = "clang-change-namespace", clang-change-namespace-21 = "clang-change-namespace-21", clang-check = "clang-check", clang-check-21 = "clang-check-21", clang-doc = "clang-doc", clang-doc-21 = "clang-doc-21", clang-extdef-mapping = "clang-extdef-mapping", clang-extdef-mapping-21 = "clang-extdef-mapping-21", clang-include-cleaner = "clang-include-cleaner", clang-include-cleaner-21 = "clang-include-cleaner-21", clang-include-fixer = "clang-include-fixer", clang-include-fixer-21 = "clang-include-fixer-21", clang-installapi = "clang-installapi", clang-installapi-21 = "clang-installapi-21", clang-linker-wrapper = "clang-linker-wrapper", clang-linker-wrapper-21 = "clang-linker-wrapper-21", clang-move = "clang-move", clang-move-21 = "clang-move-21", clang-nvlink-wrapper = "clang-nvlink-wrapper", clang-nvlink-wrapper-21 = "clang-nvlink-wrapper-21", clang-offload-bundler = "clang-offload-bundler", clang-offload-bundler-21 = "clang-offload-bundler-21", clang-offload-packager = "clang-offload-packager", clang-offload-packager-21 = "clang-offload-packager-21", clang-query = "clang-query", clang-query-21 = "clang-query-21", clang-refactor = "clang-refactor", clang-refactor-21 = "clang-refactor-21", clang-reorder-fields = "clang-reorder-fields", clang-reorder-fields-21 = "clang-reorder-fields-21", clang-repl = "clang-repl", clang-repl-21 = "clang-repl-21", clang-scan-deps = "clang-scan-deps", clang-scan-deps-21 = "clang-scan-deps-21", clang-sycl-linker = "clang-sycl-linker", clang-sycl-linker-21 = "clang-sycl-linker-21", clang-tidy = "clang-tidy", clang-tidy-21 = "clang-tidy-21", clangd = "clangd", diagtool = "diagtool", find-all-symbols = "find-all-symbols", git-clang-format = "git-clang-format", hmaptool = "hmaptool", intercept-build = "intercept-build", modularize = "modularize", nvptx-arch = "nvptx-arch", offload-arch = "offload-arch", pp-trace = "pp-trace", run-clang-tidy = "run-clang-tidy", scan-build = "scan-build", scan-build-py = "scan-build-py", scan-view = "scan-view" }
+
+[envs.nvim]
+channels = ["conda-forge"]
+dependencies = { nvim = "*" }
+exposed = { nvim = "nvim" }
+
+[envs.zellij]
+channels = ["conda-forge"]
+dependencies = { zellij = "*" }
+exposed = { zellij = "zellij" }

@@ -33,6 +33,13 @@ local builtin = require("telescope.builtin")
 vim.keymap.set("n", "<leader>ff", builtin.find_files, { desc = "Telescope find files" })
 vim.keymap.set("n", "<leader>fw", builtin.live_grep, { desc = "Telescope live grep" })
 vim.keymap.set("n", "<leader>gs", function()
+    require("telescope.builtin").grep_string({
+        additional_args = {
+            "-w"
+        }
+    })
+end, { desc = "Grep word under cursor(wholeword)" })
+vim.keymap.set("n", "<leader>gS", function()
     require("telescope.builtin").grep_string()
 end, { desc = "Grep word under cursor" })
 
