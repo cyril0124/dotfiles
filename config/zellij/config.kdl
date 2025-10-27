@@ -1,5 +1,6 @@
 
 default_shell "zsh"
+// scroll_buffer_size 10000
 
 keybinds clear-defaults=true {
 
@@ -35,15 +36,15 @@ keybinds clear-defaults=true {
         bind "down" { GoToNextTab; }
         bind "up" { GoToPreviousTab; }
         bind "right" { GoToNextTab; }
-        bind "1" { GoToTab 1; SwitchToMode "normal"; }
-        bind "2" { GoToTab 2; SwitchToMode "normal"; }
-        bind "3" { GoToTab 3; SwitchToMode "normal"; }
-        bind "4" { GoToTab 4; SwitchToMode "normal"; }
-        bind "5" { GoToTab 5; SwitchToMode "normal"; }
-        bind "6" { GoToTab 6; SwitchToMode "normal"; }
-        bind "7" { GoToTab 7; SwitchToMode "normal"; }
-        bind "8" { GoToTab 8; SwitchToMode "normal"; }
-        bind "9" { GoToTab 9; SwitchToMode "normal"; }
+        // bind "1" { GoToTab 1; SwitchToMode "normal"; }
+        // bind "2" { GoToTab 2; SwitchToMode "normal"; }
+        // bind "3" { GoToTab 3; SwitchToMode "normal"; }
+        // bind "4" { GoToTab 4; SwitchToMode "normal"; }
+        // bind "5" { GoToTab 5; SwitchToMode "normal"; }
+        // bind "6" { GoToTab 6; SwitchToMode "normal"; }
+        // bind "7" { GoToTab 7; SwitchToMode "normal"; }
+        // bind "8" { GoToTab 8; SwitchToMode "normal"; }
+        // bind "9" { GoToTab 9; SwitchToMode "normal"; }
         bind "[" { BreakPaneLeft; SwitchToMode "normal"; }
         bind "]" { BreakPaneRight; SwitchToMode "normal"; }
         bind "b" { BreakPane; SwitchToMode "normal"; }
@@ -165,15 +166,15 @@ keybinds clear-defaults=true {
         bind "Alt n" { NewPane; }
         bind "Alt o" { MoveTab "right"; }
         bind "Alt p" { TogglePaneInGroup; }
-        bind "1" { GoToTab 1; SwitchToMode "normal"; }
-        bind "2" { GoToTab 2; SwitchToMode "normal"; }
-        bind "3" { GoToTab 3; SwitchToMode "normal"; }
-        bind "4" { GoToTab 4; SwitchToMode "normal"; }
-        bind "5" { GoToTab 5; SwitchToMode "normal"; }
-        bind "6" { GoToTab 6; SwitchToMode "normal"; }
-        bind "7" { GoToTab 7; SwitchToMode "normal"; }
-        bind "8" { GoToTab 8; SwitchToMode "normal"; }
-        bind "9" { GoToTab 9; SwitchToMode "normal"; }
+        // bind "1" { GoToTab 1; SwitchToMode "normal"; }
+        // bind "2" { GoToTab 2; SwitchToMode "normal"; }
+        // bind "3" { GoToTab 3; SwitchToMode "normal"; }
+        // bind "4" { GoToTab 4; SwitchToMode "normal"; }
+        // bind "5" { GoToTab 5; SwitchToMode "normal"; }
+        // bind "6" { GoToTab 6; SwitchToMode "normal"; }
+        // bind "7" { GoToTab 7; SwitchToMode "normal"; }
+        // bind "8" { GoToTab 8; SwitchToMode "normal"; }
+        // bind "9" { GoToTab 9; SwitchToMode "normal"; }
         bind "Alt Shift p" { ToggleGroupMarking; }
         bind "Ctrl q" { Quit; }
     }
@@ -293,7 +294,7 @@ keybinds clear-defaults=true {
                 floating true
                 move_to_focused_tab true
             }
-            SwitchToMode "normal"
+            SwitchToMode "normal";
         }
     }
 }
