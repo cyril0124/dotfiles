@@ -151,8 +151,25 @@ install_pixi() {
     $pixi_cmd global sync
 }
 
+install_tmux_conf() {
+    info 'installing tmux config'
+
+    local overwrite_all=false backup_all=false skip_all=false
+
+    src="$DOTFILES_ROOT/tmux/.tmux.conf"
+    dst="$HOME/.tmux.conf"
+    link_file "$src" "$dst"
+
+    src="$DOTFILES_ROOT/.tmux.conf.local"
+    dst="$HOME/.tmux.conf.local"
+    link_file "$src" "$dst"
+}
+
+git submodule update --init --recursive
+
 install_dotfiles
 install_pixi
+install_tmux_conf
 
 # TODO: Git config
 
