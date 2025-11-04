@@ -30,6 +30,7 @@ vim.keymap.set("n", "<leader>t", "<CMD>ToggleTerm direction=float<CR>", { desc =
 
 -- Telescope live_grep/grep_string
 local builtin = require("telescope.builtin")
+local diffview = require("lua.menus.diffview")
 vim.keymap.set("n", "<leader>ff", builtin.find_files, { desc = "Telescope find files" })
 vim.keymap.set("n", "<leader>fw", builtin.live_grep, { desc = "Telescope live grep" })
 vim.keymap.set("n", "<leader>gs", function()
@@ -49,12 +50,14 @@ vim.keymap.set("n", "<leader>sr", "<CMD>GrugFar<CR>", { desc = "Search and repla
 -- Toggle neo-tree
 vim.keymap.set("n", "<leader>e", function()
     local is_term = vim.bo.buftype == "terminal"
+    local dir
     if is_term then
-        vim.notify("Cannot toggle neo-tree when current buffer type is 'terminal'", vim.log.levels.WARN)
+        dir = nil
     else
-        local dir = vim.fn.expand("%:p:h")
-        require("neo-tree.command").execute({ toggle = true, dir = is_term and nil or dir })
+        dir = vim.fn.expand("%:p:h")
     end
+
+    require("neo-tree.command").execute({ toggle = true, position = "float", dir = is_term and nil or dir })
 end, { desc = "Toggle NeoTree" })
 
 -- Comment
@@ -124,6 +127,70 @@ local show_menu = function()
 end
 vim.keymap.set("n", "<leader>m", show_menu, { desc = "Show menu" })
 vim.keymap.set("n", "<leader>M", show_menu, { desc = "Show menu" })
+
+-- Diffview
+vim.keymap.set("n", "<leader>gD", function()
+    if vim.g.diffview_is_open then
+        vim.g.diffview_is_open = false
+        vim.cmd("DiffviewClose")
+    else
+        vim.g.diffview_is_open = true
+        vim.cmd("DiffviewOpen")
+    end
+end, { desc = "Toggle diffview" })
+
+do
+    -- 1. Initialize a global state variable to track the wrap setting.
+    --    true = wrap enabled, false = wrap disabled.
+    --    The default is set to true (wrap on). You can change this to match your preference.
+    _G.global_wrap_enabled = true
+
+    -- 2. Create an autocommand to set the wrap option for new windows
+    --    based on the global state.
+    local wrap_augroup = vim.api.nvim_create_augroup("GlobalWrapToggle", { clear = true })
+    vim.api.nvim_create_autocmd("WinEnter", {
+        group = wrap_augroup,
+        pattern = "*",
+        callback = function()
+            -- vim.wo is a shortcut for setting window-local options for the current window.
+            if _G.global_wrap_enabled then
+                vim.wo.wrap = true
+            else
+                vim.wo.wrap = false
+            end
+        end,
+    })
+
+    -- 3. Create the :NW (No Wrap) command.
+    vim.api.nvim_create_user_command("NW", function()
+        -- Update the global state.
+        _G.global_wrap_enabled = false
+
+        -- Iterate over all current windows and disable wrap immediately.
+        for _, win in ipairs(vim.api.nvim_list_wins()) do
+            vim.wo[win].wrap = false
+        end
+
+        vim.notify("Line wrap DISABLED globally", vim.log.levels.INFO)
+    end, {
+        desc = "Globally disable line wrapping for all windows"
+    })
+
+    -- 4. Create the :WW (With Wrap) command.
+    vim.api.nvim_create_user_command("WW", function()
+        -- Update the global state.
+        _G.global_wrap_enabled = true
+
+        -- Iterate over all current windows and enable wrap immediately.
+        for _, win in ipairs(vim.api.nvim_list_wins()) do
+            vim.wo[win].wrap = false
+        end
+
+        vim.notify("Line wrap ENABLED globally", vim.log.levels.INFO)
+    end, {
+        desc = "Globally enable line wrapping for all windows"
+    })
+end
 
 
 -----------------
