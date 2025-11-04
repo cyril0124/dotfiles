@@ -220,6 +220,21 @@ return {
         },
     },
 
+    -- The goal of nvim-ufo is to make Neovim's fold look modern and keep high performance.
+    {
+        'kevinhwang91/nvim-ufo',
+        dependencies = 'kevinhwang91/promise-async',
+        config = function()
+            vim.o.foldlevel = 99
+            vim.o.foldlevelstart = 99
+            vim.o.foldenable = true
+
+            vim.keymap.set('n', 'zR', require('ufo').openAllFolds)
+            vim.keymap.set('n', 'zM', require('ufo').closeAllFolds)
+
+            require('ufo').setup()
+        end,
+    },
 
     -- {
     --     'VonHeikemen/fine-cmdline.nvim',
