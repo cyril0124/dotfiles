@@ -9,6 +9,7 @@ end
 local throttle = 300
 local debounce = 200
 local provider_option = ""
+local context_window = 16000
 do
     if provider == "codestral" then
         enabled = os.getenv("CODESTRAL_API_KEY") ~= nil
@@ -17,6 +18,7 @@ do
         -- `codestral` is free to use, so feel freeto remove the throttle and debounce
         throttle = 100
         debounce = 200
+        context_window = context_window * 2
     end
     if provider == "deepseek" then
         enabled = os.getenv("DEEPSEEK_API_KEY") ~= nil
@@ -49,9 +51,14 @@ return {
             -- Only send the request after x milliseconds of inactivity, use 0 to disable.
             debounce = debounce,
 
-            request_timeout = 2000,
-
+            request_timeout = 1000,
             n_completions = 3,
+
+            -- the maximum total characters of the context before and after the cursor
+            -- 16000 characters typically equate to approximately 4,000 tokens for
+            -- LLMs.
+            context_window = context_window,
+
             provider = provider_option,
             provider_options = {
                 codestral = {
