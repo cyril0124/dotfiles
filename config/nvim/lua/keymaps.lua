@@ -25,8 +25,8 @@ vim.keymap.set("n", "<leader>w", "<CMD>w<CR>", { noremap = true, silent = true, 
 vim.keymap.set("n", "<leader>q", "<CMD>qa<CR>", { silent = true, desc = "Quit nvim" })
 
 -- Toggle terminal
-vim.keymap.set("n", "<leader>t", "<CMD>ToggleTerm direction=float<CR>", { desc = "Toggle terminal" })
--- vim.keymap.set("n", "<leader>ft", "<CMD>ToggleTerm direction=float<CR>", { desc = "Toggle float terminal" })
+vim.keymap.set("n", "<leader>t", "<CMD>ToggleTerm direction=float<CR>", { desc = "Toggle terminal(float)" })
+vim.keymap.set("n", "<leader>dt", "<CMD>ToggleTerm direction=horizontal<CR>", { desc = "Toggle terminal(down)" })
 
 -- Telescope live_grep/grep_string
 local builtin = require("telescope.builtin")
@@ -58,7 +58,18 @@ vim.keymap.set("n", "<leader>e", function()
     end
 
     require("neo-tree.command").execute({ toggle = true, position = "float", dir = is_term and nil or dir })
-end, { desc = "Toggle NeoTree" })
+end, { desc = "Toggle NeoTree(float)" })
+vim.keymap.set("n", "<leader>E", function()
+    local is_term = vim.bo.buftype == "terminal"
+    local dir
+    if is_term then
+        dir = nil
+    else
+        dir = vim.fn.expand("%:p:h")
+    end
+
+    require("neo-tree.command").execute({ toggle = true, position = "left", dir = is_term and nil or dir })
+end, { desc = "Toggle NeoTree(left-side)" })
 
 -- Comment
 vim.keymap.set("n", "<leader>/", "gcc", { desc = "Toggle comment", remap = true })
