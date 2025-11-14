@@ -9,6 +9,7 @@ config.macos_window_background_blur = 30
 
 config.font = wezterm.font_with_fallback({
     'JetBrainsMono NF',
+    'AurulentSansM Nerd Font', -- MacOS default font
     -- 'PingFang SC', -- 中文字体, 需要另外安装
     'Heiti SC',
 })
