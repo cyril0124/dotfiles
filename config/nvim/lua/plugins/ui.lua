@@ -82,7 +82,7 @@ return {
                     lualine_c = {},
                     lualine_x = {},
                     lualine_y = {},
-                    lualine_z = { 'hostname' },
+                    -- lualine_z = { 'hostname' },
                 },
             })
         end
@@ -236,6 +236,11 @@ return {
         end,
     },
 
+    {
+        "nvim-zh/colorful-winsep.nvim",
+        config = true,
+        event = { "WinLeave" },
+    },
     -- {
     --     'VonHeikemen/fine-cmdline.nvim',
     --     dependencies = {
