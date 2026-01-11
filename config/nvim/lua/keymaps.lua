@@ -88,7 +88,13 @@ end, { desc = 'Print absolute path' })
 
 -- LSP diagnostic
 -- vim.keymap.set("n", "<leader>ds", vim.diagnostic.setloclist, { desc = "LSP diagnostic localist" })
-vim.keymap.set("n", "<leader>ds", "<CMD>Telescope diagnostics<CR>", { desc = "LSP telescope diagnostic" })
+local telescope_diagnostic = require("telescope.builtin").diagnostics
+vim.keymap.set("n", "<leader>ds", function()
+    telescope_diagnostic()
+end, { desc = "LSP telescope diagnostic" })
+vim.keymap.set("n", "<leader>dS", function()
+    telescope_diagnostic({ severity_limit = vim.diagnostic.severity.WARN })
+end, { desc = "LSP telescope diagnostic(only warning and error)" })
 
 -- Code format
 vim.keymap.set("n", "<leader>f", function()
