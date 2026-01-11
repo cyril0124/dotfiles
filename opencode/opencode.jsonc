@@ -1,12 +1,44 @@
 {
   "$schema": "https://opencode.ai/config.json",
+
   "plugin": [
-    "oh-my-opencode@2.14.0"
+    // "oh-my-opencode@2.14.0",
+    "oh-my-opencode@3.0.0-beta.5",
+    "opencode-antigravity-auth@beta"
   ],
-  "model": "iflow-cliproxy/glm-4.7",
+
+  "model": "cliproxy/glm-4.7",
+  "small_model": "cliproxy/glm-4.7",
+
+  "instructions": ["CLAUDE.md"],
+
   "provider": {
-    "iflow-cliproxy": {
-      "name": "iflow-cliproxy",
+    "google": {
+      "models": {
+         // Provided by opencode-antigravity-auth
+         "antigravity-claude-sonnet-4-5-thinking": {
+           "name": "Claude Sonnet 4.5 Thinking",
+           "limit": { "context": 200000, "output": 64000 },
+           "modalities": { "input": ["text", "image", "pdf"], "output": ["text"] },
+           "variants": {
+             "low": { "thinkingConfig": { "thinkingBudget": 8192 } },
+             "max": { "thinkingConfig": { "thinkingBudget": 32768 } }
+           }
+         },
+         "antigravity-claude-opus-4-5-thinking": {
+           "name": "Claude Opus 4.5 Thinking",
+           "limit": { "context": 200000, "output": 64000 },
+           "modalities": { "input": ["text", "image", "pdf"], "output": ["text"] },
+           "variants": {
+             "low": { "thinkingConfig": { "thinkingBudget": 8192 } },
+             "max": { "thinkingConfig": { "thinkingBudget": 32768 } }
+           }
+         }
+      }
+    },
+
+    "cliproxy": {
+      "name": "cliproxy",
       "options": {
         "baseURL": "{env:CLIPROXY_BASE_URL}",
         // API key for local cliproxy service (placeholder/test key)
@@ -31,10 +63,34 @@
             "context": 204800,
             "output": 131072
           }
+        },
+
+        // Provided by Github Copilot
+        // See https://github.com/em4go/CLIProxyAPI/blob/3a9ac7ef331da59da78d8504cab00a639f837cb7/internal/registry/model_definitions.go#L988
+        "gpt-4.1": {
+          "limit": {
+            "context": 128000,
+            "output": 16384
+          }
+        },
+        "grok-code-fast-1": {
+          "limit": {
+            "context": 128000,
+            "output": 16384
+          }
         }
+        // ,
+        // "claude-opus-4.5": {
+        //   "limit": {
+        //     "context": 200000,
+        //     "output": 64000
+        //   }
+        // }
+
       }
     }
   },
+
   "lsp": {
     "lua-ls": {
       "disabled": true
@@ -44,6 +100,7 @@
       "extensions": [".lua"]
     }
   },
+
   "mcp": {
     // Sequential Thinking MCP Server - Official implementation by Anthropic
     // Facilitates structured, step-by-step thinking process for complex problem-solving
