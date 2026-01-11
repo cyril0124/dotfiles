@@ -1,0 +1,57 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "plugin": [
+    "oh-my-opencode@2.14.0"
+  ],
+  "model": "iflow-cliproxy/glm-4.7",
+  "provider": {
+    "iflow-cliproxy": {
+      "name": "iflow-cliproxy",
+      "options": {
+        "baseURL": "{env:CLIPROXY_BASE_URL}",
+        // API key for local cliproxy service (placeholder/test key)
+        "apiKey": "{env:CLIPROXY_API_KEY}"
+      },
+      "models": {
+        // GLM-4.7 context and output limits from LLM Stats (https://llm-stats.com/models/glm-4.7)
+        // Max Input: 204.8K (204,800 tokens) via Novita provider
+        // Max Output: 131.1K (131,100 tokens) via Novita provider
+        "glm-4.7": {
+          "limit": {
+            "context": 204800,
+            "output": 131100
+          }
+        },
+        // MiniMax M2.1 context and output limits
+        // Context: 204,800 tokens from Jarvis Labs vLLM deployment guide (https://docs.jarvislabs.ai/blog/minimax-m21-vllm-deployment-guide)
+        // Output: 131,072 tokens from Jarvis Labs vLLM deployment guide (https://docs.jarvislabs.ai/blog/minimax-m21-vllm-deployment-guide)
+        // Note: LLM Stats shows 1.0M but this appears to be incorrect; multiple sources confirm ~204K context window
+        "minimax-m2.1": {
+          "limit": {
+            "context": 204800,
+            "output": 131072
+          }
+        }
+      }
+    }
+  },
+  "lsp": {
+    "lua-ls": {
+      "disabled": true
+    },
+    "emmylua": {
+      "command": ["emmylua_ls"],
+      "extensions": [".lua"]
+    }
+  },
+  "mcp": {
+    // Sequential Thinking MCP Server - Official implementation by Anthropic
+    // Facilitates structured, step-by-step thinking process for complex problem-solving
+    // GitHub: https://github.com/modelcontextprotocol/servers/tree/main/src/sequentialthinking
+    // NPM: https://www.npmjs.com/package/@modelcontextprotocol/server-sequential-thinking
+    "sequential-thinking": {
+      "type": "local",
+      "command": ["npx", "-y", "@modelcontextprotocol/server-sequential-thinking"]
+    }
+  }
+}

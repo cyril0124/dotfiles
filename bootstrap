@@ -165,11 +165,60 @@ install_tmux_conf() {
     link_file "$src" "$dst"
 }
 
+install_opencode() {
+    info 'installing opencode'
+
+    local overwrite_all=false backup_all=false skip_all=false
+    local src_dir="$DOTFILES_ROOT/opencode"
+    local dst_dir="$HOME/.config/opencode"
+
+    # Check if opencode is installed
+    if ! command -v opencode &> /dev/null; then
+        info "OpenCode not found, installing..."
+
+        # Try different installation methods based on OS
+        if command -v brew &> /dev/null; then
+            # Use brew if available (recommended for macOS and Linux)
+            brew install anomalyco/tap/opencode
+            success "OpenCode installed via brew"
+        elif command -v npm &> /dev/null; then
+            # Use npm as fallback
+            npm i -g opencode-ai@latest
+            success "OpenCode installed via npm"
+        elif command -v curl &> /dev/null; then
+            # Use install script as last resort
+            curl -fsSL https://opencode.ai/install | bash
+            success "OpenCode installed via install script"
+        else
+            fail "Cannot install OpenCode: no supported package manager found (brew, npm, or curl)"
+        fi
+    else
+        info "OpenCode is already installed: $(which opencode)"
+    fi
+
+    info 'installing opencode configuration'
+
+    # Ensure target directory exists
+    mkdir -p "$dst_dir"
+
+    # Link all files and directories from opencode to ~/.config/opencode
+    for item in "$src_dir"/*; do
+        if [ -e "$item" ]; then
+            local name=$(basename "$item")
+            local src="$item"
+            local dst="$dst_dir/$name"
+
+            link_file "$src" "$dst"
+        fi
+    done
+}
+
 git submodule update --init --recursive
 
-install_dotfiles
-install_pixi
-install_tmux_conf
+# install_dotfiles
+# install_pixi
+# install_tmux_conf
+install_opencode
 
 # TODO: Git config
 
