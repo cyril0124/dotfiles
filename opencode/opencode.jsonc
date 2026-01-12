@@ -36,6 +36,23 @@
       }
     },
 
+    "nvidia": {
+        "models": {
+            "z-ai/glm4.7": {
+              "limit": {
+                "context": 204800,
+                "output": 131100
+              }
+            },
+            "minimaxai/minimax-m2.1": {
+              "limit": {
+                "context": 204800,
+                "output": 131100
+              }
+            }
+        }
+    },
+
     "cliproxy": {
       "name": "cliproxy",
       "options": {

@@ -2,28 +2,28 @@
   "$schema": "https://raw.githubusercontent.com/code-yeongyu/oh-my-opencode/master/assets/oh-my-opencode.schema.json",
   "agents": {
     "Sisyphus": {
-      "model": "cliproxy/glm-4.7"
+      "model": "nvidia/z-ai/glm4.7"
     },
     "orchestrator-sisyphus": {
-      "model": "cliproxy/glm-4.7"
+      "model": "nvidia/z-ai/glm4.7"
     },
     "librarian": {
-      "model": "opencode/glm-4.7-free"
+      "model": "nvidia/z-ai/glm4.7"
     },
     "explore": {
-      "model": "opencode/grok-code"
+      "model": "cliproxy/grok-code-fast-1"
     },
     "oracle": {
-      "model": "opencode/glm-4.7-free"
+      "model": "nvidia/z-ai/glm4.7"
     },
     "frontend-ui-ux-engineer": {
-      "model": "opencode/glm-4.7-free"
+      "model": "nvidia/z-ai/glm4.7"
     },
     "document-writer": {
-      "model": "opencode/glm-4.7-free"
+      "model": "nvidia/z-ai/glm4.7"
     },
     "multimodal-looker": {
-      "model": "opencode/glm-4.7-free"
+      "model": "nvidia/z-ai/glm4.7"
     }
   }
 }
