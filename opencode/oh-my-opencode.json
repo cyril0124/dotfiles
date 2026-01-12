@@ -4,6 +4,9 @@
     "Sisyphus": {
       "model": "nvidia/z-ai/glm4.7"
     },
+    "Prometheus (Planner)": {
+      "model": "nvidia/z-ai/glm4.7"
+    },
     "orchestrator-sisyphus": {
       "model": "nvidia/z-ai/glm4.7"
     },
