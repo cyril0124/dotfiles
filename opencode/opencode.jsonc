@@ -2,7 +2,6 @@
   "$schema": "https://opencode.ai/config.json",
 
   "plugin": [
-    // "oh-my-opencode@2.14.0",
     "oh-my-opencode@3.0.0-beta.5",
     "opencode-antigravity-auth@beta"
   ],
