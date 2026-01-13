@@ -1,5 +1,24 @@
 {
   "$schema": "https://raw.githubusercontent.com/code-yeongyu/oh-my-opencode/master/assets/oh-my-opencode.schema.json",
+
+  "google_auth": false,
+
+  "claude_code": {
+    "mcp": false,
+    "commands": false,
+    "skills": false,
+    "agents": false,
+    "hooks": false
+  },
+
+  "disabled_mcps": [
+    "websearch_exa"
+  ],
+
+  "sisyphus_agent": {
+    "disabled": true
+  },
+
   "agents": {
     "Sisyphus": {
       "model": "nvidia/z-ai/glm4.7"
@@ -28,5 +47,11 @@
     "multimodal-looker": {
       "model": "nvidia/z-ai/glm4.7"
     }
+  },
+
+  "experimental": {
+    "auto_resume": true,
+    "truncate_all_tool_outputs": true,
+    "preemptive_compaction_threshold": 0.8
   }
 }
