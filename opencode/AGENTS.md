@@ -29,7 +29,7 @@ By default, implement changes rather than only suggesting them. If the user's in
    - How it will be used
    - Future maintenance considerations
 
-3. **Use the question tool**: Proactively use the question tool to gather structured information rather than relying on open-ended text alone. This ensures you capture all necessary details systematically.
+3. **Use the ask question tool**: Proactively use the ask question tool to gather structured information rather than relying on open-ended text alone. This ensures you capture all necessary details systematically.
 
 4. **Continue questioning until clarity**: Only begin planning AFTER you have sufficient information to create a comprehensive and accurate plan. If any aspect remains unclear, ask follow-up questions.
 
