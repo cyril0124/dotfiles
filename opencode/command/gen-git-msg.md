@@ -9,6 +9,6 @@ description: "用于基于当前 Git Staged Changes 的代码生成 git commit m
 - 生成的 git commit message 要参考历史的 git commit message 格式
 - 提供**三个版本的 message**, 不需要其他额外的信息给我
 - 生成的 git commit message 是**英文**的
-- **重要**：不需要帮我执行 git commit 命令
+- **重要**：不需要帮我执行 git commit 命令，不要执行任何会改变 Git Staged 代码的命令，你的任务只是生成 git commit message
 
 $ARGUMENTS
