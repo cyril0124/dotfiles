@@ -1,0 +1,17 @@
+{
+  "name": "my-marketplace",
+  "version": "0.0.1",
+  "description": "my-marketplace",
+  "owner": {
+    "name": "cyril0124",
+    "email": "211998078@qq.com",
+    "url": "https://github.com/cyril0124"
+  },
+  "plugins": [
+    {
+      "name": "emmylua-lsp",
+      "source": "./emmylua-lsp",
+      "description": "emmylua-lsp"
+    }
+  ]
+}

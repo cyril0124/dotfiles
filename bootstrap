@@ -213,12 +213,43 @@ install_opencode() {
     done
 }
 
+install_claude() {
+    info 'installing claude configuration'
+
+    local overwrite_all=false backup_all=false skip_all=false
+    local src_dir="$DOTFILES_ROOT/claude"
+    local dst_dir="$HOME/.claude"
+
+    # Iterate through all items in claude directory
+    for item in "$src_dir"/*; do
+        if [ -e "$item" ]; then
+            local name=$(basename "$item")
+            local src="$item"
+            local dst="$dst_dir/$name"
+
+            # If destination already exists as a directory, link its contents
+            if [ -d "$dst" ]; then
+                for subitem in "$src"/*; do
+                    if [ -e "$subitem" ]; then
+                        local subname=$(basename "$subitem")
+                        link_file "$subitem" "$dst/$subname"
+                    fi
+                done
+            else
+                # Otherwise, link the item directly
+                link_file "$src" "$dst"
+            fi
+        fi
+    done
+}
+
 git submodule update --init --recursive
 
-# install_dotfiles
-# install_pixi
-# install_tmux_conf
+install_dotfiles
+install_pixi
+install_tmux_conf
 install_opencode
+install_claude
 
 # TODO: Git config
 

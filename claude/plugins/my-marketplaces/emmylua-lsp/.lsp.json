@@ -1,0 +1,8 @@
+{
+  "lua": {
+    "command": "emmylua_ls",
+    "extensionToLanguage": {
+      ".lua": "lua"
+    }
+  }
+}

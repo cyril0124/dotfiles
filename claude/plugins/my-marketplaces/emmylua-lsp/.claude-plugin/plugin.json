@@ -1,0 +1,16 @@
+{
+  "name": "emmylua-lsp",
+  "version": "1.0.0",
+  "description": "EmmyLua Language Server integration for Claude Code",
+  "author": {
+    "name": "zhengchuyu"
+  },
+  "lspServers": {
+    "lua": {
+      "command": "emmylua_ls",
+      "extensionToLanguage": {
+        ".lua": "lua"
+      }
+    }
+  }
+}
