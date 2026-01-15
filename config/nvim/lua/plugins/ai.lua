@@ -17,10 +17,9 @@ do
 
         -- `codestral` is free to use, so feel freeto remove the throttle and debounce
         throttle = 100
-        debounce = 200
+        debounce = 100
         context_window = context_window * 2
-    end
-    if provider == "deepseek" then
+    elseif provider == "deepseek" then
         enabled = os.getenv("DEEPSEEK_API_KEY") ~= nil
         provider_option = "openai_fim_compatible"
     end

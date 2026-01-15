@@ -7,6 +7,12 @@ return {
             modes = { insert = true, command = true, terminal = false },
         })
 
+        -- Surround text with brackets, quotes, etc.
+        -- https://github.com/nvim-mini/mini.nvim/blob/main/readmes/mini-surround.md
+        -- Add brackets: `sa` + <bracket>
+        -- Delete brackets: `sd` + <bracket>
+        require("mini.surround").setup()
+
         -- Git support
         require("mini.git").setup()
 

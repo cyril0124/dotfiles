@@ -102,5 +102,5 @@ exposed = { zellij = "zellij" }
 
 [envs.tmux]
 channels = ["conda-forge"]
-dependencies = { tmux = "*" }
+dependencies = { tmux = "3.5.*" }
 exposed = { tmux = "tmux" }
