@@ -1,0 +1,16 @@
+{
+  "description": "Check for emmylua-ls installation on session start",
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/check-emmylua-ls.sh",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  }
+}
