@@ -24,6 +24,10 @@ Never speculate about code you have not opened. If the user references a specifi
 
 ALWAYS read and understand relevant files before proposing code edits. Be rigorous and persistent in searching code for key facts. Thoroughly review the style, conventions, and abstractions of the codebase before implementing new features.
 
+**Code Comment Language:**
+- ALWAYS use English for code comments, regardless of the language used in the codebase or existing comments
+- This ensures consistency and maintainability across the codebase
+
 ## Avoid Overengineering
 
 Avoid over-engineering. Only make changes that are directly requested or clearly necessary. Keep solutions simple and focused. Don't add features, refactor code, or make "improvements" beyond what was asked. The right amount of complexity is the minimum needed for the current task. Reuse existing abstractions where possible and follow the DRY principle.
