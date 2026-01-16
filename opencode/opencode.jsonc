@@ -4,7 +4,7 @@
   "plugin": [
     // "oh-my-opencode@3.0.0-beta.8",
     // "opencode-antigravity-auth@1.2.8",
-    "@tarquinen/opencode-dcp@1.2.0"
+    "@tarquinen/opencode-dcp@1.2.2"
   ],
 
   "model": "nvidia/z-ai/glm4.7",
@@ -48,77 +48,6 @@
   },
 
   "provider": {
-    "anthropic": {
-      "options": {
-        // "baseURL": "https://anyrouter.top/v1"
-        // "baseURL": "https://pmpjfbhq.cn-nb1.rainapp.top"
-        "baseURL": "https://any1.colin1112.me/v1"
-      }
-    },
-
-    "anyrouter": {
-      "npm": "@ai-sdk/anthropic",
-      "options": {
-        // "baseURL": "https://anyrouter.top/v1",
-        // "baseURL": "https://pmpjfbhq.cn-nb1.rainapp.top/v1",
-        "baseURL": "https://a-ocnfniawgw.cn-shanghai.fcapp.run/v1",
-        "apiKey": "sk-5E7Xv8r02QLcCgwLwfIf4DdLpz4VqoAoepisUGymebGZz9P5"
-      },
-      "models": {
-         "claude-sonnet-4-5-20250929": {
-           "name": "Claude 4.5 Sonnet",
-           "attachment": true,
-           "limit": {
-             "context": 1048576,
-             "output": 65535
-           },
-           "modalities": {
-             "input": [
-               "text",
-               "image"
-             ],
-             "output": [
-               "text"
-             ]
-           }
-         },
-         "claude-haiku-4-5-20251001": {
-           "name": "Claude 4.5 Haiku",
-           "attachment": true,
-           "limit": {
-             "context": 1048576,
-             "output": 65535
-           },
-           "modalities": {
-             "input": [
-               "text",
-               "image"
-             ],
-             "output": [
-               "text"
-             ]
-           }
-         },
-         "claude-opus-4-5-20251101": {
-           "name": "Claude 4.5 Opus",
-           "attachment": true,
-           "limit": {
-             "context": 1048576,
-             "output": 65535
-           },
-           "modalities": {
-             "input": [
-               "text",
-               "image"
-             ],
-             "output": [
-               "text"
-             ]
-           }
-         }
-       }
-    },
-
     "google": {
       "models": {
         "antigravity-gemini-3-pro": {

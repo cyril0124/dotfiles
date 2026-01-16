@@ -64,8 +64,10 @@ return {
                     optinoal = {
                         max_tokens = 256,
                         stop = { "\n\n" },
+                        top_p = 0.9,
                     },
                 },
+
                 openai_fim_compatible = {
                     optional = {
                         max_tokens = 256,

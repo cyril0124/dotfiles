@@ -55,7 +55,7 @@ require("lua.colorscheme")
 require("lua.lsp")
 
 -- Disable mini.animate globally
--- vim.g.minianimate_disable = true
+vim.g.minianimate_disable = true
 if os.getenv("NVIM_NO_ANIM") then
     vim.g.minianimate_disable = true
 end
