@@ -4,7 +4,7 @@
   "plugin": [
     // "oh-my-opencode@3.0.0-beta.8",
     // "opencode-antigravity-auth@1.2.8",
-    "@tarquinen/opencode-dcp@1.2.2"
+    "@tarquinen/opencode-dcp@1.2.3"
   ],
 
   "model": "nvidia/z-ai/glm4.7",
