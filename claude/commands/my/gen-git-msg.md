@@ -11,4 +11,17 @@ description: "用于基于当前 Git Staged Changes 的代码生成 git commit m
 - 生成的 git commit message 是**英文**的
 - **重要**：不需要帮我执行 git commit 命令，不要执行任何会改变 Git Staged 代码的命令，你的任务只是生成 git commit message
 
+你的输出格式为：
+```text
+# Version 1
+<git commit message>
+
+# Version 2
+<git commit message>
+
+# Version 3
+<git commit message>
+```
+除此之外不要有多余的输出，除非我有另外要求你
+
 $ARGUMENTS
