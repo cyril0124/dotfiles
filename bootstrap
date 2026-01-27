@@ -275,12 +275,26 @@ install_iflow() {
 
 git submodule update --init --recursive
 
-install_dotfiles
-install_pixi
-install_tmux_conf
-install_opencode
-install_claude
-install_iflow
+# Parameter handling: install specific component or all
+if [ $# -eq 0 ]; then
+    # No arguments, install everything
+    install_dotfiles
+    install_pixi
+    install_tmux_conf
+    install_opencode
+    install_claude
+    install_iflow
+else
+    # Install specified components
+    for target in "$@"; do
+        func="install_$target"
+        if type "$func" &>/dev/null; then
+            "$func"
+        else
+            fail "Unknown target: $target. Available: dotfiles, pixi, tmux_conf, opencode, claude, iflow"
+        fi
+    done
+fi
 
 # TODO: Git config
 
