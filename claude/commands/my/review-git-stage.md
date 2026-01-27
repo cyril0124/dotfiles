@@ -11,6 +11,7 @@ Review 当前 Git Staged Changes 的代码，满足以下要求：
 - 注意需要关注代码的性能、质量、注释是否足够且清晰
 - **重要**：永远不要修改 Git Staged 的代码或者执行任何会改变代码内容的命令，你的任务只是审核这些代码
 - 如果有必要，需要检查是否需要更新文档
+- 如果当前工程有 CHANGELOG, 需要使用 AskUserQuestion 向用户确认是否要更新 CHANGELOG 的内容, 如果用户已经添加了相关的 CHANGELOG 则不用管
 - 中文回答我
 
 回答格式为：
@@ -26,6 +27,19 @@ Review 当前 Git Staged Changes 的代码，满足以下要求：
 
 # 📋 评分
 <... 0~100 进行打分，例如 80/100>
+
+# 建议的 Git Commit Message
+## Version 1
+<...>
+
+## Version 2
+<...>
+
+## Version 3
+<...>
+
+# 建议的 CHANGELOG
+<...>
 ```
 除此之外不要有其他任何输出，除非我有另外跟你说
 
