@@ -61,11 +61,17 @@ return {
         "scalameta/nvim-metals",
         ft = { "scala", "sbt", "java" },
         opts = function()
+            local proxy_ip
+            local proxy_port
             local http_proxy = os.getenv("http_proxy") or os.getenv("HTTP_PROXY")
-            local proxy_ip = string.match(http_proxy, "http://([^:]+):")
-            local proxy_port = string.match(http_proxy, "http://[^:]+:(%d+)")
-            vim.notify("[nvim-metals] " .. "proxy_ip: " .. proxy_ip .. ", proxy_port: " .. proxy_port,
-                vim.log.levels.INFO)
+            if not http_proxy then
+                vim.notify("[nvim-metals] `http_proxy` or `HTTP_PROXY` env var not set!", vim.log.levels.INFO)
+            else
+                proxy_ip = string.match(http_proxy, "http://([^:]+):")
+                proxy_port = string.match(http_proxy, "http://[^:]+:(%d+)")
+                vim.notify("[nvim-metals] " .. "proxy_ip: " .. proxy_ip .. ", proxy_port: " .. proxy_port,
+                    vim.log.levels.INFO)
+            end
 
             local metals_config = require("metals").bare_config()
             metals_config.settings = {
@@ -77,13 +83,16 @@ return {
                     inferredTypes = { enable = true },
                     typeParameters = { enable = true },
                 },
-                serverProperties = {
+            }
+
+            if http_proxy then
+                metals_config.settings.serverProperties = {
                     "-Dhttp.proxyHost=" .. proxy_ip,
                     "-Dhttp.proxyPort=" .. proxy_port,
                     "-Dhttps.proxyHost=" .. proxy_ip,
                     "-Dhttps.proxyPort=" .. proxy_port,
                 }
-            }
+            end
 
             metals_config.on_attach = function(client, bufnr)
                 -- your on_attach function
