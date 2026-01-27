@@ -3,12 +3,10 @@
 
   "plugin": [
     // "oh-my-opencode@3.0.0-beta.10",
-    // "opencode-antigravity-auth@1.2.8",
-    "@tarquinen/opencode-dcp@1.2.3"
+    "@tarquinen/opencode-dcp@1.2.5"
   ],
 
   "model": "nvidia/z-ai/glm4.7",
-  // "model": "anthropic/claude-sonnet-4-5-20250929",
   "small_model": "nvidia/minimaxai/minimax-m2.1",
 
   "instructions": ["CLAUDE.md"],
@@ -48,74 +46,6 @@
   },
 
   "provider": {
-    "google": {
-      "models": {
-        "antigravity-gemini-3-pro": {
-          "name": "Gemini 3 Pro (Antigravity)",
-          "limit": { "context": 1048576, "output": 65535 },
-          "modalities": { "input": ["text", "image", "pdf"], "output": ["text"] },
-          "variants": {
-            "low": { "thinkingLevel": "low" },
-            "high": { "thinkingLevel": "high" }
-          }
-        },
-        "antigravity-gemini-3-flash": {
-          "name": "Gemini 3 Flash (Antigravity)",
-          "limit": { "context": 1048576, "output": 65536 },
-          "modalities": { "input": ["text", "image", "pdf"], "output": ["text"] },
-          "variants": {
-            "minimal": { "thinkingLevel": "minimal" },
-            "low": { "thinkingLevel": "low" },
-            "medium": { "thinkingLevel": "medium" },
-            "high": { "thinkingLevel": "high" }
-          }
-        },
-        "antigravity-claude-sonnet-4-5": {
-          "name": "Claude Sonnet 4.5 (Antigravity)",
-          "limit": { "context": 200000, "output": 64000 },
-          "modalities": { "input": ["text", "image", "pdf"], "output": ["text"] }
-        },
-        "antigravity-claude-sonnet-4-5-thinking": {
-          "name": "Claude Sonnet 4.5 Thinking (Antigravity)",
-          "limit": { "context": 200000, "output": 64000 },
-          "modalities": { "input": ["text", "image", "pdf"], "output": ["text"] },
-          "variants": {
-            "low": { "thinkingConfig": { "thinkingBudget": 8192 } },
-            "max": { "thinkingConfig": { "thinkingBudget": 32768 } }
-          }
-        },
-        "antigravity-claude-opus-4-5-thinking": {
-          "name": "Claude Opus 4.5 Thinking (Antigravity)",
-          "limit": { "context": 200000, "output": 64000 },
-          "modalities": { "input": ["text", "image", "pdf"], "output": ["text"] },
-          "variants": {
-            "low": { "thinkingConfig": { "thinkingBudget": 8192 } },
-            "max": { "thinkingConfig": { "thinkingBudget": 32768 } }
-          }
-        },
-        "gemini-2.5-flash": {
-          "name": "Gemini 2.5 Flash (Gemini CLI)",
-          "limit": { "context": 1048576, "output": 65536 },
-          "modalities": { "input": ["text", "image", "pdf"], "output": ["text"] }
-        },
-        "gemini-2.5-pro": {
-          "name": "Gemini 2.5 Pro (Gemini CLI)",
-          "limit": { "context": 1048576, "output": 65536 },
-          "modalities": { "input": ["text", "image", "pdf"], "output": ["text"] }
-        },
-        "gemini-3-flash-preview": {
-          "name": "Gemini 3 Flash Preview (Gemini CLI)",
-          "limit": { "context": 1048576, "output": 65536 },
-          "modalities": { "input": ["text", "image", "pdf"], "output": ["text"] }
-        },
-        "gemini-3-pro-preview": {
-          "name": "Gemini 3 Pro Preview (Gemini CLI)",
-          "limit": { "context": 1048576, "output": 65535 },
-          "modalities": { "input": ["text", "image", "pdf"], "output": ["text"] }
-        }
-      }
-    },
-
     "nvidia": {
         "models": {
             "z-ai/glm4.7": {
@@ -129,7 +59,14 @@
                 "context": 204800,
                 "output": 131100
               }
+            },
+            "moonshotai/kimi-k2.5": {
+              "limit": {
+                "context": 204800,
+                "output": 131100
+              }
             }
+
         }
     },
 
@@ -159,30 +96,7 @@
             "context": 204800,
             "output": 131072
           }
-        },
-
-        // Provided by Github Copilot
-        // See https://github.com/em4go/CLIProxyAPI/blob/3a9ac7ef331da59da78d8504cab00a639f837cb7/internal/registry/model_definitions.go#L988
-        "gpt-4.1": {
-          "limit": {
-            "context": 128000,
-            "output": 16384
-          }
-        },
-        "grok-code-fast-1": {
-          "limit": {
-            "context": 128000,
-            "output": 16384
-          }
         }
-        // ,
-        // "claude-opus-4.5": {
-        //   "limit": {
-        //     "context": 200000,
-        //     "output": 64000
-        //   }
-        // }
-
       }
     }
   },
@@ -198,6 +112,12 @@
   },
 
   "mcp": {
+    // Exa AI Web Search MCP Server
+    "exa": {
+      "type": "remote",
+      "url": "https://mcp.exa.ai/mcp?tools=web_search_exa"
+    }
+
     // Sequential Thinking MCP Server - Official implementation by Anthropic
     // Facilitates structured, step-by-step thinking process for complex problem-solving
     // GitHub: https://github.com/modelcontextprotocol/servers/tree/main/src/sequentialthinking
