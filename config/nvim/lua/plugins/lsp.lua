@@ -51,6 +51,7 @@ return {
                     "emmylua_ls",
                     "clangd",
                     "rust_analyzer",
+                    "ty",
                 },
                 automatic_enable = true,
             })
