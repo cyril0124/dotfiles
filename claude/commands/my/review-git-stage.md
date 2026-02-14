@@ -56,7 +56,7 @@ Safety Rules:
 
 # 建议的 CHANGELOG
 <如项目无 CHANGELOG 文件，注明"项目无 CHANGELOG 文件">
-<如项目有 CHANGELOG 文件，必须优先参考其现有风格（格式、分类、版本号、语言等），生成符合该风格的条目建议>
+<如项目有 CHANGELOG 文件，必须优先参考其现有风格（格式、分类、版本号、语言(如英语、中文)等），生成符合该风格的条目建议>
 ```
 
 $ARGUMENTS
