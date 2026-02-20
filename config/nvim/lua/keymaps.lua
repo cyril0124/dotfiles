@@ -126,20 +126,18 @@ local show_menu = function()
     local buftype = vim.bo[buf].ft
     vim.notify("[show_menu] buftype: " .. vim.inspect(buftype), vim.log.levels.INFO)
 
-    if buftype == "neo-tree" then
+    if vim.g.diffview_is_open then
+        local diffview_menu = require("lua.menus.diffview")
+        menu.open(diffview_menu)
+    elseif buftype == "neo-tree" then
         menu.open("neo-tree")
     elseif buftype == "grug-far" then
         menu.open("grug-far")
     elseif buftype == "markdown" then
         menu.open("markdown")
     else
-        if vim.g.diffview_is_open then
-            local diffview_menu = require("lua.menus.diffview")
-            menu.open(diffview_menu)
-        else
-            local mydefault_menu = require("lua.menus.mydefault")
-            menu.open(mydefault_menu)
-        end
+        local mydefault_menu = require("lua.menus.mydefault")
+        menu.open(mydefault_menu)
     end
 end
 vim.keymap.set("n", "<leader>m", show_menu, { desc = "Show menu" })
