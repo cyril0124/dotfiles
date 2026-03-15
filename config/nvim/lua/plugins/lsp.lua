@@ -111,6 +111,18 @@ return {
         },
     },
 
+    -- https://github.com/ray-x/lsp_signature.nvim
+    {
+        "ray-x/lsp_signature.nvim",
+        event = "LspAttach",
+        opts = {
+            hint_enable = true,
+            handler_opts = {
+                border = "rounded",
+            },
+        },
+    },
+
     {
         {
             "hudson-trading/slang-server.nvim",
