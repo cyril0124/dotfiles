@@ -71,8 +71,9 @@ return {
     {
         name = "Switch colorscheme",
         cmd = function()
+            local config = require("lua.config")
             vim.ui.select(
-                { "tokyonight", "catppuccin", "kanagawa", "rose-pine" },
+                config.themes,
                 { prompt = "Select colorscheme:" },
                 function(choice)
                     if choice then vim.cmd("colorscheme " .. choice) end

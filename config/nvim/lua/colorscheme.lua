@@ -1,8 +1,8 @@
 -- define your colorscheme here
-local colorscheme = 'kanagawa'
+local config = require("lua.config")
 
-local is_ok, _ = pcall(vim.cmd, "colorscheme " .. colorscheme)
+local is_ok, _ = pcall(vim.cmd, "colorscheme " .. config.colorscheme)
 if not is_ok then
-    vim.notify('colorscheme ' .. colorscheme .. ' not found!')
+    vim.notify('colorscheme ' .. config.colorscheme .. ' not found!')
     return
 end

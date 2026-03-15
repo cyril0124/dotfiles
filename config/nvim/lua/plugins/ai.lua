@@ -1,10 +1,7 @@
+local config = require("lua.config")
+
 local enabled = false
-local provider = "codestral"
--- local provider = "deepseek"
-if os.getenv("DS_AI") then
-    provider = "deepseek"
-    vim.notify("[minuet-ai.nvim] env DS_AI is set, using deepseek", vim.log.levels.INFO)
-end
+local provider = config.ai_provider
 
 local throttle = 300
 local debounce = 200
