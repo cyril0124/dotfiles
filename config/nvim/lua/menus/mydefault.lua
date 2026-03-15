@@ -45,14 +45,6 @@ return {
         rtxt = "rg",
     },
 
-    {
-        name = "DiffviewOpen",
-        cmd = function()
-            vim.g.diffview_is_open = true
-            vim.cmd("DiffviewOpen")
-        end,
-        rtxt = "df",
-    },
 
     {
         name = "  LSP Actions",
@@ -64,23 +56,6 @@ return {
         name = "󰊢  Git Actions",
         hl = "Exblue",
         items = "gitsigns",
-    },
-
-    { name = "separator" },
-
-    {
-        name = "Switch colorscheme",
-        cmd = function()
-            local config = require("lua.config")
-            vim.ui.select(
-                config.themes,
-                { prompt = "Select colorscheme:" },
-                function(choice)
-                    if choice then vim.cmd("colorscheme " .. choice) end
-                end
-            )
-        end,
-        rtxt = "cs",
     },
 
     {

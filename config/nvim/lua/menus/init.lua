@@ -1,5 +1,17 @@
 local M = {}
 
+local function with_shared(items)
+    local shared = require("lua.menus.shared")
+    local result = {}
+    for _, item in ipairs(items) do
+        result[#result + 1] = item
+    end
+    for _, item in ipairs(shared) do
+        result[#result + 1] = item
+    end
+    return result
+end
+
 function M.show()
     local menu = require("menu")
     local winid = vim.api.nvim_get_current_win()
@@ -8,17 +20,15 @@ function M.show()
     vim.notify("[show_menu] buftype: " .. vim.inspect(buftype), vim.log.levels.INFO)
 
     if vim.g.diffview_is_open then
-        local diffview_menu = require("lua.menus.diffview")
-        menu.open(diffview_menu)
+        menu.open(with_shared(require("lua.menus.diffview")))
     elseif buftype == "neo-tree" then
-        menu.open("neo-tree")
+        menu.open(with_shared(require("lua.menus.neo-tree")))
     elseif buftype == "grug-far" then
-        menu.open("grug-far")
+        menu.open(with_shared(require("lua.menus.grug-far")))
     elseif buftype == "markdown" then
-        menu.open("markdown")
+        menu.open(with_shared(require("lua.menus.markdown")))
     else
-        local mydefault_menu = require("lua.menus.mydefault")
-        menu.open(mydefault_menu)
+        menu.open(with_shared(require("lua.menus.mydefault")))
     end
 end
 
