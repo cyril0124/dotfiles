@@ -218,10 +218,30 @@ return {
         config = true,
         event = { "WinLeave" },
     },
-    -- {
-    --     'VonHeikemen/fine-cmdline.nvim',
-    --     dependencies = {
-    --         'MunifTanjim/nui.nvim'
-    --     }
-    -- }
+
+    -- https://github.com/folke/trouble.nvim
+    {
+        "folke/trouble.nvim",
+        cmd = "Trouble",
+        keys = {
+            { "<leader>T", "<cmd>Trouble diagnostics toggle<cr>", desc = "Diagnostics (Trouble)" },
+        },
+        opts = {},
+    },
+
+    -- https://github.com/lewis6991/satellite.nvim
+    {
+        "lewis6991/satellite.nvim",
+        event = "VeryLazy",
+        opts = {},
+    },
+
+    -- https://github.com/rasulomaroff/reactive.nvim
+    {
+        "rasulomaroff/reactive.nvim",
+        event = "VeryLazy",
+        opts = {
+            load = { "catppuccin-mocha-cursor", "catppuccin-mocha-cursorline" },
+        },
+    },
 }
