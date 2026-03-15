@@ -20,6 +20,22 @@ return {
     },
 
     {
+        name = "DiffviewFileHistory",
+        cmd = function()
+            vim.cmd("DiffviewFileHistory %")
+        end,
+        rtxt = "fh",
+    },
+
+    {
+        name = "Toggle git blame",
+        cmd = function()
+            vim.cmd("Gitsigns toggle_current_line_blame")
+        end,
+        rtxt = "gb",
+    },
+
+    {
         name = "Switch colorscheme",
         cmd = function()
             local config = require("lua.config")
