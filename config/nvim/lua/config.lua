@@ -1,7 +1,7 @@
 local M = {}
 
 -- Colorscheme
-M.colorscheme = "kanagawa"
+M.colorscheme = "catppuccin"
 
 -- Available themes (for menu switcher)
 M.themes = { "tokyonight", "catppuccin", "kanagawa", "rose-pine" }
