@@ -2,7 +2,7 @@ return {
     {
         name = "Toggle render",
         cmd = function()
-            require("render-markdown").toggle()
+            require("markview").actions.toggle()
         end,
         rtxt = "r"
     }

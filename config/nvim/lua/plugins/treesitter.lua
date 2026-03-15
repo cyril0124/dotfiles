@@ -3,9 +3,8 @@ return {
     build = ':TSUpdate',
     config = function()
         require('nvim-treesitter.configs').setup {
-            ensure_installed = { 'c', 'cpp', 'lua', 'python', 'rust', 'scala', 'markdown' },
-            -- highlight = { enable = true },
-            highlight = { enable = false },
+            ensure_installed = { 'c', 'cpp', 'lua', 'python', 'rust', 'scala', 'markdown', 'markdown_inline', 'diff' },
+            highlight = { enable = true },
             fold = {
                 enable = true,
             },

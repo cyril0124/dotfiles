@@ -29,6 +29,8 @@ local config_dir = vim.fn.stdpath('config')
 local pacakge_paths = {
     config_dir .. "/?.lua",
     config_dir .. "/lua/?.lua",
+    config_dir .. "/?/init.lua",
+    config_dir .. "/lua/?/init.lua",
 }
 package.path = table.concat(pacakge_paths, ";")
 
@@ -51,11 +53,9 @@ end
 
 require("lua.options")
 require("lua.keymaps")
+require("lua.commands")
 require("lua.colorscheme")
 require("lua.lsp")
 
 -- Disable mini.animate globally
 vim.g.minianimate_disable = true
-if os.getenv("NVIM_NO_ANIM") then
-    vim.g.minianimate_disable = true
-end

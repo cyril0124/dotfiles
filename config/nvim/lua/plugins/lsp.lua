@@ -114,11 +114,11 @@ return {
     },
 
     {
-        'MeanderingProgrammer/render-markdown.nvim',
+        "OXY2DEV/markview.nvim",
+        ft = "markdown",
         opts = {
-            enabled = false,
+            preview = { enable = false },
         },
-        ft = 'markdown',
     },
 
     {
