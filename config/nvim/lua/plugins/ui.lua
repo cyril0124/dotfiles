@@ -64,23 +64,6 @@ return {
                     lualine_y = { 'progress' },
                     lualine_z = { 'location' }
                 },
-                winbar = {
-                    lualine_a = {
-                        {
-                            function()
-                                return require("nvim-navic").get_location()
-                            end,
-                            cond = function()
-                                return require("nvim-navic").is_available()
-                            end,
-                        }
-                    },
-                    lualine_b = {},
-                    lualine_c = {},
-                    lualine_x = {},
-                    lualine_y = {},
-                    -- lualine_z = { 'hostname' },
-                },
             })
         end
     },
@@ -190,13 +173,10 @@ return {
         opts = {},
     },
 
+    -- https://github.com/Bekaboo/dropbar.nvim
     {
-        "SmiteshP/nvim-navic",
-        opts = {
-            lsp = {
-                auto_attach = true,
-            }
-        }
+        "Bekaboo/dropbar.nvim",
+        opts = {},
     },
 
     {
