@@ -69,6 +69,20 @@ return {
     { name = "separator" },
 
     {
+        name = "Switch colorscheme",
+        cmd = function()
+            vim.ui.select(
+                { "tokyonight", "catppuccin", "kanagawa", "rose-pine" },
+                { prompt = "Select colorscheme:" },
+                function(choice)
+                    if choice then vim.cmd("colorscheme " .. choice) end
+                end
+            )
+        end,
+        rtxt = "cs",
+    },
+
+    {
         name = "Edit Config",
         cmd = function()
             vim.cmd "tabnew"
