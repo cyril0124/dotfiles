@@ -25,14 +25,6 @@ vim.keymap.set('n', 'gK', function()
     require('hover').enter()
 end, { desc = 'hover.nvim (enter)', noremap = true, silent = true })
 
-vim.keymap.set('n', '<leader>k', function()
-    require('hover').open()
-end, { desc = 'hover.nvim (open)', noremap = true, silent = true })
-
-vim.keymap.set('n', '<leader>gk', function()
-    require('hover').enter()
-end, { desc = 'hover.nvim (open)', noremap = true, silent = true })
-
 -- Enable inlay hints for supported languages
 vim.api.nvim_create_autocmd({ "BufRead", "BufNewFile" }, {
     -- pattern = { "*.scala", "*.lua", "*.cc", "*.cpp", "*.h", "*.py", "*.rs" },

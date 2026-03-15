@@ -19,9 +19,6 @@ return {
         config = function()
             vim.opt.termguicolors = true
 
-            -- Tab to switch buffer
-            vim.keymap.set("n", "<tab>", "<cmd>BufferLineCycleNext<cr>")
-
             require("bufferline").setup({
                 options = {
                     offsets = {
