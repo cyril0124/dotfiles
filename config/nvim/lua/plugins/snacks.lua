@@ -32,6 +32,6 @@ return {
                 vim.b.minitrailspace_disable = true
                 vim.b.minijump_disable = true
             end
-        }
+        },
     }
 }

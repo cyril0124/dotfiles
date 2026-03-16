@@ -97,6 +97,14 @@ vim.keymap.set("n", "<leader>gD", function()
     end
 end, { desc = "Toggle diffview" })
 
+-- Git hunk navigation
+vim.keymap.set("n", "]h", function()
+    require("gitsigns").nav_hunk("next")
+end, { desc = "Next git hunk" })
+vim.keymap.set("n", "[h", function()
+    require("gitsigns").nav_hunk("prev")
+end, { desc = "Previous git hunk" })
+
 
 -----------------
 -- Visual mode --
