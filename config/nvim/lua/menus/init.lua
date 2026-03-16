@@ -19,7 +19,11 @@ function M.show()
     local buftype = vim.bo[buf].ft
     vim.notify("[show_menu] buftype: " .. vim.inspect(buftype), vim.log.levels.INFO)
 
-    if vim.g.diffview_is_open then
+    local is_diffview = vim.g.diffview_is_open
+        or buftype == "DiffviewFiles"
+        or buftype == "DiffviewFileHistory"
+
+    if is_diffview then
         menu.open(with_shared(require("lua.menus.diffview")))
     elseif buftype == "neo-tree" then
         menu.open(with_shared(require("lua.menus.neo-tree")))
