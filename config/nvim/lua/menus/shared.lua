@@ -36,6 +36,25 @@ return {
     },
 
     {
+        name = "Last commit diff",
+        cmd = function()
+            vim.g._last_commit_depth = (vim.g._last_commit_depth or 0) + 1
+            vim.cmd("DiffviewClose")
+            vim.cmd("DiffviewFileHistory --range=HEAD~" .. vim.g._last_commit_depth .. "..HEAD")
+        end,
+        rtxt = "lc",
+    },
+
+    {
+        name = "Reset commit depth",
+        cmd = function()
+            vim.g._last_commit_depth = 0
+            vim.cmd("DiffviewClose")
+        end,
+        rtxt = "rc",
+    },
+
+    {
         name = "Switch colorscheme",
         cmd = function()
             local config = require("lua.config")

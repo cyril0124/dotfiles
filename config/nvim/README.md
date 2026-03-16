@@ -60,6 +60,7 @@ Personal Neovim configuration using [lazy.nvim](https://github.com/folke/lazy.nv
 | Key | Mode | Description |
 |-----|------|-------------|
 | `<leader>gD` | Normal | Toggle Diffview |
+| `<leader>gl` | Normal | Last commit diff (incremental depth) |
 | `]h` / `[h` | Normal | Next / Previous git hunk |
 
 ### Terminal
@@ -90,6 +91,8 @@ Personal Neovim configuration using [lazy.nvim](https://github.com/folke/lazy.nv
 | `:TS` | Trim trailing whitespace |
 | `:WW` | Enable line wrapping |
 | `:NW` | Disable line wrapping |
+| `:AnsiEnable` | Enable ANSI color rendering |
+| `:AnsiToggle` | Toggle ANSI color rendering |
 
 ## Menu Items
 
@@ -97,7 +100,7 @@ Open the context menu with `<leader>m`. The menu adapts to the current filetype 
 
 **Default Menu:** Trim spaces, Format, Find files/words (no-ignore), Search & replace, LSP Actions submenu, Git Actions submenu, Edit Config
 
-**Shared Items (all menus):** Notification history, DiffviewOpen, DiffviewFileHistory, Toggle git blame, Switch colorscheme
+**Shared Items (all menus):** Notification history, DiffviewOpen, DiffviewFileHistory, Toggle git blame, Last commit diff (incremental), Reset commit depth, Switch colorscheme
 
 ## Installed Plugins
 
@@ -132,6 +135,7 @@ Open the context menu with `<leader>m`. The menu adapts to the current filetype 
 | [indent-blankline.nvim](https://github.com/lukas-reineke/indent-blankline.nvim) | Indent guides |
 | [tiny-inline-diagnostic.nvim](https://github.com/rachartier/tiny-inline-diagnostic.nvim) | Inline diagnostics |
 | [nvzone/menu](https://github.com/nvzone/menu) | Context menu |
+| [ansi.nvim](https://github.com/0xferrous/ansi.nvim) | ANSI color code rendering |
 
 ## Color Themes
 
