@@ -5,9 +5,12 @@ vim.api.nvim_create_autocmd("LspAttach", {
         local keymap = vim.keymap
         local lsp = vim.lsp
 
-        keymap.set("n", "gr", lsp.buf.references, { buffer = bufnr, noremap = true, silent = true, desc = "LSP get references" })
-        keymap.set("n", "gd", lsp.buf.definition, { buffer = bufnr, noremap = true, silent = true, desc = "LSP goto definition" })
-        keymap.set("n", "<space>rn", lsp.buf.rename, { buffer = bufnr, noremap = true, silent = true, desc = "LSP rename" })
+        keymap.set("n", "gr", lsp.buf.references,
+            { buffer = bufnr, noremap = true, silent = true, desc = "LSP get references" })
+        keymap.set("n", "gd", lsp.buf.definition,
+            { buffer = bufnr, noremap = true, silent = true, desc = "LSP goto definition" })
+        keymap.set("n", "<space>rn", lsp.buf.rename,
+            { buffer = bufnr, noremap = true, silent = true, desc = "LSP rename" })
 
         if client and client:supports_method("textDocument/inlayHint") then
             vim.lsp.inlay_hint.enable(true, { bufnr = bufnr })
@@ -33,13 +36,13 @@ end, { desc = 'hover.nvim (enter)', noremap = true, silent = true })
 
 -- Enable inlay hints for supported languages
 -- Auto enabled by mason-lspconfig
--- vim.lsp.enable({"emmylua_ls"})
 vim.lsp.config("emmylua_ls", {
     cmd = { "emmylua_ls" },
     filetypes = { "lua" },
     root_markers = {
         ".luarc.json",
         ".emmyrc.json",
+        ".emmyrc.lua",
         ".luacheckrc",
     },
     workspace_required = false,
