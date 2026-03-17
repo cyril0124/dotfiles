@@ -1,11 +1,17 @@
 vim.api.nvim_create_autocmd("LspAttach", {
     callback = function(args)
+        local bufnr = args.buf
+        local client = vim.lsp.get_client_by_id(args.data.client_id)
         local keymap = vim.keymap
         local lsp = vim.lsp
 
-        keymap.set("n", "gr", lsp.buf.references, { noremap = true, silent = true, desc = "LSP get references" })
-        keymap.set("n", "gd", lsp.buf.definition, { noremap = true, silent = true, desc = "LSP goto definition" })
-        keymap.set("n", "<space>rn", lsp.buf.rename, { noremap = true, silent = true, desc = "LSP rename" })
+        keymap.set("n", "gr", lsp.buf.references, { buffer = bufnr, noremap = true, silent = true, desc = "LSP get references" })
+        keymap.set("n", "gd", lsp.buf.definition, { buffer = bufnr, noremap = true, silent = true, desc = "LSP goto definition" })
+        keymap.set("n", "<space>rn", lsp.buf.rename, { buffer = bufnr, noremap = true, silent = true, desc = "LSP rename" })
+
+        if client and client:supports_method("textDocument/inlayHint") then
+            vim.lsp.inlay_hint.enable(true, { bufnr = bufnr })
+        end
 
         -- keymap.set("n", "K", lsp.buf.hover, { noremap = true, silent = true, desc = "LSP hover" })
         -- keymap.set('n', 'K', function()
@@ -26,15 +32,6 @@ vim.keymap.set('n', 'gK', function()
 end, { desc = 'hover.nvim (enter)', noremap = true, silent = true })
 
 -- Enable inlay hints for supported languages
-vim.api.nvim_create_autocmd({ "BufRead", "BufNewFile" }, {
-    -- pattern = { "*.scala", "*.lua", "*.cc", "*.cpp", "*.h", "*.py", "*.rs" },
-    pattern = { "*.lua", "*.cc", "*.cpp", "*.h", "*.py", "*.rs" },
-    callback = function()
-        vim.lsp.inlay_hint.enable(true)
-    end,
-})
-
-
 -- Auto enabled by mason-lspconfig
 -- vim.lsp.enable({"emmylua_ls"})
 vim.lsp.config("emmylua_ls", {
