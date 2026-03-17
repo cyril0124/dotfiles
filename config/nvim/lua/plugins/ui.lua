@@ -73,12 +73,13 @@ return {
         {
             "nvim-neo-tree/neo-tree.nvim",
             branch = "v3.x",
+            cmd = { "Neotree" },
             dependencies = {
                 "nvim-lua/plenary.nvim",
                 "MunifTanjim/nui.nvim",
                 "nvim-tree/nvim-web-devicons", -- optional, but recommended
             },
-            lazy = false,                      -- neo-tree will lazily load itself
+            lazy = true,
             config = function()
                 require("neo-tree").setup({
                     source_selector = {
@@ -95,7 +96,7 @@ return {
                             enabled = true,
                             leave_dirs_open = true,
                         },
-                        use_libuv_file_watcher = true,
+                        use_libuv_file_watcher = false,
                     },
                     buffers = {
                         follow_current_file = {
