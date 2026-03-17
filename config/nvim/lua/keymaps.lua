@@ -29,9 +29,12 @@ vim.keymap.set("n", "<leader>t", "<CMD>ToggleTerm direction=float<CR>", { desc =
 vim.keymap.set("n", "<leader>dt", "<CMD>ToggleTerm direction=horizontal<CR>", { desc = "Toggle terminal(down)" })
 
 -- Telescope
-local builtin = require("telescope.builtin")
-vim.keymap.set("n", "<leader>ff", builtin.find_files, { desc = "Telescope find files" })
-vim.keymap.set("n", "<leader>fw", builtin.live_grep, { desc = "Telescope live grep" })
+vim.keymap.set("n", "<leader>ff", function()
+    require("telescope.builtin").find_files()
+end, { desc = "Telescope find files" })
+vim.keymap.set("n", "<leader>fw", function()
+    require("telescope.builtin").live_grep()
+end, { desc = "Telescope live grep" })
 vim.keymap.set("n", "<leader>gs", function()
     require("telescope.builtin").grep_string({ additional_args = { "-w" } })
 end, { desc = "Grep word under cursor(wholeword)" })
