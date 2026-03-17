@@ -230,11 +230,11 @@ return {
     },
 
     -- https://github.com/lewis6991/satellite.nvim
-    {
-        "lewis6991/satellite.nvim",
-        event = "VeryLazy",
-        opts = {},
-    },
+    -- {
+    --     "lewis6991/satellite.nvim",
+    --     event = "VeryLazy",
+    --     opts = {},
+    -- },
 
     -- https://github.com/rasulomaroff/reactive.nvim
     {
