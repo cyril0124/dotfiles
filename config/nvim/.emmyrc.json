@@ -28,11 +28,22 @@
 
     "workspace": {
           "ignoreDir": [
-                "nvim-test"
+                ".git",
+                ".hg",
+                ".svn",
+                ".jj",
+                "nvim-test",
+                "node_modules",
+                "target",
+                "build",
+                "dist",
+                ".cache",
+                ".direnv",
+                ".venv",
+                "venv"
           ],
           "library": [
                 "$NVIM_RUNTIME"
           ]
     }
 }
-

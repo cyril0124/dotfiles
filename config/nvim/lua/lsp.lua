@@ -37,6 +37,18 @@ vim.api.nvim_create_autocmd({ "BufRead", "BufNewFile" }, {
 
 -- Auto enabled by mason-lspconfig
 -- vim.lsp.enable({"emmylua_ls"})
+vim.lsp.config("emmylua_ls", {
+    cmd = { "emmylua_ls" },
+    filetypes = { "lua" },
+    root_markers = {
+        ".luarc.json",
+        ".emmyrc.json",
+        ".luacheckrc",
+    },
+    workspace_required = false,
+})
+
+vim.lsp.enable("emmylua_ls")
 
 vim.lsp.config("slang-server", {
     cmd = { "slang-server" },
