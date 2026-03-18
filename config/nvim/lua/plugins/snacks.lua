@@ -2,6 +2,7 @@
 
 return {
     "folke/snacks.nvim",
+    event = { "BufReadPre", "BufNewFile" },
     opts = {
         bigfile = {
             enabled = true,

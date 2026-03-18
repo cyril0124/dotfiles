@@ -24,8 +24,7 @@ vim.opt.smartcase = true  -- but make it case sensitive if an uppercase is enter
 -- Undo
 vim.opt.undofile = true
 vim.opt.undodir = vim.fn.stdpath("data") .. "/undo"
-os.execute("mkdir -p " .. vim.o.undodir)
+vim.fn.mkdir(vim.o.undodir, "p")
 
 -- Scroll
 vim.opt.scrolloff = 4 -- keep 4 lines above/below cursor when scrolling
-

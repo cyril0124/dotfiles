@@ -1,6 +1,7 @@
 -- https://github.com/MagicDuck/grug-far.nvim
 return {
     'MagicDuck/grug-far.nvim',
+    cmd = { "GrugFar", "GrugFarWithin", "GrugFarWholeBuffer", "GrugFarVisual" },
     -- Note (lazy loading): grug-far.lua defers all it's requires so it's lazy by default
     -- additional lazy config to defer loading is not really needed...
     config = function()
