@@ -33,6 +33,7 @@ local source_icons = {
 
 return {
     'saghen/blink.cmp',
+    event = { "InsertEnter", "CmdlineEnter" },
     -- optional: provides snippets for the snippet source
     dependencies = {
         'rafamadriz/friendly-snippets',
@@ -147,4 +148,3 @@ return {
     },
     opts_extend = { "sources.default" }
 }
-

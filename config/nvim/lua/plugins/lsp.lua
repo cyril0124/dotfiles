@@ -38,6 +38,15 @@ return {
 
     {
         "mason-org/mason-lspconfig.nvim",
+        event = { "BufReadPre", "BufNewFile" },
+        cmd = {
+            "Mason",
+            "MasonInstall",
+            "MasonUpdate",
+            "MasonUninstall",
+            "MasonUninstallAll",
+            "MasonLog",
+        },
         -- opts = {},
         version = "2.*",
         dependencies = {

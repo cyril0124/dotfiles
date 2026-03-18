@@ -177,6 +177,7 @@ return {
     -- https://github.com/Bekaboo/dropbar.nvim
     {
         "Bekaboo/dropbar.nvim",
+        event = { "BufReadPost", "BufNewFile" },
         opts = {},
     },
 
@@ -201,6 +202,7 @@ return {
     -- The goal of nvim-ufo is to make Neovim's fold look modern and keep high performance.
     {
         'kevinhwang91/nvim-ufo',
+        event = { "BufReadPost", "BufNewFile" },
         dependencies = 'kevinhwang91/promise-async',
         config = function()
             vim.o.foldlevel = 99
