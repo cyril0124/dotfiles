@@ -38,10 +38,7 @@ return {
     {
         name = "Last commit diff",
         cmd = function()
-            vim.g._last_commit_depth = (vim.g._last_commit_depth or 0) + 1
-            vim.cmd("DiffviewClose")
-            vim.g.diffview_is_open = true
-            vim.cmd("DiffviewFileHistory --range=HEAD~" .. vim.g._last_commit_depth .. "..HEAD")
+            require("lua.git_diff").open_last_commit_diff()
         end,
         rtxt = "lc",
     },
@@ -49,9 +46,7 @@ return {
     {
         name = "Reset commit depth",
         cmd = function()
-            vim.g._last_commit_depth = 0
-            vim.g.diffview_is_open = false
-            vim.cmd("DiffviewClose")
+            require("lua.git_diff").reset_last_commit_depth()
         end,
         rtxt = "rc",
     },

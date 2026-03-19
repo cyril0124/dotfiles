@@ -110,10 +110,7 @@ end, { desc = "Previous git hunk" })
 
 -- View last commit diff (incremental depth)
 vim.keymap.set("n", "<leader>gl", function()
-    vim.g._last_commit_depth = (vim.g._last_commit_depth or 0) + 1
-    vim.cmd("DiffviewClose")
-    vim.g.diffview_is_open = true
-    vim.cmd("DiffviewFileHistory --range=HEAD~" .. vim.g._last_commit_depth .. "..HEAD")
+    require("lua.git_diff").open_last_commit_diff()
 end, { desc = "Last commit diff (deeper each press)" })
 
 
