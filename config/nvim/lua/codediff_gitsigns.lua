@@ -44,28 +44,92 @@ local function unique_windows(wins)
     return result
 end
 
-local function find_target_window()
-    local current_win = vim.api.nvim_get_current_win()
-    if is_attached(vim.api.nvim_win_get_buf(current_win)) then
-        return current_win
+local function is_real_file_buffer(bufnr)
+    if not (bufnr and vim.api.nvim_buf_is_valid(bufnr)) then
+        return false
     end
 
+    if vim.bo[bufnr].buftype ~= "" then
+        return false
+    end
+
+    local name = vim.api.nvim_buf_get_name(bufnr)
+    if name == "" or name:match("^codediff://") then
+        return false
+    end
+
+    return true
+end
+
+local function get_candidate_windows()
+    local current_win = vim.api.nvim_get_current_win()
     local session = get_session()
     if not session then
-        return nil
+        return unique_windows({ current_win })
     end
 
-    for _, winid in ipairs(unique_windows({
+    return unique_windows({
+        current_win,
         session.modified_win,
         session.result_win,
         session.original_win,
-    })) do
-        if is_attached(vim.api.nvim_win_get_buf(winid)) then
+    })
+end
+
+local function try_attach_window(winid)
+    if not (winid and vim.api.nvim_win_is_valid(winid)) then
+        return false
+    end
+
+    local bufnr = vim.api.nvim_win_get_buf(winid)
+    if is_attached(bufnr) then
+        return true
+    end
+
+    if not is_real_file_buffer(bufnr) then
+        return false
+    end
+
+    local ok, attach = pcall(require, "gitsigns.attach")
+    if not ok then
+        return false
+    end
+
+    attach.attach(bufnr, nil, nil)
+
+    return vim.wait(800, function()
+        return is_attached(bufnr)
+    end, 20, false)
+end
+
+local function ensure_target_window()
+    for _, winid in ipairs(get_candidate_windows()) do
+        if try_attach_window(winid) then
             return winid
         end
     end
 
     return nil
+end
+
+local function notify_unavailable(action)
+    local session = get_session()
+    if not session then
+        vim.notify("No gitsigns-attached buffer in current CodeDiff view", vim.log.levels.WARN)
+        return
+    end
+
+    if session.modified_revision == ":0" then
+        vim.notify(action .. " is unavailable in staged/index-only CodeDiff views", vim.log.levels.WARN)
+        return
+    end
+
+    if session.modified_path == "" or session.modified_path == nil then
+        vim.notify(action .. " requires a working-tree buffer; current CodeDiff entry is virtual or deleted", vim.log.levels.WARN)
+        return
+    end
+
+    vim.notify("No gitsigns-attached buffer in current CodeDiff view", vim.log.levels.WARN)
 end
 
 local function sync_cursor(source_win, target_win)
@@ -85,9 +149,9 @@ end
 
 function M.run(action, ...)
     local source_win = vim.api.nvim_get_current_win()
-    local target_win = find_target_window()
+    local target_win = ensure_target_window()
     if not target_win then
-        vim.notify("No gitsigns-attached buffer in current CodeDiff view", vim.log.levels.WARN)
+        notify_unavailable(action)
         return
     end
 
