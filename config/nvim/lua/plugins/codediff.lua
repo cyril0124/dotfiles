@@ -3,7 +3,8 @@ return {
     cmd = "CodeDiff",
     opts = {
         highlights = {
-            char_brightness = 1.15,
+            char_insert = "#1f6a4a",
+            char_delete = "#7a314d",
         },
         diff = {
             highlight_priority = 150,
