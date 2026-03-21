@@ -21,6 +21,7 @@ return {
         local codediff = require("lua.codediff")
         local lifecycle = require("codediff.ui.lifecycle")
         local lifecycle_state = require("codediff.ui.lifecycle.state")
+        local layout = require("codediff.ui.layout")
         local explorer_refresh = require("codediff.ui.explorer.refresh")
         local view = require("codediff.ui.view")
         local inline_view = require("codediff.ui.view.inline_view")
@@ -321,6 +322,29 @@ return {
             end
         end
 
+        local function arrange_session(tabpage)
+            tabpage = tabpage or vim.api.nvim_get_current_tabpage()
+            if not lifecycle.get_session(tabpage) then
+                return
+            end
+
+            layout.arrange(tabpage)
+            apply_current_session_wrap(tabpage)
+            apply_current_explorer_window_opts(tabpage)
+        end
+
+        local function schedule_layout_sync(tabpage, delay_ms)
+            local function sync()
+                arrange_session(tabpage)
+            end
+
+            if delay_ms and delay_ms > 0 then
+                vim.defer_fn(sync, delay_ms)
+            else
+                vim.schedule(sync)
+            end
+        end
+
         local function expand_explorer_root_groups(explorer)
             if not (explorer and explorer.tree) then
                 return
@@ -467,6 +491,7 @@ return {
 
         lifecycle_state.resume_diff = function(tabpage)
             original_resume_diff(tabpage)
+            schedule_layout_sync(tabpage, 20)
             apply_current_session_wrap(tabpage)
             ensure_current_session_buflisted(tabpage)
             schedule_explorer_sync(tabpage, 20, 40)
@@ -504,9 +529,17 @@ return {
             pattern = "CodeDiffOpen",
             callback = function(ev)
                 local tabpage = ev.data and ev.data.tabpage or nil
+                schedule_layout_sync(tabpage, 20)
                 schedule_current_session_wrap(tabpage)
                 ensure_current_session_buflisted(tabpage)
                 schedule_explorer_sync(tabpage, 20, 40)
+            end,
+        })
+
+        vim.api.nvim_create_autocmd("VimResized", {
+            group = group,
+            callback = function()
+                schedule_layout_sync(nil, 20)
             end,
         })
 
