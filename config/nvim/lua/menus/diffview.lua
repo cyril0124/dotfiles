@@ -11,33 +11,45 @@ return {
 
     {
         name = "Stage Hunk",
-        cmd = "Gitsigns stage_hunk",
+        cmd = function()
+            require("lua.codediff_gitsigns").run("stage_hunk")
+        end,
         rtxt = "sh",
     },
     {
         name = "Reset Hunk",
-        cmd = "Gitsigns reset_hunk",
+        cmd = function()
+            require("lua.codediff_gitsigns").run("reset_hunk")
+        end,
         rtxt = "rh",
     },
 
     {
         name = "Stage Buffer",
-        cmd = "Gitsigns stage_buffer",
+        cmd = function()
+            require("lua.codediff_gitsigns").run("stage_buffer")
+        end,
         rtxt = "sb",
     },
     {
         name = "Undo Stage Hunk",
-        cmd = "Gitsigns undo_stage_hunk",
+        cmd = function()
+            require("lua.codediff_gitsigns").run("undo_stage_hunk")
+        end,
         rtxt = "us",
     },
     {
         name = "Reset Buffer",
-        cmd = "Gitsigns reset_buffer",
+        cmd = function()
+            require("lua.codediff_gitsigns").run("reset_buffer")
+        end,
         rtxt = "rb",
     },
     {
         name = "Preview Hunk",
-        cmd = "Gitsigns preview_hunk",
+        cmd = function()
+            require("lua.codediff_gitsigns").run("preview_hunk")
+        end,
         rtxt = "hp",
     },
 
@@ -45,12 +57,16 @@ return {
 
     {
         name = "Blame Line",
-        cmd = 'lua require"gitsigns".blame_line{full=true}',
+        cmd = function()
+            require("lua.codediff_gitsigns").run("blame_line", { full = true })
+        end,
         rtxt = "b",
     },
     {
         name = "Toggle Current Line Blame",
-        cmd = "Gitsigns toggle_current_line_blame",
+        cmd = function()
+            require("lua.codediff_gitsigns").run("toggle_current_line_blame")
+        end,
         rtxt = "tb",
     },
 
@@ -58,17 +74,23 @@ return {
 
     {
         name = "Diff This",
-        cmd = "Gitsigns diffthis",
+        cmd = function()
+            require("lua.codediff_gitsigns").run("diffthis")
+        end,
         rtxt = "dt",
     },
     {
         name = "Diff Last Commit",
-        cmd = 'lua require"gitsigns".diffthis("~")',
+        cmd = function()
+            require("lua.codediff_gitsigns").run("diffthis", "~")
+        end,
         rtxt = "dc",
     },
     {
         name = "Toggle Deleted",
-        cmd = "Gitsigns toggle_deleted",
+        cmd = function()
+            require("lua.codediff_gitsigns").run("toggle_deleted")
+        end,
         rtxt = "td",
     },
 
