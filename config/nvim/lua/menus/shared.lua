@@ -11,18 +11,17 @@ return {
     },
 
     {
-        name = "DiffviewOpen",
+        name = "CodeDiffOpen",
         cmd = function()
-            vim.g.diffview_is_open = true
-            vim.cmd("DiffviewOpen")
+            require("lua.codediff").open()
         end,
         rtxt = "df",
     },
 
     {
-        name = "DiffviewFileHistory",
+        name = "CodeDiffFileHistory",
         cmd = function()
-            vim.cmd("DiffviewFileHistory %")
+            require("lua.codediff").open("history %")
         end,
         rtxt = "fh",
     },

@@ -1,9 +1,8 @@
 return {
     {
-        name = "DiffviewClose",
+        name = "CodeDiffClose",
         cmd = function()
-            vim.g.diffview_is_open = false
-            vim.cmd("DiffviewClose")
+            require("lua.codediff").close_current()
         end,
         rtxt = "dc",
     },

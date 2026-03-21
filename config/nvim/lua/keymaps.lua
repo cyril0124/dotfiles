@@ -1,13 +1,22 @@
 local menus = require("lua.menus")
+local codediff = require("lua.codediff")
+
+local function navigate_window(direction, fallback)
+    return function()
+        if not codediff.navigate(direction) then
+            vim.cmd("wincmd " .. fallback)
+        end
+    end
+end
 
 -----------------
 -- Normal mode --
 -----------------
 -- Better window navigation
-vim.keymap.set("n", "<C-h>", "<C-w>h", { noremap = true, silent = true })
-vim.keymap.set("n", "<C-j>", "<C-w>j", { noremap = true, silent = true })
-vim.keymap.set("n", "<C-k>", "<C-w>k", { noremap = true, silent = true })
-vim.keymap.set("n", "<C-l>", "<C-w>l", { noremap = true, silent = true })
+vim.keymap.set("n", "<C-h>", navigate_window("left", "h"), { noremap = true, silent = true })
+vim.keymap.set("n", "<C-j>", navigate_window("down", "j"), { noremap = true, silent = true })
+vim.keymap.set("n", "<C-k>", navigate_window("up", "k"), { noremap = true, silent = true })
+vim.keymap.set("n", "<C-l>", navigate_window("right", "l"), { noremap = true, silent = true })
 
 -- Resize with arrows
 vim.keymap.set("n", "<C-Up>", "<CMD>resize -2<CR>", { noremap = true, silent = true })
@@ -89,16 +98,10 @@ end, { desc = "Format code(using conform.nvim)" })
 vim.keymap.set("n", "<leader>m", menus.show, { desc = "Show menu" })
 vim.keymap.set("n", "<leader>M", menus.show, { desc = "Show menu" })
 
--- Diffview
+-- CodeDiff
 vim.keymap.set("n", "<leader>gD", function()
-    if vim.g.diffview_is_open then
-        vim.g.diffview_is_open = false
-        vim.cmd("DiffviewClose")
-    else
-        vim.g.diffview_is_open = true
-        vim.cmd("DiffviewOpen")
-    end
-end, { desc = "Toggle diffview" })
+    require("lua.codediff").open()
+end, { desc = "Toggle CodeDiff" })
 
 -- Git hunk navigation
 vim.keymap.set("n", "]h", function()

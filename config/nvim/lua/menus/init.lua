@@ -16,20 +16,19 @@ function M.show()
     local menu = require("menu")
     local winid = vim.api.nvim_get_current_win()
     local buf = vim.api.nvim_win_get_buf(winid)
-    local buftype = vim.bo[buf].ft
-    vim.notify("[show_menu] buftype: " .. vim.inspect(buftype), vim.log.levels.INFO)
+    local filetype = vim.bo[buf].filetype
 
-    local is_diffview = vim.g.diffview_is_open
-        or buftype == "DiffviewFiles"
-        or buftype == "DiffviewFileHistory"
+    local is_diffview = require("lua.codediff").is_current_session()
+        or filetype == "DiffviewFiles"
+        or filetype == "DiffviewFileHistory"
 
     if is_diffview then
         menu.open(with_shared(require("lua.menus.diffview")))
-    elseif buftype == "neo-tree" then
+    elseif filetype == "neo-tree" then
         menu.open(with_shared(require("lua.menus.neo-tree")))
-    elseif buftype == "grug-far" then
+    elseif filetype == "grug-far" then
         menu.open(with_shared(require("lua.menus.grug-far")))
-    elseif buftype == "markdown" then
+    elseif filetype == "markdown" then
         menu.open(with_shared(require("lua.menus.markdown")))
     else
         menu.open(with_shared(require("lua.menus.mydefault")))

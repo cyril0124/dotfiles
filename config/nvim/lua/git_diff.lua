@@ -4,9 +4,29 @@ local function system_ok(cmd)
     return vim.v.shell_error == 0 and #cmd > 0
 end
 
+local function get_codediff_git_root()
+    local ok, lifecycle = pcall(require, "codediff.ui.lifecycle")
+    if not ok then
+        return nil
+    end
+
+    local git_context = lifecycle.get_git_context(vim.api.nvim_get_current_tabpage())
+    if git_context then
+        return git_context.git_root
+    end
+
+    return nil
+end
+
 local function get_target_dir()
-    local bufname = vim.api.nvim_buf_get_name(0)
-    if bufname ~= "" and not vim.startswith(bufname, "diffview://") then
+    local codediff_git_root = get_codediff_git_root()
+    if codediff_git_root then
+        return codediff_git_root
+    end
+
+    local bufnr = vim.api.nvim_get_current_buf()
+    local bufname = vim.api.nvim_buf_get_name(bufnr)
+    if vim.bo[bufnr].buftype == "" and bufname ~= "" then
         return vim.fs.dirname(bufname)
     end
 
@@ -44,15 +64,12 @@ function M.open_last_commit_diff()
 
     vim.g._last_commit_depth = next_depth
 
-    vim.cmd("silent! DiffviewClose")
-    vim.g.diffview_is_open = true
-    vim.cmd("DiffviewFileHistory --range=" .. base_rev .. "..HEAD")
+    require("lua.codediff").open("history " .. base_rev .. "..HEAD")
 end
 
 function M.reset_last_commit_depth()
     vim.g._last_commit_depth = 0
-    vim.g.diffview_is_open = false
-    vim.cmd("silent! DiffviewClose")
+    require("lua.codediff").close_current()
 end
 
 return M
