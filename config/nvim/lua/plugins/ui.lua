@@ -18,9 +18,44 @@ return {
         dependencies = 'nvim-tree/nvim-web-devicons',
         config = function()
             vim.opt.termguicolors = true
+            vim.opt.showtabline = 2
+
+            local function get_codediff_tabline_buffer()
+                local ok, codediff = pcall(require, "lua.codediff")
+                if not ok then
+                    return nil
+                end
+
+                return codediff.get_tabline_buffer(vim.api.nvim_get_current_tabpage())
+            end
 
             require("bufferline").setup({
                 options = {
+                    always_show_bufferline = true,
+                    custom_filter = function(buf)
+                        local name = vim.api.nvim_buf_get_name(buf)
+                        local filetype = vim.bo[buf].filetype
+                        local buftype = vim.bo[buf].buftype
+
+                        if filetype == "codediff-explorer" or filetype == "codediff-history" or filetype == "codediff-help" then
+                            return false
+                        end
+
+                        if buftype == "nofile" and name == "" then
+                            return false
+                        end
+
+                        local codediff_tab_buf = get_codediff_tabline_buffer()
+                        if codediff_tab_buf then
+                            return buf == codediff_tab_buf
+                        end
+
+                        if name:match("^codediff://") then
+                            return false
+                        end
+
+                        return true
+                    end,
                     offsets = {
                         {
                             -- filetype = "NvimTree",
@@ -171,14 +206,93 @@ return {
     -- https://github.com/sphamba/smear-cursor.nvim
     {
         "sphamba/smear-cursor.nvim",
-        opts = {},
+        opts = {
+            filetypes_disabled = {
+                "codediff-explorer",
+                "codediff-help",
+                "codediff-history",
+            },
+        },
     },
 
     -- https://github.com/Bekaboo/dropbar.nvim
     {
         "Bekaboo/dropbar.nvim",
         event = { "BufReadPost", "BufNewFile" },
-        opts = {},
+        opts = function()
+            local function is_codediff_window(buf, win)
+                if not (buf and vim.api.nvim_buf_is_valid(buf) and win and vim.api.nvim_win_is_valid(win)) then
+                    return false
+                end
+
+                if vim.w[win].codediff_restore then
+                    return true
+                end
+
+                local filetype = vim.bo[buf].filetype
+                if filetype == "codediff-explorer" or filetype == "codediff-history" or filetype == "codediff-help" then
+                    return true
+                end
+
+                local ok, lifecycle = pcall(require, "codediff.ui.lifecycle")
+                if not ok then
+                    return false
+                end
+
+                local tabpage = vim.api.nvim_win_get_tabpage(win)
+                local session = lifecycle.get_session(tabpage)
+                if not session then
+                    return false
+                end
+
+                if session.original_win == win or session.modified_win == win or session.result_win == win then
+                    return true
+                end
+
+                local explorer = lifecycle.get_explorer(tabpage)
+                local explorer_win = explorer and (explorer.winid or (explorer.split and explorer.split.winid)) or nil
+                return explorer_win == win
+            end
+
+            return {
+                bar = {
+                    enable = function(buf, win, _)
+                        buf = vim._resolve_bufnr(buf)
+                        if
+                            not vim.api.nvim_buf_is_valid(buf)
+                            or not vim.api.nvim_win_is_valid(win)
+                        then
+                            return false
+                        end
+
+                        if is_codediff_window(buf, win) then
+                            return false
+                        end
+
+                        if
+                            vim.fn.win_gettype(win) ~= ''
+                            or vim.wo[win].winbar ~= ''
+                            or vim.bo[buf].ft == 'help'
+                        then
+                            return false
+                        end
+
+                        local stat = vim.uv.fs_stat(vim.api.nvim_buf_get_name(buf))
+                        if stat and stat.size > 1024 * 1024 then
+                            return false
+                        end
+
+                        return vim.bo[buf].bt == 'terminal'
+                            or vim.bo[buf].ft == 'markdown'
+                            or pcall(vim.treesitter.get_parser, buf)
+                            or not vim.tbl_isempty(vim.lsp.get_clients({
+                                bufnr = buf,
+                                method = 'textDocument/documentSymbol',
+                            }))
+                    end,
+                },
+            }
+        end,
     },
 
     {
@@ -218,7 +332,16 @@ return {
 
     {
         "nvim-zh/colorful-winsep.nvim",
-        config = true,
+        opts = {
+            excluded_ft = {
+                "packer",
+                "TelescopePrompt",
+                "mason",
+                "codediff-explorer",
+                "codediff-help",
+                "codediff-history",
+            },
+        },
         event = { "WinLeave" },
     },
 
