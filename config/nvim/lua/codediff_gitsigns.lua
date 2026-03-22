@@ -30,6 +30,27 @@ local function get_session()
     return lifecycle.get_session(vim.api.nvim_get_current_tabpage())
 end
 
+local function to_relative_path(git_root, path)
+    if not (git_root and path and path ~= "") then
+        return nil
+    end
+
+    return vim.fs.relpath(git_root, path) or path
+end
+
+local function get_explorer()
+    local session = get_session()
+    return session and session.explorer or nil
+end
+
+local function get_current_buf()
+    return vim.api.nvim_get_current_buf()
+end
+
+local function in_explorer_buffer(explorer, bufnr)
+    return explorer and explorer.bufnr and bufnr == explorer.bufnr
+end
+
 local function unique_windows(wins)
     local seen = {}
     local result = {}
@@ -132,6 +153,191 @@ local function notify_unavailable(action)
     vim.notify("No gitsigns-attached buffer in current CodeDiff view", vim.log.levels.WARN)
 end
 
+local function find_buffer_keymap_callback(bufnr, desc)
+    if not (bufnr and vim.api.nvim_buf_is_valid(bufnr)) then
+        return nil
+    end
+
+    for _, map in ipairs(vim.api.nvim_buf_get_keymap(bufnr, "n")) do
+        if map.desc == desc and type(map.callback) == "function" then
+            return map.callback
+        end
+    end
+
+    return nil
+end
+
+local function get_preferred_diff_window()
+    local session = get_session()
+    if not session then
+        return nil
+    end
+
+    local current_win = vim.api.nvim_get_current_win()
+    if current_win == session.original_win or current_win == session.modified_win then
+        return current_win
+    end
+
+    if session.modified_win and vim.api.nvim_win_is_valid(session.modified_win) then
+        return session.modified_win
+    end
+
+    if session.original_win and vim.api.nvim_win_is_valid(session.original_win) then
+        return session.original_win
+    end
+
+    return nil
+end
+
+local function run_codediff_hunk_action(desc)
+    local target_win = get_preferred_diff_window()
+    if not target_win then
+        vim.notify("No active CodeDiff diff window", vim.log.levels.WARN)
+        return true
+    end
+
+    local bufnr = vim.api.nvim_win_get_buf(target_win)
+    local callback = find_buffer_keymap_callback(bufnr, desc)
+    if not callback then
+        vim.notify("CodeDiff hunk action is unavailable in the current view", vim.log.levels.WARN)
+        return true
+    end
+
+    vim.api.nvim_win_call(target_win, callback)
+    return true
+end
+
+local function get_current_file_context()
+    local session = get_session()
+    if not (session and session.git_root) then
+        vim.notify("Not in a git repository", vim.log.levels.WARN)
+        return nil
+    end
+
+    local explorer = get_explorer()
+    if explorer and explorer.current_file_path then
+        local selection = explorer.current_selection
+        local status = selection and selection.path == explorer.current_file_path and selection.status or nil
+        return {
+            git_root = session.git_root,
+            rel_path = explorer.current_file_path,
+            group = explorer.current_file_group,
+            status = status,
+            base_revision = explorer.base_revision,
+        }
+    end
+
+    local original_rel = to_relative_path(session.git_root, session.original_path)
+    local modified_rel = to_relative_path(session.git_root, session.modified_path)
+    local rel_path = original_rel or modified_rel
+    if not rel_path then
+        vim.notify("No file selected in current CodeDiff view", vim.log.levels.WARN)
+        return nil
+    end
+
+    return {
+        git_root = session.git_root,
+        rel_path = rel_path,
+        group = session.modified_revision == ":0" and "staged" or "unstaged",
+        status = (not original_rel and modified_rel and session.modified_revision == nil) and "??" or nil,
+        base_revision = explorer and explorer.base_revision or nil,
+    }
+end
+
+local function notify_git_error(err)
+    if err then
+        vim.schedule(function()
+            vim.notify(err, vim.log.levels.ERROR)
+        end)
+    end
+end
+
+local function confirm_reset(rel_path, is_untracked)
+    local prompt = (is_untracked and "Delete " or "Discard changes to ") .. rel_path .. "?"
+    local choice = vim.fn.confirm(prompt, "&Discard\n&Cancel", 2, "Warning")
+    vim.cmd("echo ''")
+    return choice == 1
+end
+
+local function run_explorer_file_action(action, explorer)
+    local explorer_module = require("codediff.ui.explorer")
+
+    if action == "stage_buffer" then
+        explorer_module.toggle_stage_entry(explorer, explorer.tree)
+        return true
+    end
+
+    if action == "reset_buffer" then
+        explorer_module.restore_entry(explorer, explorer.tree)
+        return true
+    end
+
+    return false
+end
+
+local function run_diff_file_action(action)
+    local explorer = get_explorer()
+    local session = get_session()
+    local ctx = get_current_file_context()
+    if not ctx then
+        return true
+    end
+
+    local explorer_module = require("codediff.ui.explorer")
+    local git = require("codediff.core.git")
+    if action == "stage_buffer" then
+        if ctx.group ~= nil and (ctx.group == "staged" or ctx.group == "unstaged" or ctx.group == "conflicts") then
+            explorer_module.toggle_stage_file(ctx.git_root, ctx.rel_path, ctx.group)
+            return true
+        end
+
+        if session and session.modified_revision == ":0" then
+            vim.notify("Current file is already staged in this CodeDiff view", vim.log.levels.INFO)
+            return true
+        end
+
+        git.stage_file(ctx.git_root, ctx.rel_path, notify_git_error)
+        return true
+    end
+
+    if action == "reset_buffer" then
+        if ctx.group == "staged" then
+            vim.notify("Reset buffer only works on unstaged changes", vim.log.levels.WARN)
+            return true
+        end
+
+        local is_untracked = ctx.status == "??"
+        if not confirm_reset(ctx.rel_path, is_untracked) then
+            return true
+        end
+
+        if is_untracked then
+            git.delete_untracked(ctx.git_root, ctx.rel_path, notify_git_error)
+        else
+            git.restore_file(ctx.git_root, ctx.rel_path, ctx.base_revision, notify_git_error)
+        end
+        return true
+    end
+
+    return false
+end
+
+local function run_file_action(action)
+    local explorer = get_explorer()
+    if not explorer then
+        return run_diff_file_action(action)
+    end
+
+    if in_explorer_buffer(explorer, get_current_buf()) then
+        local ok = run_explorer_file_action(action, explorer)
+        if ok then
+            return true
+        end
+    end
+
+    return run_diff_file_action(action)
+end
+
 local function sync_cursor(source_win, target_win)
     if source_win == target_win then
         return
@@ -148,6 +354,22 @@ local function sync_cursor(source_win, target_win)
 end
 
 function M.run(action, ...)
+    if action == "stage_hunk" then
+        return run_codediff_hunk_action("Stage hunk under cursor")
+    end
+
+    if action == "undo_stage_hunk" then
+        return run_codediff_hunk_action("Unstage hunk under cursor")
+    end
+
+    if action == "reset_hunk" then
+        return run_codediff_hunk_action("Discard hunk under cursor")
+    end
+
+    if action == "stage_buffer" or action == "reset_buffer" then
+        return run_file_action(action)
+    end
+
     local source_win = vim.api.nvim_get_current_win()
     local target_win = ensure_target_window()
     if not target_win then
