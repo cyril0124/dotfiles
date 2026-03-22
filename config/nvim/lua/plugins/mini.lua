@@ -77,8 +77,9 @@ return {
             },
             scroll = {
                 enable = true,
-                timing = animate.gen_timing.linear({ duration = 100, unit = 'total' }),
+                timing = animate.gen_timing.linear({ duration = 60, unit = 'total' }),
                 subscroll = animate.gen_subscroll.equal({
+                    max_output_steps = 4,
                     predicate = function(total_scroll)
                         -- Only animate if scroll distance is larger than 3 lines(Used by mouse scrolling)
                         return total_scroll > 3
