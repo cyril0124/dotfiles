@@ -23,7 +23,7 @@ vim.opt.smartcase = true  -- but make it case sensitive if an uppercase is enter
 
 -- Undo
 vim.opt.undofile = true
-vim.opt.undodir = vim.fn.stdpath("data") .. "/undo"
+vim.opt.undodir = vim.fs.joinpath(vim.fn.stdpath("data"), "undo")
 vim.fn.mkdir(vim.o.undodir, "p")
 
 -- Scroll

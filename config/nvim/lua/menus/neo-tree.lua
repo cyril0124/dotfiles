@@ -34,10 +34,9 @@ local function open_in_terminal()
     local node = get_state().tree:get_node()
     if node.type == "message" then return end
     local path = node.path
-    local node_type = vim.uv.fs_stat(path).type
-    local dir = node_type == "directory" and path or vim.fn.fnamemodify(path, ":h")
+    local dir = node.type == "directory" and path or vim.fs.dirname(path)
     vim.cmd "enew"
-    vim.fn.termopen { vim.o.shell, "-c", "cd " .. dir .. " ; " .. vim.o.shell }
+    vim.fn.jobstart(vim.o.shell, { cwd = dir, term = true })
   end
 end
 

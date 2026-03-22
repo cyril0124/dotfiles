@@ -1,9 +1,5 @@
 local M = {}
 
-local function system_ok(cmd)
-    return vim.v.shell_error == 0 and #cmd > 0
-end
-
 local function get_codediff_git_root()
     local ok, lifecycle = pcall(require, "codediff.ui.lifecycle")
     if not ok then
@@ -33,18 +29,21 @@ local function get_target_dir()
     return vim.uv.cwd()
 end
 
+local function run_git(args)
+    return vim.system(vim.list_extend({ "git" }, args), { text = true }):wait()
+end
+
 local function get_git_root()
-    local result = vim.fn.systemlist({ "git", "-C", get_target_dir(), "rev-parse", "--show-toplevel" })
-    if not system_ok(result) then
+    local result = run_git({ "-C", get_target_dir(), "rev-parse", "--show-toplevel" })
+    if result.code ~= 0 then
         return nil
     end
 
-    return result[1]
+    return vim.trim(result.stdout)
 end
 
 local function rev_exists(git_root, rev)
-    vim.fn.system({ "git", "-C", git_root, "rev-parse", "--verify", rev })
-    return vim.v.shell_error == 0
+    return run_git({ "-C", git_root, "rev-parse", "--verify", rev }).code == 0
 end
 
 function M.open_last_commit_diff()

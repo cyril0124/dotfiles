@@ -9,6 +9,20 @@ local function navigate_window(direction, fallback)
     end
 end
 
+local function current_file_path()
+    local path = vim.api.nvim_buf_get_name(0)
+    return path ~= "" and path or nil
+end
+
+local function current_file_dir()
+    if vim.bo.buftype == "terminal" then
+        return nil
+    end
+
+    local path = current_file_path()
+    return path and vim.fs.dirname(path) or nil
+end
+
 -----------------
 -- Normal mode --
 -----------------
@@ -56,14 +70,10 @@ vim.keymap.set("n", "<leader>sr", "<CMD>GrugFar<CR>", { desc = "Search and repla
 
 -- Toggle neo-tree
 vim.keymap.set("n", "<leader>e", function()
-    local is_term = vim.bo.buftype == "terminal"
-    local dir = is_term and nil or vim.fn.expand("%:p:h")
-    require("neo-tree.command").execute({ toggle = true, position = "float", dir = dir })
+    require("neo-tree.command").execute({ toggle = true, position = "float", dir = current_file_dir() })
 end, { desc = "Toggle NeoTree(float)" })
 vim.keymap.set("n", "<leader>E", function()
-    local is_term = vim.bo.buftype == "terminal"
-    local dir = is_term and nil or vim.fn.expand("%:p:h")
-    require("neo-tree.command").execute({ toggle = true, position = "left", dir = dir })
+    require("neo-tree.command").execute({ toggle = true, position = "left", dir = current_file_dir() })
 end, { desc = "Toggle NeoTree(left-side)" })
 
 -- Comment
@@ -78,7 +88,7 @@ vim.keymap.set("n", "<S-tab>", "<CMD>BufferLineCyclePrev<CR>", { desc = "Buffer 
 vim.keymap.set("n", "<leader>wk", "<CMD>WhichKey<CR>", { desc = "Show whichkey all keymaps" })
 
 vim.keymap.set('n', '<leader>pa', function()
-    print(vim.fn.expand('%:p'))
+    print(current_file_path() or "")
 end, { desc = 'Print absolute path' })
 
 -- LSP diagnostic
