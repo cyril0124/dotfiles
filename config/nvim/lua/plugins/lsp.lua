@@ -118,6 +118,21 @@ return {
         opts = {
             preview = { enable = false },
         },
+        config = function(_, opts)
+            require("markview").setup(opts)
+
+            local ok_state, state = pcall(require, "markview.state")
+            local ok_actions, actions = pcall(require, "markview.actions")
+            if not (ok_state and ok_actions) then
+                return
+            end
+
+            for _, bufnr in ipairs(vim.api.nvim_list_bufs()) do
+                if vim.api.nvim_buf_is_valid(bufnr) and vim.bo[bufnr].filetype == "markdown" and state.buf_attached(bufnr) then
+                    actions.disable(bufnr)
+                end
+            end
+        end,
     },
 
     -- https://github.com/ray-x/lsp_signature.nvim
