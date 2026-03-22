@@ -6,6 +6,13 @@ return {
         end,
         rtxt = "dc",
     },
+    {
+        name = "Toggle Unchanged Folds",
+        cmd = function()
+            require("lua.codediff_folds").toggle_current_session()
+        end,
+        rtxt = "zf",
+    },
 
     { name = "separator" },
 
