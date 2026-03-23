@@ -37,11 +37,13 @@ Available components:
 - `opencode` - OpenCode AI configuration
 - `claude` - Claude Code configuration
 - `codex` - Codex configuration (`~/.codex`)
+- `codex_sync` - Sync and sanitize local Codex config into this repo
 
 Examples:
 ```bash
 ./bootstrap claude           # Install only claude config
 ./bootstrap codex            # Install only codex config
+./bootstrap codex_sync       # Sync ~/.codex -> repo/codex (sanitized)
 ./bootstrap dotfiles claude  # Install multiple components
 ```
 
@@ -87,8 +89,9 @@ Claude Code configuration:
 
 ### Codex (codex/)
 Codex configuration and prompt files:
-- `config.toml` - Codex user configuration
+- `config.toml` - Codex user configuration (sanitized; excludes machine-specific absolute-path `[projects."..."]` trust blocks and `[[skills.config]]` entries)
 - `prompts/` - Custom prompts
+- `codex_sync` will sync from `~/.codex` and sanitize machine-specific project entries and skill path entries with `scripts/sanitize_codex_config.py`
 
 ## Requirements
 

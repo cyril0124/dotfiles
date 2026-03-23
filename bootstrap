@@ -18,6 +18,62 @@ success () {
   printf "\r\033[2K  [ \033[00;32mOK\033[0m ] $1\n"
 }
 
+print_diff_if_changed () {
+  local diff_mode=$1 old_path=$2 new_path=$3 description=$4
+  local status
+  local diff_old_path="$old_path"
+  local cleanup_dir=
+
+  info "diff for $description"
+
+  if [ "$diff_mode" = "dir" ] && [ ! -d "$diff_old_path" ]; then
+    cleanup_dir=$(mktemp -d)
+    diff_old_path="$cleanup_dir"
+  elif [ "$diff_mode" != "dir" ] && [ ! -f "$diff_old_path" ]; then
+    diff_old_path=/dev/null
+  fi
+
+  set +e
+  git --no-pager diff --no-index --color=always -- "$diff_old_path" "$new_path"
+  status=$?
+  set -e
+
+  if [ -n "$cleanup_dir" ]; then
+    rm -rf "$cleanup_dir"
+  fi
+
+  if [ $status -eq 0 ]; then
+    info "no changes in $description"
+  elif [ $status -eq 1 ]; then
+    success "printed diff for $description"
+  else
+    fail "Failed to diff $description"
+  fi
+}
+
+show_help () {
+  cat <<EOF
+Usage: ./bootstrap [component ...]
+
+Install dotfiles and related tool configuration.
+
+Components:
+  dotfiles    Application configs under config/
+  pixi        Pixi installation and global packages
+  tmux_conf   Tmux configuration
+  opencode    OpenCode configuration
+  claude      Claude configuration
+  codex       Codex configuration
+  codex_sync  Sync ~/.codex into repo/codex with sanitization
+
+Examples:
+  ./bootstrap
+  ./bootstrap dotfiles claude
+  ./bootstrap codex_sync
+  ./bootstrap --help
+EOF
+}
+
 fail () {
   printf "\r\033[2K  [\033[0;31mFAIL\033[0m] $1\n"
   echo ''
@@ -100,6 +156,15 @@ link_file () {
     success "linked $1 to $2"
   fi
 }
+
+if [ $# -gt 0 ]; then
+    case "$1" in
+        -h|--help|help)
+            show_help
+            exit 0
+            ;;
+    esac
+fi
 
 if [ -n "$BASH_VERSION" ]; then
     shell_rc=$(realpath "${BASH_SOURCE[0]}")
@@ -241,6 +306,9 @@ install_claude() {
             fi
         fi
     done
+
+    # TODO: Setup mcp
+    # claude mcp add sequential-thinking -s user -- npx -y @modelcontextprotocol/server-sequential-thinkin
 }
 
 install_codex() {
@@ -275,6 +343,50 @@ install_codex() {
     done
 }
 
+install_codex_sync() {
+    info 'syncing codex configuration from ~/.codex to dotfiles'
+
+    local src_dir="$HOME/.codex"
+    local dst_dir="$DOTFILES_ROOT/codex"
+    local tmp_config
+    local tmp_prompts
+
+    mkdir -p "$dst_dir"
+    mkdir -p "$dst_dir/prompts"
+
+    if [ ! -f "$src_dir/config.toml" ]; then
+        fail "Cannot sync Codex: $src_dir/config.toml not found"
+    fi
+
+    tmp_config=$(mktemp)
+    python3 "$DOTFILES_ROOT/scripts/sanitize_codex_config.py" \
+        "$src_dir/config.toml" \
+        "$tmp_config"
+    print_diff_if_changed "file" "$dst_dir/config.toml" "$tmp_config" "codex config.toml"
+    mv "$tmp_config" "$dst_dir/config.toml"
+    success "synced and sanitized $dst_dir/config.toml"
+
+    if [ -d "$src_dir/prompts" ]; then
+        tmp_prompts=$(mktemp -d)
+        for item in "$src_dir/prompts"/*; do
+            if [ -e "$item" ]; then
+                cp -R "$item" "$tmp_prompts/"
+            fi
+        done
+        print_diff_if_changed "dir" "$dst_dir/prompts" "$tmp_prompts" "codex prompts"
+        find "$dst_dir/prompts" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
+        for item in "$src_dir/prompts"/*; do
+            if [ -e "$item" ]; then
+                cp -R "$item" "$dst_dir/prompts/"
+            fi
+        done
+        rm -rf "$tmp_prompts"
+        success "synced prompts to $dst_dir/prompts"
+    else
+        info "No prompts directory at $src_dir/prompts, skipped"
+    fi
+}
+
 git submodule update --init --recursive
 
 # Parameter handling: install specific component or all
@@ -293,7 +405,8 @@ else
         if type "$func" &>/dev/null; then
             "$func"
         else
-            fail "Unknown target: $target. Available: dotfiles, pixi, tmux_conf, opencode, claude, iflow"
+            show_help
+            fail "Unknown target: $target"
         fi
     done
 fi
