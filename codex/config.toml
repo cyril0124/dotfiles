@@ -1,0 +1,11 @@
+model = "gpt-5.4"
+model_reasoning_effort = "xhigh"
+plan_mode_reasoning_effort = "high"
+[notice.model_migrations]
+"gpt-5.3-codex" = "gpt-5.4"
+
+[shell_environment_policy]
+inherit = "all"
+
+[tui]
+status_line = ["model-with-reasoning", "context-remaining", "current-dir", "codex-version", "context-window-size", "fast-mode"]

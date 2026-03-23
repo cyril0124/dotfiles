@@ -1,6 +1,6 @@
 # Dotfiles
 
-Personal configuration files for nvim, tmux, pixi, opencode, claude, and iflow.
+Personal configuration files for nvim, tmux, pixi, opencode, claude, and codex.
 
 ## Installation
 
@@ -20,7 +20,7 @@ The bootstrap script will:
 - Install tmux configuration
 - Install and configure opencode (if needed)
 - Configure claude settings
-- Configure iflow settings
+- Configure codex settings
 
 ### Install Specific Components
 
@@ -36,12 +36,12 @@ Available components:
 - `tmux_conf` - Tmux configuration
 - `opencode` - OpenCode AI configuration
 - `claude` - Claude Code configuration
-- `iflow` - Iflow configuration
+- `codex` - Codex configuration (`~/.codex`)
 
 Examples:
 ```bash
 ./bootstrap claude           # Install only claude config
-./bootstrap iflow            # Install only iflow config
+./bootstrap codex            # Install only codex config
 ./bootstrap dotfiles claude  # Install multiple components
 ```
 
@@ -57,7 +57,7 @@ dotfiles/
 ├── pixi/            # Pixi global packages
 ├── opencode/        # OpenCode AI configuration
 ├── claude/          # Claude Code configuration
-└── iflow/           # Iflow configuration
+└── codex/           # Codex configuration
 ```
 
 ## Components
@@ -85,8 +85,10 @@ Claude Code configuration:
 - `commands/` - Custom slash commands
 - `plugins/` - Claude plugins
 
-### Iflow (iflow/)
-Iflow configuration with symlinks to claude resources.
+### Codex (codex/)
+Codex configuration and prompt files:
+- `config.toml` - Codex user configuration
+- `prompts/` - Custom prompts
 
 ## Requirements
 
