@@ -153,18 +153,30 @@ local function notify_unavailable(action)
     vim.notify("No gitsigns-attached buffer in current CodeDiff view", vim.log.levels.WARN)
 end
 
-local function find_buffer_keymap_callback(bufnr, desc)
+local function get_view_keymap_lhs(action)
+    local ok, config = pcall(require, "codediff.config")
+    if not ok then
+        return nil
+    end
+
+    local keymaps = config.options and config.options.keymaps
+    keymaps = keymaps and keymaps.view or nil
+    if type(keymaps) ~= "table" then
+        return nil
+    end
+
+    return keymaps[action]
+end
+
+local function find_buffer_keymap_callback(bufnr, lhs)
     if not (bufnr and vim.api.nvim_buf_is_valid(bufnr)) then
         return nil
     end
 
-    for _, map in ipairs(vim.api.nvim_buf_get_keymap(bufnr, "n")) do
-        if map.desc == desc and type(map.callback) == "function" then
-            return map.callback
-        end
-    end
-
-    return nil
+    return vim.api.nvim_buf_call(bufnr, function()
+        local map = vim.fn.maparg(lhs, "n", false, true)
+        return map and type(map.callback) == "function" and map.callback or nil
+    end)
 end
 
 local function get_preferred_diff_window()
@@ -189,7 +201,7 @@ local function get_preferred_diff_window()
     return nil
 end
 
-local function run_codediff_hunk_action(desc)
+local function run_codediff_hunk_action(action)
     local target_win = get_preferred_diff_window()
     if not target_win then
         vim.notify("No active CodeDiff diff window", vim.log.levels.WARN)
@@ -197,7 +209,8 @@ local function run_codediff_hunk_action(desc)
     end
 
     local bufnr = vim.api.nvim_win_get_buf(target_win)
-    local callback = find_buffer_keymap_callback(bufnr, desc)
+    local lhs = get_view_keymap_lhs(action)
+    local callback = lhs and find_buffer_keymap_callback(bufnr, lhs) or nil
     if not callback then
         vim.notify("CodeDiff hunk action is unavailable in the current view", vim.log.levels.WARN)
         return true
@@ -355,15 +368,15 @@ end
 
 function M.run(action, ...)
     if action == "stage_hunk" then
-        return run_codediff_hunk_action("Stage hunk under cursor")
+        return run_codediff_hunk_action(action)
     end
 
     if action == "undo_stage_hunk" then
-        return run_codediff_hunk_action("Unstage hunk under cursor")
+        return run_codediff_hunk_action("unstage_hunk")
     end
 
     if action == "reset_hunk" then
-        return run_codediff_hunk_action("Discard hunk under cursor")
+        return run_codediff_hunk_action("discard_hunk")
     end
 
     if action == "stage_buffer" or action == "reset_buffer" then

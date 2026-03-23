@@ -85,6 +85,9 @@ return {
                         return total_scroll > 3
                     end
                 })
+            },
+            resize = {
+                enable = false,
             }
         })
     end,
