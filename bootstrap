@@ -64,11 +64,13 @@ Components:
   opencode    OpenCode configuration
   claude      Claude configuration
   codex       Codex configuration
+  skills      Install skills recorded in ./skills.sh
   codex_sync  Sync ~/.codex into repo/codex with sanitization
 
 Examples:
   ./bootstrap
   ./bootstrap dotfiles claude
+  ./bootstrap skills
   ./bootstrap codex_sync
   ./bootstrap --help
 EOF
@@ -387,6 +389,11 @@ install_codex_sync() {
     fi
 }
 
+install_skills() {
+    info 'installing skills'
+    "$DOTFILES_ROOT/skills.sh"
+}
+
 git submodule update --init --recursive
 
 # Parameter handling: install specific component or all
@@ -398,6 +405,7 @@ if [ $# -eq 0 ]; then
     install_opencode
     install_claude
     install_codex
+    install_skills
 else
     # Install specified components
     for target in "$@"; do
