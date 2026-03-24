@@ -100,6 +100,11 @@ channels = ["conda-forge"]
 dependencies = { nvim = "*" }
 exposed = { nvim = "nvim" }
 
+[envs.ripgrep]
+channels = ["conda-forge"]
+dependencies = { ripgrep = "*" }
+exposed = { rg = "rg" }
+
 [envs.starship]
 channels = ["conda-forge"]
 dependencies = { starship = "*" }
