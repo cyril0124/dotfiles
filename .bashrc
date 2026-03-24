@@ -21,3 +21,11 @@ unset dotfiles_bashrc_source
 
 [ -f "$DOTFILES_SHELL_ROOT/shell/local/common.sh" ] && . "$DOTFILES_SHELL_ROOT/shell/local/common.sh"
 [ -f "$DOTFILES_SHELL_ROOT/shell/local/bash.sh" ] && . "$DOTFILES_SHELL_ROOT/shell/local/bash.sh"
+
+if command_exists direnv; then
+    eval "$(direnv hook bash)"
+fi
+
+if command_exists starship; then
+    eval "$(starship init bash)"
+fi

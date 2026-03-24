@@ -26,11 +26,3 @@ bind '"\e[A": history-search-backward'
 bind '"\e[B": history-search-forward'
 
 alias sb='source ~/.bashrc'
-
-if command_exists direnv; then
-    eval "$(direnv hook bash)"
-fi
-
-if command_exists starship; then
-    eval "$(starship init bash)"
-fi

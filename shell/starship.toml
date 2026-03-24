@@ -1,0 +1,96 @@
+"$schema" = "https://starship.rs/config-schema.json"
+
+palette = "tokyo_night"
+add_newline = false
+command_timeout = 500
+scan_timeout = 30
+follow_symlinks = true
+
+format = """
+[](fg:surface2)$username[](fg:surface2 bg:surface1)$hostname[](fg:surface1 bg:blue)$directory[](fg:blue bg:surface1)$git_branch[](fg:surface1 bg:surface2)$cmd_duration$time[](fg:surface2)
+$pixi$conda$nix_shell$character
+"""
+
+[palettes.tokyo_night]
+bg = "#1a1b26"
+fg = "#c0caf5"
+muted = "#a9b1d6"
+surface1 = "#2a3045"
+surface2 = "#3b4261"
+blue = "#7aa2f7"
+cyan = "#7dcfff"
+magenta = "#bb9af7"
+green = "#9ece6a"
+yellow = "#e0af68"
+orange = "#ff9e64"
+red = "#f7768e"
+
+[username]
+show_always = true
+style_user = "fg:fg bg:surface2"
+style_root = "fg:bg bg:red bold"
+format = "[ $user ]($style)"
+
+[hostname]
+ssh_only = false
+trim_at = "."
+style = "fg:muted bg:surface1"
+format = "[ $hostname ]($style)"
+
+[directory]
+style = "fg:bg bg:blue bold"
+format = "[ $path ]($style)[$read_only]($read_only_style)"
+truncation_length = 4
+truncation_symbol = "…/"
+truncate_to_repo = true
+fish_style_pwd_dir_length = 1
+home_symbol = "~"
+read_only = " 󰌾 "
+read_only_style = "fg:yellow bg:blue"
+repo_root_style = "fg:bg bg:blue bold"
+before_repo_root_style = "fg:bg bg:blue"
+
+[git_branch]
+style = "fg:fg bg:surface1"
+format = "[ git:$branch ]($style)"
+truncation_length = 24
+truncation_symbol = "…"
+only_attached = true
+
+[cmd_duration]
+min_time = 1500
+style = "fg:yellow bg:surface2"
+format = "[ $duration ]($style)"
+
+[time]
+disabled = false
+time_format = "%R"
+style = "fg:muted bg:surface2"
+format = "[ $time ]($style)"
+
+[pixi]
+symbol = "󰏗"
+style = "fg:magenta"
+format = "[$symbol $environment]($style) "
+
+[conda]
+symbol = "󰌠"
+style = "fg:green"
+format = "[$symbol $environment]($style) "
+ignore_base = true
+
+[nix_shell]
+symbol = ""
+style = "fg:blue"
+format = "[$symbol $state( $name)]($style) "
+impure_msg = "impure"
+pure_msg = "pure"
+unknown_msg = ""
+
+[character]
+success_symbol = "[❯](fg:green bold)"
+error_symbol = "[❯](fg:red bold)"
+vimcmd_symbol = "[❮](fg:blue bold)"
+vimcmd_visual_symbol = "[❮](fg:magenta bold)"
+vimcmd_replace_symbol = "[❮](fg:orange bold)"
+vimcmd_replace_one_symbol = "[❮](fg:orange bold)"

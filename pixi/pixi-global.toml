@@ -40,11 +40,6 @@ channels = ["conda-forge"]
 dependencies = { peco = "*" }
 exposed = { peco = "peco" }
 
-[envs.hstr]
-channels = ["conda-forge"]
-dependencies = { hstr = "*" }
-exposed = { hh = "hh", hstr = "hstr" }
-
 [envs.dust]
 channels = ["conda-forge"]
 dependencies = { dust = "*" }

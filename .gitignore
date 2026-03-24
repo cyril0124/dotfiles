@@ -3,3 +3,6 @@ tmp
 .luajit_pro/
 *.bak
 __pycache__
+shell/local/common.sh
+shell/local/bash.sh
+shell/local/zsh.sh

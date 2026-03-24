@@ -1,6 +1,6 @@
 # Dotfiles
 
-Personal configuration files for nvim, tmux, pixi, opencode, claude, and codex.
+Personal configuration files for nvim, tmux, shell, pixi, opencode, claude, and codex.
 
 ## Installation
 
@@ -16,6 +16,7 @@ cd ~/dotfiles
 
 The bootstrap script will:
 - Link config files from `config/` to `~/.config/`
+- Back up and link `~/.bashrc` and `~/.zshrc`
 - Install and configure pixi (if needed)
 - Install tmux configuration
 - Install and configure opencode (if needed)
@@ -33,6 +34,7 @@ You can also install only specific components:
 
 Available components:
 - `dotfiles` - Application configs (nvim, wezterm)
+- `shell` - Bash and Zsh rc files with local overlay support
 - `pixi` - Pixi package manager and global packages
 - `tmux_conf` - Tmux configuration
 - `opencode` - OpenCode AI configuration
@@ -56,9 +58,12 @@ Examples:
 
 ```
 dotfiles/
+├── .bashrc          # Bash entrypoint
+├── .zshrc           # Zsh entrypoint
 ├── config/          # Application configs
 │   ├── nvim/        # Neovim configuration
 │   ├── wezterm/     # WezTerm terminal config
+├── shell/           # Shared shell logic and local overlay templates
 ├── skills.sh        # Single entrypoint for skill installation
 ├── tmux/            # Tmux configuration (gpakosz/.tmux)
 ├── pixi/            # Pixi global packages
@@ -74,6 +79,20 @@ Full-featured Neovim configuration with LSP, treesitter, and various plugins.
 
 ### Tmux (tmux/)
 Uses [gpakosz/.tmux](https://github.com/gpakosz/.tmux) with custom local overrides in `.tmux.conf.local`.
+
+### Shell (`.bashrc`, `.zshrc`, `shell/`)
+- `.bashrc` and `.zshrc` are tracked entrypoints linked into `$HOME`
+- Shared logic lives in `shell/common.sh`
+- Shell-specific logic lives in `shell/bash.sh` and `shell/zsh.sh`
+- Shared Starship theme lives in `shell/starship.toml`
+- Zsh is managed by `oh-my-zsh`, and `shell/zsh.sh` auto-installs it and the required plugins when missing
+- Load order and override rules are documented in [`shell/README.md`](/nfs/home/zhengchuyu/dotfiles/shell/README.md)
+- Sensitive or machine-specific configuration should go into ignored local overlays:
+  - `shell/local/common.sh`
+  - `shell/local/bash.sh`
+  - `shell/local/zsh.sh`
+- Example overlay files are tracked as `*.example.sh`
+- `bootstrap shell` backs up existing `~/.bashrc` and `~/.zshrc` before linking the tracked versions
 
 ### Pixi (pixi/)
 - Pixi global package manifest for system-wide tools

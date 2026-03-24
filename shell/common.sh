@@ -25,6 +25,7 @@ path_append() {
 
 export EDITOR="${EDITOR:-nvim}"
 export RUST_BACKTRACE="${RUST_BACKTRACE:-1}"
+export STARSHIP_CONFIG="${STARSHIP_CONFIG:-$DOTFILES_SHELL_ROOT/shell/starship.toml}"
 
 if [ -z "${FZF_DEFAULT_OPTS:-}" ]; then
     export FZF_DEFAULT_OPTS="--reverse"
@@ -61,7 +62,6 @@ alias sb='source ~/.bashrc'
 alias k9='kill -9'
 alias knfs='kill -9 $(lsof -t .nfs*)'
 alias pl='parallel'
-alias hh='hstr'
 alias vf='v $(fzf)'
 alias rgn='rg --no-ignore --hidden'
 alias t='tmux'
