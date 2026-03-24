@@ -16,27 +16,12 @@ vim.api.nvim_create_autocmd("LspAttach", {
             vim.lsp.inlay_hint.enable(true, { bufnr = bufnr })
         end
 
-        -- keymap.set("n", "K", lsp.buf.hover, { noremap = true, silent = true, desc = "LSP hover" })
-        -- keymap.set('n', 'K', function()
-        --     require('hover').open()
-        -- end, { desc = 'hover.nvim (open)', noremap = true, silent = true })
-        -- keymap.set('n', 'gK', function()
-        --     require('hover').enter()
-        -- end, { desc = 'hover.nvim (enter)', noremap = true, silent = true })
+        keymap.set("n", "K", lsp.buf.hover,
+            { buffer = bufnr, noremap = true, silent = true, desc = "LSP hover" })
+        keymap.set("n", "<leader>k", lsp.buf.hover,
+            { buffer = bufnr, noremap = true, silent = true, desc = "LSP hover" })
     end
 })
-
-vim.keymap.set('n', 'K', function()
-    require('hover').open()
-end, { desc = 'hover.nvim (open)', noremap = true, silent = true })
-
-vim.keymap.set('n', '<leader>k', function()
-    require('hover').open()
-end, { desc = 'hover.nvim (open)', noremap = true, silent = true })
-
-vim.keymap.set('n', 'gK', function()
-    require('hover').enter()
-end, { desc = 'hover.nvim (enter)', noremap = true, silent = true })
 
 -- Enable inlay hints for supported languages
 -- Auto enabled by mason-lspconfig
