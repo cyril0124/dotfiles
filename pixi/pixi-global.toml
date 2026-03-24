@@ -90,10 +90,20 @@ channels = ["conda-forge"]
 dependencies = { clang-tools = "*" }
 exposed = { amdgpu-arch = "amdgpu-arch", analyze-build = "analyze-build", c-index-test = "c-index-test", clang-apply-replacements = "clang-apply-replacements", clang-apply-replacements-21 = "clang-apply-replacements-21", clang-change-namespace = "clang-change-namespace", clang-change-namespace-21 = "clang-change-namespace-21", clang-check = "clang-check", clang-check-21 = "clang-check-21", clang-doc = "clang-doc", clang-doc-21 = "clang-doc-21", clang-extdef-mapping = "clang-extdef-mapping", clang-extdef-mapping-21 = "clang-extdef-mapping-21", clang-include-cleaner = "clang-include-cleaner", clang-include-cleaner-21 = "clang-include-cleaner-21", clang-include-fixer = "clang-include-fixer", clang-include-fixer-21 = "clang-include-fixer-21", clang-installapi = "clang-installapi", clang-installapi-21 = "clang-installapi-21", clang-linker-wrapper = "clang-linker-wrapper", clang-linker-wrapper-21 = "clang-linker-wrapper-21", clang-move = "clang-move", clang-move-21 = "clang-move-21", clang-nvlink-wrapper = "clang-nvlink-wrapper", clang-nvlink-wrapper-21 = "clang-nvlink-wrapper-21", clang-offload-bundler = "clang-offload-bundler", clang-offload-bundler-21 = "clang-offload-bundler-21", clang-offload-packager = "clang-offload-packager", clang-offload-packager-21 = "clang-offload-packager-21", clang-query = "clang-query", clang-query-21 = "clang-query-21", clang-refactor = "clang-refactor", clang-refactor-21 = "clang-refactor-21", clang-reorder-fields = "clang-reorder-fields", clang-reorder-fields-21 = "clang-reorder-fields-21", clang-repl = "clang-repl", clang-repl-21 = "clang-repl-21", clang-scan-deps = "clang-scan-deps", clang-scan-deps-21 = "clang-scan-deps-21", clang-sycl-linker = "clang-sycl-linker", clang-sycl-linker-21 = "clang-sycl-linker-21", clang-tidy = "clang-tidy", clang-tidy-21 = "clang-tidy-21", clangd = "clangd", diagtool = "diagtool", find-all-symbols = "find-all-symbols", git-clang-format = "git-clang-format", hmaptool = "hmaptool", intercept-build = "intercept-build", modularize = "modularize", nvptx-arch = "nvptx-arch", offload-arch = "offload-arch", pp-trace = "pp-trace", run-clang-tidy = "run-clang-tidy", scan-build = "scan-build", scan-build-py = "scan-build-py", scan-view = "scan-view" }
 
+[envs.parallel]
+channels = ["conda-forge"]
+dependencies = { parallel = "*" }
+exposed = { env_parallel = "env_parallel", "env_parallel.ash" = "env_parallel.ash", "env_parallel.dash" = "env_parallel.dash", "env_parallel.mksh" = "env_parallel.mksh", "env_parallel.pdksh" = "env_parallel.pdksh", niceload = "niceload", parallel = "parallel", parcat = "parcat", parset = "parset", parsort = "parsort", sem = "sem", sql = "sql" }
+
 [envs.nvim]
 channels = ["conda-forge"]
 dependencies = { nvim = "*" }
 exposed = { nvim = "nvim" }
+
+[envs.starship]
+channels = ["conda-forge"]
+dependencies = { starship = "*" }
+exposed = { starship = "starship" }
 
 [envs.tmux]
 channels = ["conda-forge"]
