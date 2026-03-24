@@ -31,6 +31,7 @@ return {
         local welcome_window = require("codediff.ui.view.welcome_window")
         local active_diffs = require("codediff.ui.lifecycle.session").get_active_diffs
         local managed_markview_buffers = {}
+        local swap_guard_depth = 0
         local option_names = {
             "number",
             "relativenumber",
@@ -68,6 +69,19 @@ return {
             end
 
             return table.concat(chunks, "\2")
+        end
+
+        local function with_codediff_swap_guard(fn)
+            swap_guard_depth = swap_guard_depth + 1
+            local ok, result = xpcall(fn, debug.traceback)
+            swap_guard_depth = math.max(swap_guard_depth - 1, 0)
+            return ok, result
+        end
+
+        local function notify_codediff_failure(context, err)
+            vim.schedule(function()
+                vim.notify("CodeDiff " .. context .. " failed: " .. tostring(err), vim.log.levels.ERROR)
+            end)
         end
 
         local function enable_wrap(winid)
@@ -386,7 +400,14 @@ return {
 
         local function wrap_with_explorer_sync(fn, opts_delay, groups_delay)
             return function(tabpage, ...)
-                local result = fn(tabpage, ...)
+                local args = { ... }
+                local ok, result = with_codediff_swap_guard(function()
+                    return fn(tabpage, unpack(args))
+                end)
+                if not ok then
+                    notify_codediff_failure("view update", result)
+                    return nil
+                end
                 schedule_explorer_sync(tabpage, opts_delay, groups_delay)
                 codediff_folds.schedule_reapply(tabpage, math.max(opts_delay or 20, groups_delay or 40))
                 return result
@@ -492,7 +513,13 @@ return {
         side_by_side_view.show_welcome = wrap_with_explorer_sync(original_side_show_welcome)
 
         lifecycle_state.resume_diff = function(tabpage)
-            original_resume_diff(tabpage)
+            local ok, err = with_codediff_swap_guard(function()
+                original_resume_diff(tabpage)
+            end)
+            if not ok then
+                notify_codediff_failure("resume", err)
+                return
+            end
             schedule_layout_sync(tabpage, 20)
             apply_current_session_wrap(tabpage)
             ensure_current_session_buflisted(tabpage)
@@ -519,7 +546,13 @@ return {
                         return
                     end
 
-                    original_explorer_refresh(explorer)
+                    local ok, refresh_err = with_codediff_swap_guard(function()
+                        original_explorer_refresh(explorer)
+                    end)
+                    if not ok then
+                        notify_codediff_failure("explorer refresh", refresh_err)
+                        return
+                    end
                     schedule_explorer_sync(explorer.tabpage, 20, 20)
                 end)
             end)
@@ -537,6 +570,15 @@ return {
                 ensure_current_session_buflisted(tabpage)
                 schedule_explorer_sync(tabpage, 20, 40)
                 codediff_folds.schedule_reapply(tabpage, 60)
+            end,
+        })
+
+        vim.api.nvim_create_autocmd("SwapExists", {
+            group = group,
+            callback = function()
+                if swap_guard_depth > 0 then
+                    vim.v.swapchoice = "e"
+                end
             end,
         })
 
