@@ -32,7 +32,7 @@ You can also install only specific components:
 ```
 
 Available components:
-- `dotfiles` - Application configs (nvim, wezterm, zellij)
+- `dotfiles` - Application configs (nvim, wezterm)
 - `pixi` - Pixi package manager and global packages
 - `tmux_conf` - Tmux configuration
 - `opencode` - OpenCode AI configuration
@@ -59,7 +59,6 @@ dotfiles/
 ├── config/          # Application configs
 │   ├── nvim/        # Neovim configuration
 │   ├── wezterm/     # WezTerm terminal config
-│   └── zellij/      # Zellij multiplexer config
 ├── skills.sh        # Single entrypoint for skill installation
 ├── tmux/            # Tmux configuration (gpakosz/.tmux)
 ├── pixi/            # Pixi global packages

@@ -95,11 +95,6 @@ channels = ["conda-forge"]
 dependencies = { nvim = "*" }
 exposed = { nvim = "nvim" }
 
-[envs.zellij]
-channels = ["conda-forge"]
-dependencies = { zellij = "*" }
-exposed = { zellij = "zellij" }
-
 [envs.tmux]
 channels = ["conda-forge"]
 dependencies = { tmux = "3.5.*" }
