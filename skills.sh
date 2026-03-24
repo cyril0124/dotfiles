@@ -12,6 +12,7 @@ REMOTE_SKILLS=(
   "anthropics/skills@docx"
   "anthropics/skills@frontend-design"
   "anthropics/skills@skill-creator"
+  "github/awesome-copilot@refactor"
   "othmanadi/planning-with-files@planning-with-files"
   "lyndonkl/claude@socratic-teaching-scaffolds"
   "openai/skills@frontend-skill"
