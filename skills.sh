@@ -11,6 +11,7 @@ REMOTE_SKILLS=(
   "vercel-labs/skills@find-skills"
   "anthropics/skills@docx"
   "anthropics/skills@frontend-design"
+  "jeffallan/claude-skills@code-reviewer"
   "anthropics/skills@skill-creator"
   "github/awesome-copilot@refactor"
   "othmanadi/planning-with-files@planning-with-files"
