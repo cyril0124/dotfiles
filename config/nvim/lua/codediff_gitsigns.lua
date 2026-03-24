@@ -1,5 +1,6 @@
 local M = {}
 local unpack_args = table.unpack or unpack
+local shared = require("lua.codediff_shared")
 
 local cursor_actions = {
     preview_hunk = true,
@@ -22,12 +23,7 @@ local function is_attached(bufnr)
 end
 
 local function get_session()
-    local ok, lifecycle = pcall(require, "codediff.ui.lifecycle")
-    if not ok then
-        return nil
-    end
-
-    return lifecycle.get_session(vim.api.nvim_get_current_tabpage())
+    return shared.get_session()
 end
 
 local function to_relative_path(git_root, path)
@@ -66,20 +62,7 @@ local function unique_windows(wins)
 end
 
 local function is_real_file_buffer(bufnr)
-    if not (bufnr and vim.api.nvim_buf_is_valid(bufnr)) then
-        return false
-    end
-
-    if vim.bo[bufnr].buftype ~= "" then
-        return false
-    end
-
-    local name = vim.api.nvim_buf_get_name(bufnr)
-    if name == "" or name:match("^codediff://") then
-        return false
-    end
-
-    return true
+    return shared.is_real_file_buffer(bufnr)
 end
 
 local function get_candidate_windows()

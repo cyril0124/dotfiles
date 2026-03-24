@@ -19,6 +19,7 @@ return {
         require("codediff.ui").setup_highlights()
 
         local codediff = require("lua.codediff")
+        local codediff_shared = require("lua.codediff_shared")
         local codediff_folds = require("lua.codediff_folds")
         local lifecycle = require("codediff.ui.lifecycle")
         local lifecycle_state = require("codediff.ui.lifecycle.state")
@@ -150,14 +151,7 @@ return {
                 return false
             end
 
-            local name = vim.api.nvim_buf_get_name(bufnr)
-            local buftype = vim.bo[bufnr].buftype
-
-            if name == "" then
-                return false
-            end
-
-            return buftype == "" or name:match("^codediff://") ~= nil
+            return codediff_shared.is_listable_buffer(bufnr)
         end
 
         local function ensure_session_buflisted(session)

@@ -1,5 +1,5 @@
 local M = {}
-local get_lifecycle
+local shared = require("lua.codediff_shared")
 local state = {
     initialized = false,
     transitioning = false,
@@ -27,32 +27,11 @@ local function is_floating_window(winid)
 end
 
 local function get_session(tabpage)
-    local lifecycle = get_lifecycle()
-    if not lifecycle then
-        return nil
-    end
-
-    return lifecycle.get_session(tabpage or vim.api.nvim_get_current_tabpage())
+    return shared.get_session(tabpage)
 end
 
 local function is_tabline_candidate(bufnr)
-    if not (bufnr and vim.api.nvim_buf_is_valid(bufnr)) then
-        return false
-    end
-
-    local name = vim.api.nvim_buf_get_name(bufnr)
-    local buftype = vim.bo[bufnr].buftype
-    local filetype = vim.bo[bufnr].filetype
-
-    if name == "" then
-        return false
-    end
-
-    if filetype == "codediff-explorer" or filetype == "codediff-history" or filetype == "codediff-help" then
-        return false
-    end
-
-    return buftype == "" or name:match("^codediff://") ~= nil
+    return shared.is_listable_buffer(bufnr)
 end
 
 local function get_window_buffer(winid)
@@ -150,17 +129,7 @@ local function sync_ui_effects()
 end
 
 local function get_explorer_window(tabpage)
-    local lifecycle = get_lifecycle()
-    if not lifecycle then
-        return nil
-    end
-
-    local explorer = lifecycle.get_explorer(tabpage)
-    if not explorer or not explorer.split then
-        return nil
-    end
-
-    return explorer.split.winid
+    return shared.get_explorer_window(tabpage)
 end
 
 local function get_window_box(winid)
@@ -310,7 +279,7 @@ local function ensure_autocmds()
             end
 
             local current_win = vim.api.nvim_get_current_win()
-            if current_win ~= session.original_win and current_win ~= session.modified_win and current_win ~= session.result_win then
+            if not shared.is_session_window(current_win, session) then
                 return
             end
 
@@ -319,15 +288,6 @@ local function ensure_autocmds()
     })
 
     state.initialized = true
-end
-
-get_lifecycle = function()
-    local ok, lifecycle = pcall(require, "codediff.ui.lifecycle")
-    if not ok then
-        return nil
-    end
-
-    return lifecycle
 end
 
 local function build_command(args)

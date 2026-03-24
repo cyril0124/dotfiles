@@ -17,6 +17,8 @@ return {
         version = "*",
         dependencies = 'nvim-tree/nvim-web-devicons',
         config = function()
+            local codediff_shared = require("lua.codediff_shared")
+
             vim.opt.termguicolors = true
             vim.opt.showtabline = 2
 
@@ -34,10 +36,9 @@ return {
                     always_show_bufferline = true,
                     custom_filter = function(buf)
                         local name = vim.api.nvim_buf_get_name(buf)
-                        local filetype = vim.bo[buf].filetype
                         local buftype = vim.bo[buf].buftype
 
-                        if filetype == "codediff-explorer" or filetype == "codediff-history" or filetype == "codediff-help" then
+                        if codediff_shared.is_auxiliary_filetype(vim.bo[buf].filetype) then
                             return false
                         end
 
@@ -50,7 +51,7 @@ return {
                             return buf == codediff_tab_buf
                         end
 
-                        if name:match("^codediff://") then
+                        if codediff_shared.is_virtual_buffer_name(name) then
                             return false
                         end
 
@@ -220,6 +221,8 @@ return {
         "Bekaboo/dropbar.nvim",
         event = { "BufReadPost", "BufNewFile" },
         opts = function()
+            local codediff_shared = require("lua.codediff_shared")
+
             local function is_codediff_window(buf, win)
                 if not (buf and vim.api.nvim_buf_is_valid(buf) and win and vim.api.nvim_win_is_valid(win)) then
                     return false
@@ -229,29 +232,21 @@ return {
                     return true
                 end
 
-                local filetype = vim.bo[buf].filetype
-                if filetype == "codediff-explorer" or filetype == "codediff-history" or filetype == "codediff-help" then
+                if codediff_shared.is_auxiliary_filetype(vim.bo[buf].filetype) then
                     return true
                 end
 
-                local ok, lifecycle = pcall(require, "codediff.ui.lifecycle")
-                if not ok then
-                    return false
-                end
-
                 local tabpage = vim.api.nvim_win_get_tabpage(win)
-                local session = lifecycle.get_session(tabpage)
+                local session = codediff_shared.get_session(tabpage)
                 if not session then
                     return false
                 end
 
-                if session.original_win == win or session.modified_win == win or session.result_win == win then
+                if codediff_shared.is_session_window(win, session) then
                     return true
                 end
 
-                local explorer = lifecycle.get_explorer(tabpage)
-                local explorer_win = explorer and (explorer.winid or (explorer.split and explorer.split.winid)) or nil
-                return explorer_win == win
+                return codediff_shared.get_explorer_window(tabpage) == win
             end
 
             return {
