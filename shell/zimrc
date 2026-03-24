@@ -1,0 +1,11 @@
+zmodule environment
+
+zstyle ':zim:input' mode 'vi'
+zmodule input
+
+zmodule git
+zmodule archive
+
+zmodule agkozak/zsh-z
+zmodule zsh-users/zsh-autosuggestions
+zmodule zsh-users/zsh-syntax-highlighting

@@ -59,6 +59,7 @@ Install dotfiles and related tool configuration.
 
 Components:
   dotfiles    Application configs under config/
+  shell       Bash and Zsh rc files
   pixi        Pixi installation and global packages
   tmux_conf   Tmux configuration
   opencode    OpenCode configuration
@@ -192,8 +193,35 @@ install_dotfiles () {
         dst="$HOME/.config/$(basename "${src%.*}")"
         link_file "$src" "$dst"
     done
+}
 
-    # TODO: zsh config
+backup_and_link_file() {
+  local src=$1 dst=$2
+  local backup_path current_src
+
+  if [ -L "$dst" ]; then
+    current_src="$(readlink "$dst")"
+    if [ "$current_src" = "$src" ]; then
+      success "already linked $src to $dst"
+      return 0
+    fi
+  fi
+
+  if [ -e "$dst" ] || [ -L "$dst" ]; then
+    backup_path="${dst}.backup.$(date +%Y%m%d%H%M%S)"
+    mv "$dst" "$backup_path"
+    success "backed up $dst to $backup_path"
+  fi
+
+  ln -s "$src" "$dst"
+  success "linked $src to $dst"
+}
+
+install_shell() {
+    info 'installing shell rc files'
+
+    backup_and_link_file "$DOTFILES_ROOT/.bashrc" "$HOME/.bashrc"
+    backup_and_link_file "$DOTFILES_ROOT/.zshrc" "$HOME/.zshrc"
 }
 
 install_pixi() {
@@ -400,6 +428,7 @@ git submodule update --init --recursive
 if [ $# -eq 0 ]; then
     # No arguments, install everything
     install_dotfiles
+    install_shell
     install_pixi
     install_tmux_conf
     install_opencode
