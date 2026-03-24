@@ -1,7 +1,15 @@
 local M = {}
 
+local function resolve_items(items)
+    if type(items) == "function" then
+        return items()
+    end
+    return items
+end
+
 local function with_shared(items)
-    local shared = require("lua.menus.shared")
+    local shared = resolve_items(require("lua.menus.shared"))
+    items = resolve_items(items)
     local result = {}
     for _, item in ipairs(items) do
         result[#result + 1] = item

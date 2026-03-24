@@ -1,67 +1,71 @@
 -- Shared menu items appended to all menus
-return {
-    { name = "separator" },
+return function()
+    return {
+        { name = "separator" },
 
-    {
-        name = "Notification history",
-        cmd = function()
-            require("mini.notify").show_history()
-        end,
-        rtxt = "nh",
-    },
+        {
+            name = "Notification history",
+            cmd = function()
+                require("mini.notify").show_history()
+            end,
+            rtxt = "nh",
+        },
 
-    {
-        name = "CodeDiffOpen",
-        cmd = function()
-            require("lua.codediff").open()
-        end,
-        rtxt = "df",
-    },
+        require("lua.quit_guard").menu_item(),
 
-    {
-        name = "CodeDiffFileHistory",
-        cmd = function()
-            require("lua.codediff").open("history %")
-        end,
-        rtxt = "fh",
-    },
+        {
+            name = "CodeDiffOpen",
+            cmd = function()
+                require("lua.codediff").open()
+            end,
+            rtxt = "df",
+        },
 
-    {
-        name = "Toggle git blame",
-        cmd = function()
-            vim.cmd("Gitsigns toggle_current_line_blame")
-        end,
-        rtxt = "gb",
-    },
+        {
+            name = "CodeDiffFileHistory",
+            cmd = function()
+                require("lua.codediff").open("history %")
+            end,
+            rtxt = "fh",
+        },
 
-    {
-        name = "Last commit diff",
-        cmd = function()
-            require("lua.git_diff").open_last_commit_diff()
-        end,
-        rtxt = "lc",
-    },
+        {
+            name = "Toggle git blame",
+            cmd = function()
+                vim.cmd("Gitsigns toggle_current_line_blame")
+            end,
+            rtxt = "gb",
+        },
 
-    {
-        name = "Reset commit depth",
-        cmd = function()
-            require("lua.git_diff").reset_last_commit_depth()
-        end,
-        rtxt = "rc",
-    },
+        {
+            name = "Last commit diff",
+            cmd = function()
+                require("lua.git_diff").open_last_commit_diff()
+            end,
+            rtxt = "lc",
+        },
 
-    {
-        name = "Switch colorscheme",
-        cmd = function()
-            local config = require("lua.config")
-            vim.ui.select(
-                config.themes,
-                { prompt = "Select colorscheme:" },
-                function(choice)
-                    if choice then vim.cmd("colorscheme " .. choice) end
-                end
-            )
-        end,
-        rtxt = "cs",
-    },
-}
+        {
+            name = "Reset commit depth",
+            cmd = function()
+                require("lua.git_diff").reset_last_commit_depth()
+            end,
+            rtxt = "rc",
+        },
+
+        {
+            name = "Switch colorscheme",
+            cmd = function()
+                local config = require("lua.config")
+                vim.ui.select(
+                    config.themes,
+                    { prompt = "Select colorscheme:" },
+                    function(choice)
+                        if choice then vim.cmd("colorscheme " .. choice) end
+                    end
+                )
+            end,
+            rtxt = "cs",
+        },
+    }
+end

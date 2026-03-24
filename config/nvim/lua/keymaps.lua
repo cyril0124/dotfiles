@@ -1,5 +1,6 @@
 local menus = require("lua.menus")
 local codediff = require("lua.codediff")
+local quit_guard = require("lua.quit_guard")
 
 local function navigate_window(direction, fallback)
     return function()
@@ -45,7 +46,7 @@ vim.keymap.set("n", "<leader>x", "<CMD>bdelete<CR>", { noremap = true, silent = 
 vim.keymap.set("n", "<leader>w", "<CMD>w<CR>", { noremap = true, silent = true, desc = "Save file" })
 
 -- Quit nvim
-vim.keymap.set("n", "<leader>q", "<CMD>qa<CR>", { silent = true, desc = "Quit nvim" })
+vim.keymap.set("n", "<leader>q", quit_guard.quit_all, { silent = true, desc = "Quit nvim" })
 
 -- Toggle terminal
 vim.keymap.set("n", "<leader>t", "<CMD>ToggleTerm direction=float<CR>", { desc = "Toggle terminal(float)" })

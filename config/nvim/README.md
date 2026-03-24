@@ -77,7 +77,7 @@ Personal Neovim configuration using [lazy.nvim](https://github.com/folke/lazy.nv
 | Key | Mode | Description |
 |-----|------|-------------|
 | `<leader>w` | Normal | Save file |
-| `<leader>q` | Normal | Quit nvim |
+| `<leader>q` | Normal | Quit nvim (blocked when quit lock is enabled) |
 | `<leader>m` | Normal/Visual | Open context menu |
 | `<leader>wk` | Normal | Show all keymaps (WhichKey) |
 | `<leader>?` | Normal | Buffer local keymaps (WhichKey) |
@@ -101,7 +101,7 @@ Open the context menu with `<leader>m`. The menu adapts to the current filetype 
 
 **Default Menu:** Trim spaces, Format, Find files/words (no-ignore), Search & replace, LSP Actions submenu, Git Actions submenu, Edit Config
 
-**Shared Items (all menus):** Notification history, DiffviewOpen, DiffviewFileHistory, Toggle git blame, Last commit diff (incremental), Reset commit depth, Switch colorscheme
+**Shared Items (all menus):** Notification history, Lock/Unlock quit, DiffviewOpen, DiffviewFileHistory, Toggle git blame, Last commit diff (incremental), Reset commit depth, Switch colorscheme
 
 ## Installed Plugins
 
