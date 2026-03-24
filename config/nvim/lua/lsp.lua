@@ -30,6 +30,10 @@ vim.keymap.set('n', 'K', function()
     require('hover').open()
 end, { desc = 'hover.nvim (open)', noremap = true, silent = true })
 
+vim.keymap.set('n', '<leader>k', function()
+    require('hover').open()
+end, { desc = 'hover.nvim (open)', noremap = true, silent = true })
+
 vim.keymap.set('n', 'gK', function()
     require('hover').enter()
 end, { desc = 'hover.nvim (enter)', noremap = true, silent = true })

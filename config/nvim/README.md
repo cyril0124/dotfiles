@@ -44,6 +44,7 @@ Personal Neovim configuration using [lazy.nvim](https://github.com/folke/lazy.nv
 | `<leader>f` | Normal | Format code (conform.nvim) |
 | `<leader>/` | Normal/Visual | Toggle comment |
 | `K` | Normal | Hover info (hover.nvim) |
+| `<leader>k` | Normal | Hover info (hover.nvim) |
 | `gK` | Normal | Enter hover window |
 | `gd` | Normal | Go to definition |
 | `gr` | Normal | Show references |
