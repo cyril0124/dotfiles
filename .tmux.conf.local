@@ -5,7 +5,9 @@
 #         Copyright 2012— Gregory Pakosz (@gpakosz).
 
 # Use zsh if available
-# if-shell 'command -v zsh >/dev/null 2>&1' 'set -g default-shell "$(command -v zsh)"'
+if-shell '[ -x /bin/zsh ]' \
+  'set -g default-shell /bin/zsh; set -g default-command /bin/zsh' \
+  "if-shell '[ -x /usr/bin/zsh ]' 'set -g default-shell /usr/bin/zsh; set -g default-command /usr/bin/zsh' 'set -g default-shell /bin/bash; set -g default-command /bin/bash'"
 
 # -- session creation ----------------------------------------------------------
 

@@ -59,6 +59,43 @@ fi
 
 alias gl='git log'
 
+dotfiles_zsh_fzf_history_widget() {
+    command_exists fzf || {
+        zle reset-prompt
+        return 0
+    }
+
+    setopt localoptions pipefail no_aliases noglobsubst noposixbuiltins no_glob 2>/dev/null
+
+    local selected
+    selected="$(
+        fc -rl 1 2>/dev/null |
+            awk '{ cmd=$0; sub(/^[[:space:]]*[0-9]+\**[[:space:]]+/, "", cmd); if (cmd != "" && !seen[cmd]++) print cmd }' |
+            command fzf \
+                --scheme=history \
+                --height=40% \
+                --layout=reverse \
+                --border \
+                --prompt='history> ' \
+                --query "$LBUFFER"
+    )" || {
+        zle reset-prompt
+        return 0
+    }
+
+    if [ -n "$selected" ]; then
+        BUFFER="$selected"
+        CURSOR=${#BUFFER}
+    fi
+
+    zle reset-prompt
+}
+
+zle -N dotfiles-fzf-history-widget dotfiles_zsh_fzf_history_widget
+bindkey -M emacs '^R' dotfiles-fzf-history-widget
+bindkey -M viins '^R' dotfiles-fzf-history-widget
+bindkey -M vicmd '^R' dotfiles-fzf-history-widget
+
 if ! typeset -p _comps >/dev/null 2>&1; then
     autoload -U compinit && compinit -u
 fi
