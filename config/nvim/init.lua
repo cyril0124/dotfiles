@@ -25,31 +25,39 @@ vim.g.loaded_netrwPlugin = 1
 --     },
 -- }
 
-local config_dir = vim.fn.stdpath('config')
-local pacakge_paths = {
-    config_dir .. "/?.lua",
-    config_dir .. "/lua/?.lua",
-    config_dir .. "/?/init.lua",
-    config_dir .. "/lua/?/init.lua",
-}
-package.path = table.concat(pacakge_paths, ";")
+local function configure_package_path()
+	local config_dir = vim.fn.stdpath("config")
+	local package_paths = {
+		config_dir .. "/?.lua",
+		config_dir .. "/lua/?.lua",
+		config_dir .. "/?/init.lua",
+		config_dir .. "/lua/?/init.lua",
+	}
+
+	package.path = table.concat(package_paths, ";")
+end
+
+local function bootstrap_lazy()
+	local lazypath = vim.fn.stdpath("data") .. "/lazy/lazy.nvim"
+	if not (vim.uv or vim.loop).fs_stat(lazypath) then
+		vim.fn.system({
+			"git",
+			"clone",
+			"--filter=blob:none",
+			"https://github.com/folke/lazy.nvim.git",
+			"--branch=stable", -- latest stable release
+			lazypath,
+		})
+	end
+
+	vim.opt.rtp:prepend(lazypath)
+end
+
+configure_package_path()
 
 -- Initialize Lazy.nvim(package manager for Neovim plugins)
-do
-    local lazypath = vim.fn.stdpath("data") .. "/lazy/lazy.nvim"
-    if not (vim.uv or vim.loop).fs_stat(lazypath) then
-        vim.fn.system({
-            "git",
-            "clone",
-            "--filter=blob:none",
-            "https://github.com/folke/lazy.nvim.git",
-            "--branch=stable", -- latest stable release
-            lazypath,
-        })
-    end
-    vim.opt.rtp:prepend(lazypath)
-    require("lazy").setup("plugins")
-end
+bootstrap_lazy()
+require("lazy").setup("plugins")
 
 require("lua.options")
 require("lua.keymaps")
