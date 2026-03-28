@@ -361,7 +361,7 @@ return {
 	-- https://github.com/rasulomaroff/reactive.nvim
 	{
 		"rasulomaroff/reactive.nvim",
-		event = "VeryLazy",
+		event = "UIEnter",
 		opts = {
 			load = { "catppuccin-mocha-cursor", "catppuccin-mocha-cursorline" },
 		},
