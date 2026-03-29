@@ -36,7 +36,17 @@ end
 
 local function get_explorer()
     local session = get_session()
-    return session and session.explorer or nil
+    return session and session.mode == "explorer" and session.explorer or nil
+end
+
+local function is_conflict_revision(revision)
+    return revision == ":2" or revision == ":3"
+end
+
+local function is_conflict_session(session)
+    return session
+        and (is_conflict_revision(session.original_revision) or is_conflict_revision(session.modified_revision))
+        or false
 end
 
 local function get_current_buf()
@@ -203,11 +213,30 @@ local function run_codediff_hunk_action(action)
     return true
 end
 
+local function notify_file_action_unavailable(action, reason)
+    local label = action == "stage_buffer" and "Stage buffer" or "Reset buffer"
+
+    if reason == "history" then
+        vim.notify(label .. " is unavailable in CodeDiff history views", vim.log.levels.WARN)
+        return
+    end
+
+    if reason == "conflicts" then
+        vim.notify(label .. " is unavailable in CodeDiff conflict views", vim.log.levels.WARN)
+        return
+    end
+
+    if reason == "immutable" then
+        vim.notify(label .. " is unavailable in revision-only CodeDiff views", vim.log.levels.WARN)
+        return
+    end
+end
+
 local function get_current_file_context()
     local session = get_session()
     if not (session and session.git_root) then
         vim.notify("Not in a git repository", vim.log.levels.WARN)
-        return nil
+        return nil, "not_git"
     end
 
     local explorer = get_explorer()
@@ -223,12 +252,24 @@ local function get_current_file_context()
         }
     end
 
+    if session.mode == "history" then
+        return nil, "history"
+    end
+
     local original_rel = to_relative_path(session.git_root, session.original_path)
     local modified_rel = to_relative_path(session.git_root, session.modified_path)
     local rel_path = original_rel or modified_rel
     if not rel_path then
         vim.notify("No file selected in current CodeDiff view", vim.log.levels.WARN)
-        return nil
+        return nil, "no_file"
+    end
+
+    if is_conflict_session(session) then
+        return nil, "conflicts"
+    end
+
+    if session.modified_revision ~= nil and session.modified_revision ~= ":0" then
+        return nil, "immutable"
     end
 
     return {
@@ -274,8 +315,11 @@ end
 local function run_diff_file_action(action)
     local explorer = get_explorer()
     local session = get_session()
-    local ctx = get_current_file_context()
+    local ctx, reason = get_current_file_context()
     if not ctx then
+        if reason then
+            notify_file_action_unavailable(action, reason)
+        end
         return true
     end
 
@@ -297,6 +341,11 @@ local function run_diff_file_action(action)
     end
 
     if action == "reset_buffer" then
+        if ctx.group == "conflicts" then
+            notify_file_action_unavailable(action, "conflicts")
+            return true
+        end
+
         if ctx.group == "staged" then
             vim.notify("Reset buffer only works on unstaged changes", vim.log.levels.WARN)
             return true
@@ -319,7 +368,8 @@ local function run_diff_file_action(action)
 end
 
 local function run_file_action(action)
-    local explorer = get_explorer()
+    local session = get_session()
+    local explorer = session and session.mode == "explorer" and get_explorer() or nil
     if not explorer then
         return run_diff_file_action(action)
     end
