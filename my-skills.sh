@@ -17,6 +17,7 @@ REMOTE_SKILLS=(
   "othmanadi/planning-with-files@planning-with-files"
   "lyndonkl/claude@socratic-teaching-scaffolds"
   "openai/skills@frontend-skill"
+  "kepano/obsidian-skills@obsidian-markdown"
 )
 
 info() {
@@ -30,7 +31,7 @@ fail() {
 
 show_help() {
   cat <<EOF
-Usage: ./skills.sh [all|list]
+Usage: ./my-skills.sh [all|list]
 
 Install the skills recorded in this repo.
 

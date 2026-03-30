@@ -22,7 +22,7 @@ The bootstrap script will:
 - Install and configure opencode (if needed)
 - Configure claude settings
 - Configure codex settings
-- Install the skills recorded in `./skills.sh`
+- Install the skills recorded in `./my-skills.sh`
 
 ### Install Specific Components
 
@@ -40,7 +40,7 @@ Available components:
 - `opencode` - OpenCode AI configuration
 - `claude` - Claude Code configuration
 - `codex` - Codex configuration (`~/.codex`)
-- `skills` - Install remote skills via `./skills.sh`
+- `skills` - Install remote skills via `./my-skills.sh`
 - `codex_sync` - Sync and sanitize local Codex config into this repo
 
 Examples:
@@ -50,8 +50,8 @@ Examples:
 ./bootstrap skills           # Install skills only
 ./bootstrap codex_sync       # Sync ~/.codex -> repo/codex (sanitized)
 ./bootstrap dotfiles claude  # Install multiple components
-./skills.sh                  # Install all recorded skills
-./skills.sh list             # Show the recorded skills
+./my-skills.sh                  # Install all recorded skills
+./my-skills.sh list             # Show the recorded skills
 ```
 
 ## Structure
@@ -64,7 +64,7 @@ dotfiles/
 │   ├── nvim/        # Neovim configuration
 │   ├── wezterm/     # WezTerm terminal config
 ├── shell/           # Shared shell logic and local overlay templates
-├── skills.sh        # Single entrypoint for skill installation
+├── my-skills.sh     # Single entrypoint for skill installation
 ├── tmux/            # Tmux configuration (gpakosz/.tmux)
 ├── pixi/            # Pixi global packages
 ├── opencode/        # OpenCode AI configuration
@@ -118,9 +118,9 @@ Codex configuration and prompt files:
 
 ## Skills
 
-`skills.sh` is the single place where remote skill installation is declared.
+`my-skills.sh` is the single place where remote skill installation is declared.
 
-- Remote skills are recorded directly in `skills.sh` as `npx skills add ...` specs
+- Remote skills are recorded directly in `my-skills.sh` as `npx skills add ...` specs
 - Installed global skill directories such as `~/.agents/skills` and `~/.claude/skills` are not synced back into this repo
 
 ## Requirements

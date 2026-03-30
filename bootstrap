@@ -65,7 +65,7 @@ Components:
   opencode    OpenCode configuration
   claude      Claude configuration
   codex       Codex configuration
-  skills      Install skills recorded in ./skills.sh
+  skills      Install skills recorded in ./my-skills.sh
   codex_sync  Sync ~/.codex into repo/codex with sanitization
 
 Examples:
@@ -419,7 +419,7 @@ install_codex_sync() {
 
 install_skills() {
     info 'installing skills'
-    "$DOTFILES_ROOT/skills.sh"
+    "$DOTFILES_ROOT/my-skills.sh"
 }
 
 git submodule update --init --recursive
