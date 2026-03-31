@@ -31,8 +31,9 @@ return {
         local welcome = require("codediff.ui.welcome")
         local welcome_window = require("codediff.ui.view.welcome_window")
         local active_diffs = require("codediff.ui.lifecycle.session").get_active_diffs
+        local diff_result = require("lua.codediff_diff_result")
+        local swap_guard = require("lua.codediff_swap_guard")
         local managed_markview_buffers = {}
-        local swap_guard_depth = 0
         local option_names = {
             "number",
             "relativenumber",
@@ -43,6 +44,7 @@ return {
 
         local original_apply = welcome_window.apply
         local original_resume_diff = lifecycle_state.resume_diff
+        local original_update_diff_result = lifecycle.update_diff_result
         local original_explorer_refresh = explorer_refresh.refresh
         local original_view_update = view.update
         local original_inline_show_single_file = inline_view.show_single_file
@@ -73,10 +75,7 @@ return {
         end
 
         local function with_codediff_swap_guard(fn)
-            swap_guard_depth = swap_guard_depth + 1
-            local ok, result = xpcall(fn, debug.traceback)
-            swap_guard_depth = math.max(swap_guard_depth - 1, 0)
-            return ok, result
+            return swap_guard.run(fn)
         end
 
         local function notify_codediff_failure(context, err)
@@ -506,7 +505,16 @@ return {
         side_by_side_view.show_deleted_virtual_file = wrap_with_explorer_sync(original_side_show_deleted_virtual_file)
         side_by_side_view.show_welcome = wrap_with_explorer_sync(original_side_show_welcome)
 
+        lifecycle.update_diff_result = function(tabpage, lines_diff)
+            return original_update_diff_result(tabpage, diff_result.normalize(lines_diff))
+        end
+
         lifecycle_state.resume_diff = function(tabpage)
+            local session = lifecycle.get_session(tabpage)
+            if session and diff_result.is_malformed(session.stored_diff_result) then
+                session.stored_diff_result = nil
+            end
+
             local ok, err = with_codediff_swap_guard(function()
                 original_resume_diff(tabpage)
             end)
@@ -570,7 +578,7 @@ return {
         vim.api.nvim_create_autocmd("SwapExists", {
             group = group,
             callback = function()
-                if swap_guard_depth > 0 then
+                if swap_guard.is_active() then
                     vim.v.swapchoice = "e"
                 end
             end,
