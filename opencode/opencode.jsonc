@@ -45,9 +45,10 @@
   "agent": {
     "yolo": {
       "mode": "primary",
-      "description": "High-trust primary agent that skips approval prompts for all bash commands",
+      "description": "High-trust primary agent that skips approval prompts for bash commands and external file access",
       "permission": {
-        "bash": "allow"
+        "bash": "allow",
+        "external_directory": "allow"
       }
     }
   },
