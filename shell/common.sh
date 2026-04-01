@@ -68,6 +68,7 @@ alias t='tmux'
 alias ta='tmux a'
 alias tn='tmux new'
 alias tdc='tmux detach-client -s'
+alias op='opencode'
 
 alias vi='nvim'
 alias vim='nvim'
