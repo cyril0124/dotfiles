@@ -8,6 +8,12 @@ vim.g.maplocalleader = "-"
 vim.g.loaded_netrw = 1
 vim.g.loaded_netrwPlugin = 1
 
+vim.filetype.add({
+	extension = {
+		jsonl = "json",
+	},
+})
+
 -- vim.o.clipboard = 'unamedplus'
 -- vim.g.clipboard = 'osc52'
 -- local function no_paste(reg)

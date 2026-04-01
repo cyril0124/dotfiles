@@ -1,17 +1,18 @@
 local wrap_toggle = require("lua.wrap_toggle")
+local formatter = require("lua.format")
 
 -- Format code
 vim.api.nvim_create_user_command("F", function()
-    require("conform").format({ async = true, lsp_fallback = true })
+    formatter.format({ async = true })
 end, { desc = "Format code(using conform.nvim)" })
 
 vim.api.nvim_create_user_command("FF", function()
-    require("conform").format({ async = true, lsp_fallback = true })
+    formatter.format()
     vim.cmd("w")
 end, { desc = "Format and save" })
 
 vim.api.nvim_create_user_command("FW", function()
-    require("conform").format({ async = true, lsp_fallback = true })
+    formatter.format()
     vim.cmd("w")
 end, { desc = "Format and save" })
 

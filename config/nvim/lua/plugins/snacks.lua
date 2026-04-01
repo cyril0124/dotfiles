@@ -8,7 +8,7 @@ return {
             enabled = true,
             notify = true,           -- show notification when big file detected
             size = 15 * 1024 * 1024, -- 15MB
-            line_length = 1000,      -- average line length (useful for minified files)
+            line_length = math.huge, -- disable average line length detection
 
             -- Enable or disable features when big file detected
             setup = function(ctx)

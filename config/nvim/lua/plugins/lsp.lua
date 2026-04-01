@@ -116,6 +116,7 @@ return {
                 ensure_installed = {
                     "emmylua_ls",
                     "clangd",
+                    "jsonls",
                     "rust_analyzer",
                     "ty",
                 },

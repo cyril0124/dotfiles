@@ -1,6 +1,7 @@
 local menus = require("lua.menus")
 local codediff = require("lua.codediff")
 local quit_guard = require("lua.quit_guard")
+local formatter = require("lua.format")
 
 local function navigate_window(direction, fallback)
     return function()
@@ -108,7 +109,7 @@ end), { desc = "LSP telescope diagnostic(only warning and error)" })
 
 -- Code format
 vim.keymap.set("n", "<leader>f", function()
-    require("conform").format({ async = true, lsp_fallback = true })
+    formatter.format({ async = true })
 end, { desc = "Format code(using conform.nvim)" })
 
 -- Menu

@@ -39,6 +39,18 @@ vim.lsp.config("emmylua_ls", {
 
 vim.lsp.enable("emmylua_ls")
 
+vim.lsp.config("jsonls", {
+    settings = {
+        json = {
+            format = {
+                enable = true,
+            },
+        },
+    },
+})
+
+vim.lsp.enable("jsonls")
+
 vim.lsp.config("slang-server", {
     cmd = { "slang-server" },
     root_markers = { ".git", ".slang" },

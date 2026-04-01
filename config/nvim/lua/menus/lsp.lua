@@ -1,3 +1,5 @@
+local formatter = require("lua.format")
+
 return {
     {
         name = "Toggle LSP inlay hints",
@@ -69,13 +71,7 @@ return {
     {
         name = "Format Buffer",
         cmd = function()
-            local ok, conform = pcall(require, "conform")
-
-            if ok then
-                conform.format { lsp_fallback = true }
-            else
-                vim.lsp.buf.format()
-            end
+            formatter.format()
         end,
         rtxt = "<leader>fm",
     },

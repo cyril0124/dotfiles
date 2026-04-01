@@ -1,3 +1,5 @@
+local formatter = require("lua.format")
+
 return {
     {
         name = "Trim spaces",
@@ -10,7 +12,7 @@ return {
     {
         name = "Format",
         cmd = function()
-            require("conform").format({ async = true, lsp_fallback = true })
+            formatter.format({ async = true })
         end,
         rtxt = "f",
     },
