@@ -1,5 +1,6 @@
 local M = {}
 local shared = require("lua.codediff_shared")
+local transition_delay_ms = 120
 local state = {
     initialized = false,
     transitioning = false,
@@ -11,6 +12,18 @@ local state = {
 
 local function now_ms()
     return vim.uv.now()
+end
+
+local function run_safely(fn, context)
+    local ok, err = pcall(fn)
+    if ok then
+        return true
+    end
+
+    vim.schedule(function()
+        vim.notify((context or "CodeDiff action") .. " failed: " .. tostring(err), vim.log.levels.ERROR)
+    end)
+    return false
 end
 
 local function is_valid_window(winid)
@@ -257,7 +270,7 @@ local function ensure_autocmds()
             state.transitioning = true
             vim.defer_fn(function()
                 state.transitioning = false
-            end, 120)
+            end, transition_delay_ms)
             vim.schedule(sync_ui_effects)
         end,
     })
@@ -373,16 +386,48 @@ function M.open(args)
         if not M.close_current() then
             return
         end
-        delay_ms = 120
+        delay_ms = transition_delay_ms
         run_command(command, delay_ms)
         return
     end
 
-    if state.transitioning or elapsed_since_close < 120 then
-        delay_ms = math.max(delay_ms, 120 - elapsed_since_close)
+    if state.transitioning or elapsed_since_close < transition_delay_ms then
+        delay_ms = math.max(delay_ms, transition_delay_ms - elapsed_since_close)
     end
 
     run_command(command, delay_ms)
+end
+
+function M.run_outside_current_session(fn)
+    ensure_autocmds()
+
+    if type(fn) ~= "function" then
+        return false
+    end
+
+    if not M.is_current_session() then
+        return run_safely(fn, "CodeDiff external action")
+    end
+
+    if #vim.api.nvim_list_tabpages() == 1 then
+        local current_tab = vim.api.nvim_get_current_tabpage()
+        vim.cmd("tabnew")
+        if not run_safely(function()
+            vim.cmd(vim.api.nvim_tabpage_get_number(current_tab) .. "tabclose")
+        end, "CodeDiff close") then
+            return false
+        end
+        return run_safely(fn, "CodeDiff external action")
+    end
+
+    if not M.close_current() then
+        return false
+    end
+
+    vim.defer_fn(function()
+        run_safely(fn, "CodeDiff external action")
+    end, transition_delay_ms)
+    return true
 end
 
 function M.navigate(direction)

@@ -18,8 +18,7 @@ return {
     {
         name = "Find files(no-ignore)",
         cmd = function()
-            local builtin = require("telescope.builtin")
-            builtin.find_files({
+            require("telescope.builtin").find_files({
                 find_command = { "rg", "--files", "--hidden", "--no-ignore", "--glob", "!**/.git/*" }
             })
         end,
@@ -30,9 +29,11 @@ return {
         name = "Find words(no-ignore)",
         cmd = function()
             local builtin = require("telescope.builtin")
-            builtin.live_grep({
-                additional_args = { "--no-ignore" }
-            })
+            require("lua.codediff").run_outside_current_session(function()
+                builtin.live_grep({
+                    additional_args = { "--no-ignore" }
+                })
+            end)
         end,
         rtxt = "fw",
     },

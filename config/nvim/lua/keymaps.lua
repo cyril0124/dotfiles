@@ -24,6 +24,12 @@ local function current_file_dir()
     return path and vim.fs.dirname(path) or nil
 end
 
+local function run_outside_codediff(callback)
+    return function()
+        codediff.run_outside_current_session(callback)
+    end
+end
+
 -----------------
 -- Normal mode --
 -----------------
@@ -56,15 +62,15 @@ vim.keymap.set("n", "<leader>dt", "<CMD>ToggleTerm direction=horizontal<CR>", { 
 vim.keymap.set("n", "<leader>ff", function()
     require("telescope.builtin").find_files()
 end, { desc = "Telescope find files" })
-vim.keymap.set("n", "<leader>fw", function()
+vim.keymap.set("n", "<leader>fw", run_outside_codediff(function()
     require("telescope.builtin").live_grep()
-end, { desc = "Telescope live grep" })
-vim.keymap.set("n", "<leader>gs", function()
+end), { desc = "Telescope live grep" })
+vim.keymap.set("n", "<leader>gs", run_outside_codediff(function()
     require("telescope.builtin").grep_string({ additional_args = { "-w" } })
-end, { desc = "Grep word under cursor(wholeword)" })
-vim.keymap.set("n", "<leader>gS", function()
+end), { desc = "Grep word under cursor(wholeword)" })
+vim.keymap.set("n", "<leader>gS", run_outside_codediff(function()
     require("telescope.builtin").grep_string()
-end, { desc = "Grep word under cursor" })
+end), { desc = "Grep word under cursor" })
 
 -- Search and replace
 vim.keymap.set("n", "<leader>sr", "<CMD>GrugFar<CR>", { desc = "Search and replace" })
@@ -93,12 +99,12 @@ vim.keymap.set('n', '<leader>pa', function()
 end, { desc = 'Print absolute path' })
 
 -- LSP diagnostic
-vim.keymap.set("n", "<leader>ds", function()
+vim.keymap.set("n", "<leader>ds", run_outside_codediff(function()
     require("telescope.builtin").diagnostics()
-end, { desc = "LSP telescope diagnostic" })
-vim.keymap.set("n", "<leader>dS", function()
+end), { desc = "LSP telescope diagnostic" })
+vim.keymap.set("n", "<leader>dS", run_outside_codediff(function()
     require("telescope.builtin").diagnostics({ severity_limit = vim.diagnostic.severity.WARN })
-end, { desc = "LSP telescope diagnostic(only warning and error)" })
+end), { desc = "LSP telescope diagnostic(only warning and error)" })
 
 -- Code format
 vim.keymap.set("n", "<leader>f", function()
@@ -138,7 +144,7 @@ vim.keymap.set("v", "<leader>m", menus.show, { desc = "Show menu" })
 vim.keymap.set("v", "<leader>M", menus.show, { desc = "Show menu" })
 
 vim.keymap.set("v", "<leader>gs",
-    '"ay<CMD>lua require("telescope.builtin").grep_string({ search = vim.fn.getreg("a") })<CR>', {
+    '"ay<CMD>lua require("lua.codediff").run_outside_current_session(function() require("telescope.builtin").grep_string({ search = vim.fn.getreg("a") }) end)<CR>', {
         noremap = true,
         silent = true,
         desc = "Grep selection into register 'a'",
