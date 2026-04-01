@@ -42,6 +42,16 @@
     "webfetch": "allow"
   },
 
+  "agent": {
+    "yolo": {
+      "mode": "primary",
+      "description": "High-trust primary agent that skips approval prompts for all bash commands",
+      "permission": {
+        "bash": "allow"
+      }
+    }
+  },
+
   "provider": {
     "cpa": {
       "npm": "@ai-sdk/openai",
