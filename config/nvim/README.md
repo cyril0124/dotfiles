@@ -62,6 +62,7 @@ Personal Neovim configuration using [lazy.nvim](https://github.com/folke/lazy.nv
 |-----|------|-------------|
 | `<leader>gD` | Normal | Toggle Diffview |
 | `<leader>gl` | Normal | Last commit diff (incremental depth) |
+| `<leader>gL` | Normal | Current file commit history |
 | `]h` / `[h` | Normal | Next / Previous git hunk |
 
 ### Terminal

@@ -134,6 +134,11 @@ vim.keymap.set("n", "<leader>gl", function()
     require("lua.git_diff").open_last_commit_diff()
 end, { desc = "Last commit diff (deeper each press)" })
 
+-- View current file commit history
+vim.keymap.set("n", "<leader>gL", function()
+    require("lua.codediff").open("history %")
+end, { desc = "Current file commit history" })
+
 
 -----------------
 -- Visual mode --
