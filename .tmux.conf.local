@@ -356,6 +356,12 @@ tmux_conf_theme_clock_style="24"
 # tmux_conf_copy_to_os_clipboard=false
 tmux_conf_copy_to_os_clipboard=true
 
+# Let terminal apps such as OpenCode write the system clipboard via OSC52.
+set -s set-clipboard on
+
+# Allow passthrough escape sequences so OSC52 reaches the outer terminal.
+set -g allow-passthrough on
+
 
 # -- user customizations -------------------------------------------------------
 # this is the place to override or undo settings
