@@ -3,7 +3,6 @@
 
   "plugin": [
     "@tarquinen/opencode-dcp@latest",
-    "micode",
     "opencode-pty"
   ],
 
@@ -28,19 +27,20 @@
       "mkfs *": "deny",
       "fdisk *": "deny",
       "parted *": "deny",
-      "git commit *": "ask",
-      "git push *": "ask",
-      "git merge *": "ask",
-      "git rebase *": "ask",
-      "git reset *": "ask",
-      "git revert *": "ask",
-      "git cherry-pick *": "ask",
-      "git tag *": "ask",
+      // "git commit *": "ask",
+      // "git push *": "ask",
+      // "git merge *": "ask",
+      // "git rebase *": "ask",
+      // "git reset *": "ask",
+      // "git revert *": "ask",
+      // "git cherry-pick *": "ask",
+      // "git tag *": "ask",
       "chmod 777 *": "deny",
       "chown root *": "deny"
     },
     "edit": "allow",
-    "webfetch": "allow"
+    "webfetch": "allow",
+    "external_directory": "allow"
   },
 
   "agent": {
@@ -73,6 +73,10 @@
           "options": {
             "reasoningEffort": "high"
           },
+          "limit": {
+            "context": 200000,
+            "output": 0
+          },
           "variants": {
             "low": {
               "reasoningEffort": "low"
@@ -92,6 +96,10 @@
           "name": "GPT-5.4",
           "options": {
             "reasoningEffort": "high"
+          },
+          "limit": {
+            "context": 200000,
+            "output": 0
           },
           "variants": {
             "low": {
