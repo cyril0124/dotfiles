@@ -10,6 +10,7 @@ REMOTE_SKILLS=(
   "vercel-labs/agent-browser@agent-browser"
   "vercel-labs/skills@find-skills"
   "anthropics/skills@docx"
+  "anthropics/skills@pdf"
   "anthropics/skills@frontend-design"
   "jeffallan/claude-skills@code-reviewer"
   "anthropics/skills@skill-creator"
@@ -18,6 +19,7 @@ REMOTE_SKILLS=(
   "lyndonkl/claude@socratic-teaching-scaffolds"
   "openai/skills@frontend-skill"
   "kepano/obsidian-skills@obsidian-markdown"
+  "hyperb1iss/hyperskills@tui-design"
 )
 
 info() {
