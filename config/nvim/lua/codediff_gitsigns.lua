@@ -49,6 +49,10 @@ local function is_conflict_session(session)
         or false
 end
 
+local function is_working_tree_revision(revision)
+    return revision == nil or revision == "WORKING"
+end
+
 local function get_current_buf()
     return vim.api.nvim_get_current_buf()
 end
@@ -268,7 +272,7 @@ local function get_current_file_context()
         return nil, "conflicts"
     end
 
-    if session.modified_revision ~= nil and session.modified_revision ~= ":0" then
+    if not is_working_tree_revision(session.modified_revision) and session.modified_revision ~= ":0" then
         return nil, "immutable"
     end
 
@@ -276,7 +280,7 @@ local function get_current_file_context()
         git_root = session.git_root,
         rel_path = rel_path,
         group = session.modified_revision == ":0" and "staged" or "unstaged",
-        status = (not original_rel and modified_rel and session.modified_revision == nil) and "??" or nil,
+        status = (not original_rel and modified_rel and is_working_tree_revision(session.modified_revision)) and "??" or nil,
         base_revision = explorer and explorer.base_revision or nil,
     }
 end

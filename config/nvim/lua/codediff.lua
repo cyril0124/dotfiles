@@ -109,6 +109,84 @@ local function prune_tabline_buffers()
     end
 end
 
+local function build_outside_context()
+    local session = get_session()
+    if not session then
+        return nil
+    end
+
+    local function resolve_existing_file(path)
+        if type(path) ~= "string" or path == "" then
+            return nil
+        end
+
+        if vim.fn.filereadable(path) == 1 then
+            return path
+        end
+
+        if session.git_root then
+            local candidate = vim.fs.joinpath(session.git_root, path)
+            if vim.fn.filereadable(candidate) == 1 then
+                return candidate
+            end
+        end
+
+        return nil
+    end
+
+    local function context_from_buffer(bufnr)
+        if not shared.is_real_file_buffer(bufnr) then
+            return nil
+        end
+
+        local file = vim.api.nvim_buf_get_name(bufnr)
+        if file == "" then
+            return nil
+        end
+
+        return {
+            file = file,
+            cwd = session.git_root or vim.fs.dirname(file),
+        }
+    end
+
+    local current_context = context_from_buffer(vim.api.nvim_get_current_buf())
+    if current_context then
+        return current_context
+    end
+
+    for _, bufnr in ipairs({ session.modified_bufnr, session.result_bufnr, session.original_bufnr }) do
+        local context = context_from_buffer(bufnr)
+        if context then
+            return context
+        end
+    end
+
+    local file = resolve_existing_file(session.modified_path) or resolve_existing_file(session.original_path)
+    if not file and not session.git_root then
+        return nil
+    end
+
+    return {
+        file = file,
+        cwd = session.git_root or (file and vim.fs.dirname(file) or nil),
+    }
+end
+
+local function apply_outside_context(context)
+    if not context then
+        return
+    end
+
+    if context.cwd and context.cwd ~= "" then
+        pcall(vim.cmd, "tcd " .. vim.fn.fnameescape(context.cwd))
+    end
+
+    if context.file and context.file ~= "" then
+        pcall(vim.cmd, "edit " .. vim.fn.fnameescape(context.file))
+    end
+end
+
 local function suspend_ui_effects()
     local ok_winsep, winsep = pcall(require, "colorful-winsep")
     if ok_winsep and winsep.enabled then
@@ -383,11 +461,14 @@ function M.open(args)
     local elapsed_since_close = now_ms() - state.last_close_ms
 
     if M.is_current_session() and args and args ~= "" then
-        if not M.close_current() then
-            return
-        end
-        delay_ms = transition_delay_ms
-        run_command(command, delay_ms)
+        M.run_outside_current_session(function()
+            local reopen_delay = 0
+            local elapsed = now_ms() - state.last_close_ms
+            if state.transitioning or elapsed < transition_delay_ms then
+                reopen_delay = math.max(reopen_delay, transition_delay_ms - elapsed)
+            end
+            run_command(command, reopen_delay)
+        end)
         return
     end
 
@@ -409,9 +490,12 @@ function M.run_outside_current_session(fn)
         return run_safely(fn, "CodeDiff external action")
     end
 
+    local outside_context = build_outside_context()
+
     if #vim.api.nvim_list_tabpages() == 1 then
         local current_tab = vim.api.nvim_get_current_tabpage()
         vim.cmd("tabnew")
+        apply_outside_context(outside_context)
         if not run_safely(function()
             vim.cmd(vim.api.nvim_tabpage_get_number(current_tab) .. "tabclose")
         end, "CodeDiff close") then
