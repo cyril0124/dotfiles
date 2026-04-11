@@ -65,27 +65,6 @@ return {
         'stevearc/conform.nvim',
     },
 
-    {
-        "lewis6991/hover.nvim",
-        config = function()
-            require("hover").setup({
-                providers = {
-                    'hover.providers.diagnostic',
-                    'hover.providers.lsp',
-                    'hover.providers.dap',
-                    'hover.providers.man',
-                    -- 'hover.providers.dictionary',
-                },
-                preview_opts = {
-                    border = 'single'
-                },
-                mouse_providers = {
-                    'hover.providers.lsp',
-                },
-            })
-        end
-    },
-
     -- {
     --     "mason-org/mason.nvim",
     --     config = function()

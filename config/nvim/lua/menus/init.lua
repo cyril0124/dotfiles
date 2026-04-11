@@ -27,8 +27,6 @@ function M.show()
     local filetype = vim.bo[buf].filetype
 
     local is_diffview = require("lua.codediff").is_current_session()
-        or filetype == "DiffviewFiles"
-        or filetype == "DiffviewFileHistory"
 
     if is_diffview then
         menu.open(with_shared(require("lua.menus.diffview")))
