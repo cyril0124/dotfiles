@@ -20,6 +20,7 @@ REMOTE_SKILLS=(
   "openai/skills@frontend-skill"
   "kepano/obsidian-skills@obsidian-markdown"
   "hyperb1iss/hyperskills@tui-design"
+  "terrylica/cc-skills@ascii-diagram-validator"
 )
 
 info() {
