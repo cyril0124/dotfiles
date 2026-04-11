@@ -59,19 +59,24 @@ vim.keymap.set("n", "<leader>q", quit_guard.quit_all, { silent = true, desc = "Q
 vim.keymap.set("n", "<leader>t", "<CMD>ToggleTerm direction=float<CR>", { desc = "Toggle terminal(float)" })
 vim.keymap.set("n", "<leader>dt", "<CMD>ToggleTerm direction=horizontal<CR>", { desc = "Toggle terminal(down)" })
 
--- Telescope
+-- File search
 vim.keymap.set("n", "<leader>ff", function()
-    require("telescope.builtin").find_files()
-end, { desc = "Telescope find files" })
+    require("fff").find_files()
+end, { desc = "FFF find files" })
 vim.keymap.set("n", "<leader>fw", run_outside_codediff(function()
-    require("telescope.builtin").live_grep()
-end), { desc = "Telescope live grep" })
+    require("fff").live_grep()
+end), { desc = "FFF live grep" })
 vim.keymap.set("n", "<leader>gs", run_outside_codediff(function()
-    require("telescope.builtin").grep_string({ additional_args = { "-w" } })
-end), { desc = "Grep word under cursor(wholeword)" })
+    require("fff").live_grep({
+        query = "\\b" .. vim.fn.expand("<cword>") .. "\\b",
+        grep = {
+            modes = { "regex", "plain" },
+        },
+    })
+end), { desc = "FFF grep word under cursor(wholeword)" })
 vim.keymap.set("n", "<leader>gS", run_outside_codediff(function()
-    require("telescope.builtin").grep_string()
-end), { desc = "Grep word under cursor" })
+    require("fff").live_grep({ query = vim.fn.expand("<cword>") })
+end), { desc = "FFF grep word under cursor" })
 
 -- Search and replace
 vim.keymap.set("n", "<leader>sr", "<CMD>GrugFar<CR>", { desc = "Search and replace" })
@@ -150,7 +155,7 @@ vim.keymap.set("v", "<leader>m", menus.show, { desc = "Show menu" })
 vim.keymap.set("v", "<leader>M", menus.show, { desc = "Show menu" })
 
 vim.keymap.set("v", "<leader>gs",
-    '"ay<CMD>lua require("lua.codediff").run_outside_current_session(function() require("telescope.builtin").grep_string({ search = vim.fn.getreg("a") }) end)<CR>', {
+    '"ay<CMD>lua require("lua.codediff").run_outside_current_session(function() require("fff").live_grep({ query = vim.fn.getreg("a") }) end)<CR>', {
         noremap = true,
         silent = true,
         desc = "Grep selection into register 'a'",
