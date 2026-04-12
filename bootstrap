@@ -244,6 +244,40 @@ install_pixi() {
     mkdir -p $pixi_manifest_dir
     link_file "$DOTFILES_ROOT/pixi/pixi-global.toml" "$pixi_manifest_dir/pixi-global.toml"
     $pixi_cmd global sync
+
+    # Run post-install hooks
+    run_pixi_post_install
+}
+
+run_pixi_post_install() {
+    local post_install_file="$DOTFILES_ROOT/pixi/post-install.sh"
+
+    if [ ! -f "$post_install_file" ]; then
+        return 0
+    fi
+
+    info 'running pixi post-install hooks'
+
+    # Source the post-install file to load hook functions
+    source "$post_install_file"
+
+    # Find and run all post_install_* functions
+    local func cmd
+    for func in $(declare -F | awk '{print $3}' | grep '^post_install_'); do
+        cmd="${func#post_install_}"
+
+        if ! command -v "$cmd" &> /dev/null; then
+            info "skipping $cmd (not installed)"
+            continue
+        fi
+
+        info "running post-install hook for $cmd"
+        if "$func"; then
+            success "$cmd post-install done"
+        else
+            info "warning: $cmd post-install failed (may need manual setup)"
+        fi
+    done
 }
 
 install_tmux_conf() {
