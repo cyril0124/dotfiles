@@ -21,6 +21,7 @@ REMOTE_SKILLS=(
   "kepano/obsidian-skills@obsidian-markdown"
   "hyperb1iss/hyperskills@tui-design"
   "terrylica/cc-skills@ascii-diagram-validator"
+  "imxv/pretty-mermaid-skills@pretty-mermaid"
 )
 
 info() {

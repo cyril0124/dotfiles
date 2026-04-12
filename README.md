@@ -50,8 +50,8 @@ Examples:
 ./bootstrap skills           # Install skills only
 ./bootstrap codex_sync       # Sync ~/.codex -> repo/codex (sanitized)
 ./bootstrap dotfiles claude  # Install multiple components
-./my-skills.sh                  # Install all recorded skills
-./my-skills.sh list             # Show the recorded skills
+./my-skills.sh               # Install all recorded skills
+./my-skills.sh list          # Show the recorded skills
 ```
 
 ## Structure
