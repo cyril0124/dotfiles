@@ -24,6 +24,7 @@
 
 ## Tool Usage Principles
 
+- Use fff MCP tools for file search and grep operations when available.
 - Calls that are parallelizable, independent, free of shared writes, free of ordering dependencies, and cheaper to summarize than to serialize should be run in parallel.
 - Calls with dependencies, shared state, result interference, or obviously higher noise and summarization cost when parallelized must be run sequentially.
 - When necessary, use multiple parallel sub-agents to handle work that is decomposable and independent, and let the main agent perform the final aggregation and convergence. Do not split tasks that are tightly coupled, share too much context, or cost too much to merge.

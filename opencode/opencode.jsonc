@@ -151,10 +151,10 @@
   },
 
   "mcp": {
-    // Exa AI Web Search MCP Server
-    // "exa": {
-    //   "type": "remote",
-    //   "url": "https://mcp.exa.ai/mcp?tools=web_search_exa"
-    // }
+    "fff": {
+      "type": "local",
+      "command": ["fff-mcp"],
+      "enabled": true
+    }
   }
 }

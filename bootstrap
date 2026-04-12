@@ -256,12 +256,11 @@ run_pixi_post_install() {
         return 0
     fi
 
-    info 'running pixi post-install hooks'
-
     # Source the post-install file to load hook functions
     source "$post_install_file"
 
-    # Find and run all post_install_* functions
+    # Run post_install_* functions for installed commands
+    info 'running post-install hooks'
     local func cmd
     for func in $(declare -F | awk '{print $3}' | grep '^post_install_'); do
         cmd="${func#post_install_}"
@@ -276,6 +275,24 @@ run_pixi_post_install() {
             success "$cmd post-install done"
         else
             info "warning: $cmd post-install failed (may need manual setup)"
+        fi
+    done
+
+    # Run install_* functions for missing commands
+    info 'running standalone tool installers'
+    for func in $(declare -F | awk '{print $3}' | grep '^install_'); do
+        cmd="${func#install_}"
+
+        if command -v "$cmd" &> /dev/null; then
+            info "$cmd already installed"
+            continue
+        fi
+
+        info "installing $cmd"
+        if "$func"; then
+            success "$cmd installed"
+        else
+            info "warning: $cmd installation failed (may need manual setup)"
         fi
     done
 }
