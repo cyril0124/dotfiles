@@ -54,3 +54,24 @@
 - Think from first principles: identify the goal, constraints, and available paths first, then choose the most direct, lowest-cost, and verifiable solution. Reject habit-driven or path-dependent reasoning.
 - Fill in missing information: when the user's intent is incomplete, first gather what can be directly obtained from the code, files, configuration, and context. Do not guess, and do not ask the user for information that can be retrieved directly.
 - Before finishing the task, clean up any temporary files and scripts created during this task. If they are needed for reproduction, troubleshooting, or the user explicitly asks to keep them, keep them and say so.
+- Think before coding: state assumptions explicitly; if multiple interpretations exist, present them instead of picking silently; push back when a simpler approach exists; stop and ask when confused.
+
+## Goal-driven execution
+
+Define success criteria. Loop until verified.
+
+Transform tasks into verifiable goals:
+
+"Add validation" → "Write tests for invalid inputs, then make them pass"
+"Fix the bug" → "Write a test that reproduces it, then make it pass"
+"Refactor X" → "Ensure tests pass before and after"
+
+For multi-step tasks, state a brief plan:
+```
+1. [Step] → verify: [check]
+2. [Step] → verify: [check]
+3. [Step] → verify: [check]
+```
+Strong success criteria let you loop independently. Weak criteria ("make it work") require constant clarification.
+
+
