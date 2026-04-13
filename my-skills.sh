@@ -22,6 +22,7 @@ REMOTE_SKILLS=(
   "hyperb1iss/hyperskills@tui-design"
   "terrylica/cc-skills@ascii-diagram-validator"
   "imxv/pretty-mermaid-skills@pretty-mermaid"
+  "rknall/claude-skills|SVG Logo Designer@svg-logo-designer"
 )
 
 info() {
@@ -52,6 +53,21 @@ require_tools() {
 
 spec_skill_name() {
   printf '%s\n' "${1##*@}"
+}
+
+spec_source() {
+  local spec_without_name=${1%@*}
+  printf '%s\n' "${spec_without_name%%|*}"
+}
+
+spec_skill_selector() {
+  local spec_without_name=${1%@*}
+
+  if [ "$spec_without_name" = "${spec_without_name%%|*}" ]; then
+    return 1
+  fi
+
+  printf '%s\n' "${spec_without_name#*|}"
 }
 
 installed_skill_names() {
@@ -103,6 +119,19 @@ run_skills_add() {
   DISABLE_TELEMETRY=1 "${SKILLS_RUNNER[@]}" add "$@" -g -a "${AGENTS[@]}" -y
 }
 
+run_skills_add_for_spec() {
+  local spec=$1
+  local source selector
+
+  source=$(spec_source "$spec")
+  if selector=$(spec_skill_selector "$spec"); then
+    run_skills_add "$source" --skill "$selector"
+    return
+  fi
+
+  run_skills_add "$source"
+}
+
 install_remote_skills() {
   info "installing remote skills"
   load_installed_skills
@@ -121,7 +150,7 @@ install_remote_skills() {
     fi
 
     info "remote: $spec"
-    run_skills_add "$spec"
+    run_skills_add_for_spec "$spec"
   done
 }
 
