@@ -22,6 +22,7 @@ REMOTE_SKILLS=(
   "hyperb1iss/hyperskills@tui-design"
   "terrylica/cc-skills@ascii-diagram-validator"
   "imxv/pretty-mermaid-skills@pretty-mermaid"
+  "upstash/context7|context7-cli@context7-cli"
   "rknall/claude-skills|SVG Logo Designer@svg-logo-designer"
 )
 
