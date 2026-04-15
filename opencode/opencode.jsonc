@@ -150,11 +150,5 @@
     }
   },
 
-  "mcp": {
-    "fff": {
-      "type": "local",
-      "command": ["fff-mcp"],
-      "enabled": true
-    }
-  }
+  "mcp": {}
 }

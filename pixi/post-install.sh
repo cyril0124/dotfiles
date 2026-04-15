@@ -20,7 +20,3 @@ post_install_rtk() {
 # Function: install_<tool>
 # Called only if <tool> command NOT in PATH
 # ============================================
-
-install_fff-mcp() {
-    curl -fsSL https://dmtrkovalenko.dev/install-fff-mcp.sh | bash
-}
