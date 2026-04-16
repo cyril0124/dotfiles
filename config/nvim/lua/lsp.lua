@@ -16,10 +16,14 @@ vim.api.nvim_create_autocmd("LspAttach", {
             vim.lsp.inlay_hint.enable(true, { bufnr = bufnr })
         end
 
-        keymap.set("n", "K", lsp.buf.hover,
-            { buffer = bufnr, noremap = true, silent = true, desc = "LSP hover" })
-        keymap.set("n", "<leader>k", lsp.buf.hover,
-            { buffer = bufnr, noremap = true, silent = true, desc = "LSP hover" })
+        keymap.set("n", "K", function()
+            lsp.buf.hover({ border = "rounded" })
+        end, { buffer = bufnr, noremap = true, silent = true, desc = "LSP hover" })
+        keymap.set("n", "<leader>k", function()
+            vim.schedule(function()
+                lsp.buf.hover({ border = "rounded" })
+            end)
+        end, { buffer = bufnr, noremap = true, silent = true, desc = "LSP hover" })
     end
 })
 
