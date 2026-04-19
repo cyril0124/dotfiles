@@ -68,14 +68,19 @@ vim.keymap.set("n", "<leader>fw", run_outside_codediff(function()
 end), { desc = "FFF live grep" })
 vim.keymap.set("n", "<leader>gs", run_outside_codediff(function()
     require("fff").live_grep({
-        query = "\\b" .. vim.fn.expand("<cword>") .. "\\b",
+        query = vim.fn.expand("<cword>"),
         grep = {
-            modes = { "regex", "plain" },
+            modes = { "fuzzy", "plain", "regex" },
         },
     })
-end), { desc = "FFF grep word under cursor(wholeword)" })
+end), { desc = "FFF fuzzy grep word under cursor" })
 vim.keymap.set("n", "<leader>gS", run_outside_codediff(function()
-    require("fff").live_grep({ query = vim.fn.expand("<cword>") })
+    require("fff").live_grep({
+        query = vim.fn.expand("<cword>"),
+        grep = {
+            modes = { "plain", "regex", "fuzzy" },
+        },
+    })
 end), { desc = "FFF grep word under cursor" })
 
 -- Search and replace
