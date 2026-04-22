@@ -34,7 +34,7 @@ return {
 
                     local picker = action_state.get_current_picker(prompt_bufnr)
                     if picker and picker.cwd and path:sub(1, 1) ~= "/" then
-                        path = picker.cwd .. "/" .. path
+                        path = vim.fs.joinpath(picker.cwd, path)
                     end
 
                     actions.close(prompt_bufnr)

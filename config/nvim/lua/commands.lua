@@ -18,7 +18,7 @@ end, { desc = "Format and save" })
 
 -- Trim whitespace
 vim.api.nvim_create_user_command("TS", function()
-    MiniTrailspace.trim()
+    require("mini.trailspace").trim()
 end, { desc = "Trim whitespace" })
 
 -- Wrap toggle

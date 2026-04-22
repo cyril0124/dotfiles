@@ -27,22 +27,7 @@ vim.api.nvim_create_autocmd("LspAttach", {
     end
 })
 
--- Enable inlay hints for supported languages
--- Auto enabled by mason-lspconfig
-vim.lsp.config("emmylua_ls", {
-    cmd = { "emmylua_ls" },
-    filetypes = { "lua" },
-    root_markers = {
-        ".luarc.json",
-        ".emmyrc.json",
-        ".emmyrc.lua",
-        ".luacheckrc",
-    },
-    workspace_required = false,
-})
-
-vim.lsp.enable("emmylua_ls")
-
+-- LSP configurations for servers not managed by mason-lspconfig
 vim.lsp.config("jsonls", {
     settings = {
         json = {

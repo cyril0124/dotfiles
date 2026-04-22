@@ -40,7 +40,11 @@ local function configure_package_path()
 		config_dir .. "/lua/?/init.lua",
 	}
 
-	package.path = table.concat(package_paths, ";")
+	for _, path in ipairs(package_paths) do
+		if not package.path:find(path, 1, true) then
+			package.path = package.path .. ";" .. path
+		end
+	end
 end
 
 local function bootstrap_lazy()

@@ -58,7 +58,7 @@ return {
             provider = provider_option,
             provider_options = {
                 codestral = {
-                    optinoal = {
+                    optional = {
                         max_tokens = 256,
                         stop = { "\n\n" },
                         top_p = 0.9,
