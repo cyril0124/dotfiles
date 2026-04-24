@@ -15,7 +15,7 @@ local function now_ms()
 end
 
 local function run_safely(fn, context)
-    local ok, err = pcall(fn)
+    local ok, err = xpcall(fn, debug.traceback)
     if ok then
         return true
     end
@@ -120,6 +120,10 @@ local function build_outside_context()
             return nil
         end
 
+        if path:match("^codediff://") then
+            return nil
+        end
+
         if vim.fn.filereadable(path) == 1 then
             return path
         end
@@ -179,11 +183,21 @@ local function apply_outside_context(context)
     end
 
     if context.cwd and context.cwd ~= "" then
-        pcall(vim.cmd, "tcd " .. vim.fn.fnameescape(context.cwd))
+        local ok, err = pcall(vim.cmd, "tcd " .. vim.fn.fnameescape(context.cwd))
+        if not ok then
+            vim.schedule(function()
+                vim.notify("CodeDiff context tcd failed: " .. tostring(err), vim.log.levels.WARN)
+            end)
+        end
     end
 
     if context.file and context.file ~= "" then
-        pcall(vim.cmd, "edit " .. vim.fn.fnameescape(context.file))
+        local ok, err = pcall(vim.cmd, "edit " .. vim.fn.fnameescape(context.file))
+        if not ok then
+            vim.schedule(function()
+                vim.notify("CodeDiff context edit failed: " .. tostring(err), vim.log.levels.WARN)
+            end)
+        end
     end
 end
 
@@ -496,11 +510,18 @@ function M.run_outside_current_session(fn)
         local current_tab = vim.api.nvim_get_current_tabpage()
         vim.cmd("tabnew")
         apply_outside_context(outside_context)
-        if not run_safely(function()
+
+        local ok = run_safely(function()
             vim.cmd(vim.api.nvim_tabpage_get_number(current_tab) .. "tabclose")
-        end, "CodeDiff close") then
+        end, "CodeDiff close")
+
+        if not ok then
+            run_safely(function()
+                vim.cmd("tabclose")
+            end, "CodeDiff rollback")
             return false
         end
+
         return run_safely(fn, "CodeDiff external action")
     end
 

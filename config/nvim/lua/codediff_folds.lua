@@ -8,6 +8,8 @@ local profile_option_names = {
     "foldlevel",
 }
 
+local cached_context_lines = nil
+
 local function get_session(tabpage)
     local ok, lifecycle = pcall(require, "codediff.ui.lifecycle")
     if not ok then
@@ -35,7 +37,6 @@ local function prune_state()
 end
 
 local function get_state(tabpage)
-    prune_state()
     if not state_by_tabpage[tabpage] then
         state_by_tabpage[tabpage] = {
             enabled = default_enabled,
@@ -44,6 +45,10 @@ local function get_state(tabpage)
     end
 
     return state_by_tabpage[tabpage]
+end
+
+local function invalidate_diffopt_cache()
+    cached_context_lines = nil
 end
 
 local function is_supported_side_by_side(session)
@@ -95,6 +100,10 @@ local function add_fold_range(ranges, start_line, end_line)
 end
 
 local function get_diff_context_lines()
+    if cached_context_lines ~= nil then
+        return cached_context_lines
+    end
+
     local context = 6
 
     for _, item in ipairs(vim.opt.diffopt:get()) do
@@ -106,9 +115,10 @@ local function get_diff_context_lines()
     end
 
     if context == 0 then
-        return 1
+        context = 1
     end
 
+    cached_context_lines = context
     return context
 end
 
@@ -288,5 +298,21 @@ function M.clear_closed(tabpage)
         clear_session_folds(tabpage, false)
     end
 end
+
+local fold_group = vim.api.nvim_create_augroup("MyCodeDiffFoldPrune", { clear = true })
+
+vim.api.nvim_create_autocmd("TabClosed", {
+    group = fold_group,
+    callback = function()
+        prune_state()
+        invalidate_diffopt_cache()
+    end,
+})
+
+vim.api.nvim_create_autocmd("OptionSet", {
+    group = fold_group,
+    pattern = "diffopt",
+    callback = invalidate_diffopt_cache,
+})
 
 return M

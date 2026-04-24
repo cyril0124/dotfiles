@@ -8,13 +8,18 @@ local cursor_actions = {
     stage_hunk = true,
 }
 
+local gitsigns_cache_module = nil
+local gitsigns_attach_module = nil
+
 local function get_gitsigns_cache()
-    local ok, cache = pcall(require, "gitsigns.cache")
-    if not ok then
-        return nil
+    if gitsigns_cache_module == nil then
+        local ok, cache = pcall(require, "gitsigns.cache")
+        if ok then
+            gitsigns_cache_module = cache
+        end
     end
 
-    return cache.cache
+    return gitsigns_cache_module and gitsigns_cache_module.cache or nil
 end
 
 local function is_attached(bufnr)
@@ -108,12 +113,18 @@ local function try_attach_window(winid)
         return false
     end
 
-    local ok, attach = pcall(require, "gitsigns.attach")
-    if not ok then
+    if gitsigns_attach_module == nil then
+        local ok, attach = pcall(require, "gitsigns.attach")
+        if ok then
+            gitsigns_attach_module = attach
+        end
+    end
+
+    if gitsigns_attach_module == nil then
         return false
     end
 
-    attach.attach(bufnr, nil, nil)
+    gitsigns_attach_module.attach(bufnr, nil, nil)
 
     return vim.wait(800, function()
         return is_attached(bufnr)

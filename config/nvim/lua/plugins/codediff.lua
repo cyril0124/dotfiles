@@ -43,20 +43,25 @@ return {
             "statuscolumn",
         }
 
-        local original_apply = welcome_window.apply
-        local original_resume_diff = lifecycle_state.resume_diff
-        local original_update_diff_result = lifecycle.update_diff_result
-        local original_toggle_view_mode = explorer_actions.toggle_view_mode
-        local original_toggle_group = explorer_actions.toggle_group
-        local original_explorer_refresh = explorer_refresh.refresh
-        local original_view_update = view.update
-        local original_inline_show_single_file = inline_view.show_single_file
-        local original_inline_show_welcome = inline_view.show_welcome
-        local original_side_show_untracked_file = side_by_side_view.show_untracked_file
-        local original_side_show_deleted_file = side_by_side_view.show_deleted_file
-        local original_side_show_added_virtual_file = side_by_side_view.show_added_virtual_file
-        local original_side_show_deleted_virtual_file = side_by_side_view.show_deleted_virtual_file
-        local original_side_show_welcome = side_by_side_view.show_welcome
+        local function assert_api(fn, name)
+            assert(type(fn) == "function", "codediff internal API changed: " .. tostring(name))
+            return fn
+        end
+
+        local original_apply = assert_api(welcome_window.apply, "welcome_window.apply")
+        local original_resume_diff = assert_api(lifecycle_state.resume_diff, "lifecycle_state.resume_diff")
+        local original_update_diff_result = assert_api(lifecycle.update_diff_result, "lifecycle.update_diff_result")
+        local original_toggle_view_mode = assert_api(explorer_actions.toggle_view_mode, "explorer_actions.toggle_view_mode")
+        local original_toggle_group = assert_api(explorer_actions.toggle_group, "explorer_actions.toggle_group")
+        local original_explorer_refresh = assert_api(explorer_refresh.refresh, "explorer_refresh.refresh")
+        local original_view_update = assert_api(view.update, "view.update")
+        local original_inline_show_single_file = assert_api(inline_view.show_single_file, "inline_view.show_single_file")
+        local original_inline_show_welcome = assert_api(inline_view.show_welcome, "inline_view.show_welcome")
+        local original_side_show_untracked_file = assert_api(side_by_side_view.show_untracked_file, "side_by_side_view.show_untracked_file")
+        local original_side_show_deleted_file = assert_api(side_by_side_view.show_deleted_file, "side_by_side_view.show_deleted_file")
+        local original_side_show_added_virtual_file = assert_api(side_by_side_view.show_added_virtual_file, "side_by_side_view.show_added_virtual_file")
+        local original_side_show_deleted_virtual_file = assert_api(side_by_side_view.show_deleted_virtual_file, "side_by_side_view.show_deleted_virtual_file")
+        local original_side_show_welcome = assert_api(side_by_side_view.show_welcome, "side_by_side_view.show_welcome")
         local function status_signature(status_result)
             local groups = { "conflicts", "unstaged", "staged" }
             local chunks = {}
@@ -122,22 +127,20 @@ return {
                 return false
             end
 
-            local applied = false
             for name, value in pairs(opts or {}) do
                 local current_value, ok = safe_get_window_option(winid, name)
                 if not ok then
-                    return applied
+                    return false
                 end
                 if current_value ~= value then
                     ok = safe_set_window_option(winid, name, value)
                     if not ok then
-                        return applied
+                        return false
                     end
                 end
-                applied = true
             end
 
-            return applied
+            return true
         end
 
         local function apply_session_wrap(session)
@@ -194,14 +197,43 @@ return {
             end)
         end
 
+        local cached_markview_commands = nil
+        local cached_markview_state = nil
+
         local function get_markview_modules()
+            if cached_markview_commands ~= nil then
+                return cached_markview_commands, cached_markview_state
+            end
+
             local ok_commands, commands = pcall(require, "markview.commands")
-            local ok_state, state = pcall(require, "markview.state")
-            if not (ok_commands and ok_state) then
+            if not ok_commands then
                 return nil, nil
             end
 
+            local ok_state, state = pcall(require, "markview.state")
+            if not ok_state then
+                return nil, nil
+            end
+
+            cached_markview_commands = commands
+            cached_markview_state = state
             return commands, state
+        end
+
+        local function build_active_diff_buf_set()
+            local set = {}
+            for _, session in pairs(active_diffs()) do
+                if session.original_bufnr then
+                    set[session.original_bufnr] = true
+                end
+                if session.modified_bufnr then
+                    set[session.modified_bufnr] = true
+                end
+                if session.result_bufnr then
+                    set[session.result_bufnr] = true
+                end
+            end
+            return set
         end
 
         local function buffer_in_active_diff(bufnr)
@@ -209,13 +241,7 @@ return {
                 return false
             end
 
-            for _, session in pairs(active_diffs()) do
-                if session.original_bufnr == bufnr or session.modified_bufnr == bufnr or session.result_bufnr == bufnr then
-                    return true
-                end
-            end
-
-            return false
+            return build_active_diff_buf_set()[bufnr] == true
         end
 
         local function disable_markview(bufnr)
@@ -241,7 +267,7 @@ return {
             managed_markview_buffers[bufnr] = true
         end
 
-        local function restore_markview(bufnr)
+        local function restore_markview(bufnr, diff_set)
             local commands, state = get_markview_modules()
             if not (commands and state) then
                 return
@@ -254,7 +280,7 @@ return {
                 return
             end
 
-            if buffer_in_active_diff(bufnr) then
+            if diff_set and diff_set[bufnr] then
                 return
             end
 
@@ -272,6 +298,7 @@ return {
         end
 
         local function sync_markview(tabpage)
+            local diff_set = build_active_diff_buf_set()
             local session = tabpage and lifecycle.get_session(tabpage) or nil
             if session then
                 disable_markview(session.original_bufnr)
@@ -280,7 +307,7 @@ return {
             end
 
             for bufnr, _ in pairs(managed_markview_buffers) do
-                restore_markview(bufnr)
+                restore_markview(bufnr, diff_set)
             end
         end
 
@@ -297,12 +324,20 @@ return {
         end
 
         local function schedule_markview_restore(delay_ms, attempts_left)
-            vim.defer_fn(function()
-                sync_markview(nil)
-
-                if attempts_left > 1 and next(managed_markview_buffers) ~= nil then
-                    schedule_markview_restore(80, attempts_left - 1)
+            local function attempt(i)
+                if i > attempts_left then
+                    return
                 end
+                sync_markview(nil)
+                if i < attempts_left and next(managed_markview_buffers) ~= nil then
+                    vim.defer_fn(function()
+                        attempt(i + 1)
+                    end, 80)
+                end
+            end
+
+            vim.defer_fn(function()
+                attempt(1)
             end, delay_ms)
         end
 
@@ -325,18 +360,6 @@ return {
             end
 
             apply_explorer_window_opts(explorer.winid or (explorer.split and explorer.split.winid))
-        end
-
-        local function schedule_current_explorer_window_opts(tabpage, delay_ms)
-            local function sync()
-                apply_current_explorer_window_opts(tabpage)
-            end
-
-            if delay_ms and delay_ms > 0 then
-                vim.defer_fn(sync, delay_ms)
-            else
-                vim.schedule(sync)
-            end
         end
 
         local function arrange_session(tabpage)
@@ -382,22 +405,30 @@ return {
             end
         end
 
-        local function schedule_explorer_root_groups(tabpage, delay_ms)
-            local function sync()
+        local function schedule_explorer_sync(tabpage, opts_delay, groups_delay)
+            local o_delay = opts_delay or 20
+            local g_delay = groups_delay or 60
+
+            local function sync_opts()
+                apply_current_explorer_window_opts(tabpage)
+                sync_markview(tabpage)
+            end
+
+            local function sync_groups()
                 expand_explorer_root_groups(lifecycle.get_explorer(tabpage or vim.api.nvim_get_current_tabpage()))
             end
 
-            if delay_ms and delay_ms > 0 then
-                vim.defer_fn(sync, delay_ms)
+            if o_delay > 0 then
+                vim.defer_fn(sync_opts, o_delay)
             else
-                vim.schedule(sync)
+                vim.schedule(sync_opts)
             end
-        end
 
-        local function schedule_explorer_sync(tabpage, opts_delay, groups_delay)
-            schedule_current_explorer_window_opts(tabpage, opts_delay or 20)
-            schedule_explorer_root_groups(tabpage, groups_delay or 60)
-            schedule_markview_sync(tabpage, opts_delay or 20)
+            if g_delay > 0 then
+                vim.defer_fn(sync_groups, g_delay)
+            else
+                vim.schedule(sync_groups)
+            end
         end
 
         local function wrap_with_explorer_sync(fn, opts_delay, groups_delay)
@@ -423,6 +454,9 @@ return {
                 end
                 if sess.modified_win == winid then
                     return sess, "modified"
+                end
+                if sess.result_win == winid then
+                    return sess, "result"
                 end
             end
 
@@ -612,16 +646,40 @@ return {
         vim.api.nvim_create_autocmd("SwapExists", {
             group = group,
             callback = function()
-                if swap_guard.is_active() then
+                if not swap_guard.is_active() then
+                    return
+                end
+
+                local afile = vim.fn.expand("<afile>")
+                local in_session = false
+                for _, sess in pairs(active_diffs()) do
+                    if sess.original_path == afile or sess.modified_path == afile or sess.result_path == afile then
+                        in_session = true
+                        break
+                    end
+                end
+
+                if in_session or afile:match("^codediff://") then
                     vim.v.swapchoice = "e"
+                    vim.schedule(function()
+                        vim.notify("Swap file detected for " .. afile .. ", forcing edit (CodeDiff session)", vim.log.levels.WARN)
+                    end)
                 end
             end,
         })
 
+        local resize_timer = nil
         vim.api.nvim_create_autocmd("VimResized", {
             group = group,
             callback = function()
-                schedule_layout_sync(nil, 20)
+                if resize_timer then
+                    vim.fn.timer_stop(resize_timer)
+                    resize_timer = nil
+                end
+                resize_timer = vim.fn.timer_start(80, function()
+                    resize_timer = nil
+                    schedule_layout_sync(nil, 20)
+                end)
             end,
         })
 

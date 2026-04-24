@@ -44,12 +44,19 @@ function M.is_real_file_buffer(bufnr)
     return name ~= "" and not M.is_virtual_buffer_name(name)
 end
 
+local lifecycle_module = nil
+
 function M.get_lifecycle()
+    if lifecycle_module ~= nil then
+        return lifecycle_module
+    end
+
     local ok, lifecycle = pcall(require, "codediff.ui.lifecycle")
     if not ok then
         return nil
     end
 
+    lifecycle_module = lifecycle
     return lifecycle
 end
 
