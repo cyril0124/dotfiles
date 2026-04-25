@@ -1,6 +1,7 @@
 local M = {}
 
 local state_by_tabpage = {}
+local closing_session_by_tabpage = {}
 local default_enabled = true
 local profile_option_names = {
     "foldmethod",
@@ -9,6 +10,7 @@ local profile_option_names = {
 }
 
 local cached_context_lines = nil
+local restore_window_profile
 
 local function get_session(tabpage)
     local ok, lifecycle = pcall(require, "codediff.ui.lifecycle")
@@ -23,6 +25,13 @@ local function is_valid_window(winid)
     return winid and vim.api.nvim_win_is_valid(winid)
 end
 
+local function window_matches_buffer(winid, bufnr)
+    return is_valid_window(winid)
+        and bufnr
+        and vim.api.nvim_buf_is_valid(bufnr)
+        and vim.api.nvim_win_get_buf(winid) == bufnr
+end
+
 local function prune_state()
     local valid_tabs = {}
     for _, tabpage in ipairs(vim.api.nvim_list_tabpages()) do
@@ -34,6 +43,12 @@ local function prune_state()
             state_by_tabpage[tabpage] = nil
         end
     end
+
+    for tabpage, _ in pairs(closing_session_by_tabpage) do
+        if not valid_tabs[tabpage] then
+            closing_session_by_tabpage[tabpage] = nil
+        end
+    end
 end
 
 local function get_state(tabpage)
@@ -41,6 +56,7 @@ local function get_state(tabpage)
         state_by_tabpage[tabpage] = {
             enabled = default_enabled,
             window_profiles = {},
+            window_ids = {},
         }
     end
 
@@ -56,12 +72,24 @@ local function is_supported_side_by_side(session)
         and session.layout ~= "inline"
         and session.original_win ~= session.modified_win
         and not (session.result_win and vim.api.nvim_win_is_valid(session.result_win))
-        and is_valid_window(session.original_win)
-        and is_valid_window(session.modified_win)
+        and window_matches_buffer(session.original_win, session.original_bufnr)
+        and window_matches_buffer(session.modified_win, session.modified_bufnr)
 end
 
 local function capture_window_profile(state, side, winid)
-    if state.window_profiles[side] or not is_valid_window(winid) then
+    if not is_valid_window(winid) then
+        return
+    end
+
+    local previous_winid = state.window_ids[side]
+    if previous_winid and previous_winid ~= winid then
+        restore_window_profile(state.window_profiles[side], previous_winid)
+        state.window_profiles[side] = nil
+    end
+
+    state.window_ids[side] = winid
+
+    if state.window_profiles[side] then
         return
     end
 
@@ -72,7 +100,7 @@ local function capture_window_profile(state, side, winid)
     state.window_profiles[side] = profile
 end
 
-local function restore_window_profile(profile, winid)
+restore_window_profile = function(profile, winid)
     if not profile or not is_valid_window(winid) then
         return
     end
@@ -83,6 +111,12 @@ local function restore_window_profile(profile, winid)
             vim.wo[winid][name] = value
         end
     end)
+end
+
+local function restore_tracked_window(state, side)
+    restore_window_profile(state.window_profiles[side], state.window_ids[side])
+    state.window_profiles[side] = nil
+    state.window_ids[side] = nil
 end
 
 local function add_fold_range(ranges, start_line, end_line)
@@ -201,16 +235,51 @@ local function resync_scrollbind(session)
 end
 
 local function clear_session_folds(tabpage, keep_enabled)
-    local session = get_session(tabpage)
-    local state = get_state(tabpage)
-
-    if session then
-        restore_window_profile(state.window_profiles.original, session.original_win)
-        restore_window_profile(state.window_profiles.modified, session.modified_win)
+    local state = state_by_tabpage[tabpage]
+    if not state then
+        return
     end
+
+    restore_tracked_window(state, "original")
+    restore_tracked_window(state, "modified")
 
     if not keep_enabled then
         state_by_tabpage[tabpage] = nil
+    end
+end
+
+local function clear_orphaned_folds()
+    for tabpage, _ in pairs(state_by_tabpage) do
+        if not get_session(tabpage) then
+            clear_session_folds(tabpage, false)
+        end
+    end
+end
+
+local function sync_tracked_windows(tabpage)
+    local state = state_by_tabpage[tabpage]
+    if not state then
+        return
+    end
+
+    local session = get_session(tabpage)
+    if not session then
+        clear_session_folds(tabpage, false)
+        return
+    end
+
+    if state.window_ids.original and not window_matches_buffer(state.window_ids.original, session.original_bufnr) then
+        restore_tracked_window(state, "original")
+    end
+
+    if state.window_ids.modified and not window_matches_buffer(state.window_ids.modified, session.modified_bufnr) then
+        restore_tracked_window(state, "modified")
+    end
+end
+
+local function sync_all_tracked_windows()
+    for tabpage, _ in pairs(state_by_tabpage) do
+        sync_tracked_windows(tabpage)
     end
 end
 
@@ -224,7 +293,7 @@ function M.reapply(tabpage)
 
     local session = get_session(tabpage)
     if not session then
-        state_by_tabpage[tabpage] = nil
+        clear_session_folds(tabpage, false)
         return
     end
 
@@ -257,8 +326,18 @@ end
 function M.schedule_reapply(tabpage, delay_ms)
     tabpage = tabpage or vim.api.nvim_get_current_tabpage()
     local delay = delay_ms or 0
+    local scheduled_session = get_session(tabpage)
 
     local function run()
+        local closing_session = closing_session_by_tabpage[tabpage]
+        if closing_session then
+            if scheduled_session == closing_session then
+                return
+            end
+
+            closing_session_by_tabpage[tabpage] = nil
+        end
+
         M.reapply(tabpage)
     end
 
@@ -283,6 +362,7 @@ function M.toggle_current_session()
     end
 
     local state = get_state(tabpage)
+    closing_session_by_tabpage[tabpage] = nil
     state.enabled = not state.enabled
 
     if state.enabled then
@@ -295,8 +375,12 @@ end
 
 function M.clear_closed(tabpage)
     if tabpage then
+        closing_session_by_tabpage[tabpage] = get_session(tabpage)
         clear_session_folds(tabpage, false)
+        return
     end
+
+    clear_orphaned_folds()
 end
 
 local fold_group = vim.api.nvim_create_augroup("MyCodeDiffFoldPrune", { clear = true })
@@ -313,6 +397,13 @@ vim.api.nvim_create_autocmd("OptionSet", {
     group = fold_group,
     pattern = "diffopt",
     callback = invalidate_diffopt_cache,
+})
+
+vim.api.nvim_create_autocmd({ "BufWinEnter", "TabEnter" }, {
+    group = fold_group,
+    callback = function()
+        vim.schedule(sync_all_tracked_windows)
+    end,
 })
 
 return M
