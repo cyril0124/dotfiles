@@ -40,12 +40,18 @@
 - Use clear naming and pragmatic abstractions; add concise comments only for critical or non-obvious logic.
 - Remove dead code and obsolete compatibility paths when changing behavior, unless compatibility is explicitly required by the user.
 - Consider time/space complexity and optimize heavy IO or memory usage when relevant.
-- Handle edge cases explicitly; do not hide failures.
+- Handle edge cases explicitly.
 - Keep changes small, incremental, and reversible. Prefer reusing existing abstractions, avoid duplication, and avoid unnecessary large refactors or whole-file rewrites.
+
+## Reality Over Assumption
+
+- **IMPORTANT:** Reality is the only authority. If code, tests, logs, or runtime behavior contradict your assumption, your assumption is wrong.
+- Never present guesses, plausibility, or code inspection alone as evidence that something works.
+- If something cannot be verified within the current task, state that explicitly instead of implying confidence.
 
 ## Testing and Validation
 
-- Keep code testable and verify with automated checks whenever feasible.
+- Keep code testable and verify behavior with automated checks whenever feasible.
 - When running backend unit tests, enforce a hard timeout of 60 seconds to avoid stuck tasks.
 - Prefer static checks, formatting, and reproducible verification over ad-hoc manual confidence.
 
@@ -56,9 +62,9 @@
 - Before finishing the task, clean up any temporary files and scripts created during this task. If they are needed for reproduction, troubleshooting, or the user explicitly asks to keep them, keep them and say so.
 - Think before coding: state assumptions explicitly; if multiple interpretations exist, present them instead of picking silently; push back when a simpler approach exists; stop and ask when confused.
 
-## Goal-driven execution
+## Goal-driven Execution
 
-Define success criteria. Loop until verified.
+Define explicit success criteria before implementation.
 
 Transform tasks into verifiable goals:
 
@@ -72,6 +78,4 @@ For multi-step tasks, state a brief plan:
 2. [Step] → verify: [check]
 3. [Step] → verify: [check]
 ```
-Strong success criteria let you loop independently. Weak criteria ("make it work") require constant clarification.
-
-
+Avoid weak success criteria like "make it work" when a concrete verification target can be defined.
