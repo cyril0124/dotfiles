@@ -172,21 +172,27 @@ local function build_fold_ranges(changes, side, line_count)
 
         if mapping then
             local range = mapping[side]
-            first_line = range.start_line
-            last_line = range.end_line - 1
+            if range and type(range.start_line) == "number" and type(range.end_line) == "number" then
+                first_line = math.max(1, range.start_line)
+                last_line = math.min(line_count, range.end_line - 1)
+            else
+                goto continue
+            end
         else
             first_line = line_count + 1
         end
 
         if first_line - previous_last > 1 then
-            local fold_start = previous_last + context + 1
-            local fold_end = first_line - context - 1
+            local fold_start = math.max(1, previous_last + context + 1)
+            local fold_end = math.min(line_count, first_line - context - 1)
             add_fold_range(ranges, fold_start, fold_end)
         end
 
         if mapping then
             previous_last = last_line
         end
+
+        ::continue::
     end
 
     return ranges
@@ -197,13 +203,18 @@ local function apply_window_folds(winid, folds)
         return
     end
 
+    local bufnr = vim.api.nvim_win_get_buf(winid)
+    local line_count = vim.api.nvim_buf_line_count(bufnr)
+
     vim.api.nvim_win_call(winid, function()
         vim.wo[winid].foldmethod = "manual"
         vim.wo[winid].foldenable = true
         pcall(vim.cmd, "normal! zE")
 
         for _, fold in ipairs(folds) do
-            vim.cmd(string.format("%d,%dfold", fold[1], fold[2]))
+            if fold[1] >= 1 and fold[2] <= line_count and fold[1] <= fold[2] then
+                pcall(vim.cmd, string.format("%d,%dfold", fold[1], fold[2]))
+            end
         end
 
         vim.wo[winid].foldlevel = 0
@@ -216,20 +227,32 @@ local function resync_scrollbind(session)
         return
     end
 
-    local original_cursor = vim.api.nvim_win_get_cursor(session.original_win)
-    local modified_cursor = vim.api.nvim_win_get_cursor(session.modified_win)
+    local original_win = session.original_win
+    local modified_win = session.modified_win
+
+    local original_cursor, modified_cursor
+    local ok1, ok2
+
+    ok1, original_cursor = pcall(vim.api.nvim_win_get_cursor, original_win)
+    ok2, modified_cursor = pcall(vim.api.nvim_win_get_cursor, modified_win)
+    if not (ok1 and ok2) then
+        return
+    end
+
     local current_tab = vim.api.nvim_get_current_tabpage()
-    local target_tab = vim.api.nvim_win_get_tabpage(session.modified_win)
 
-    vim.wo[session.original_win].scrollbind = false
-    vim.wo[session.modified_win].scrollbind = false
-    vim.wo[session.original_win].scrollbind = true
-    vim.wo[session.modified_win].scrollbind = true
+    pcall(function()
+        vim.wo[original_win].scrollbind = false
+        vim.wo[modified_win].scrollbind = false
+        vim.wo[original_win].scrollbind = true
+        vim.wo[modified_win].scrollbind = true
+    end)
 
-    pcall(vim.api.nvim_win_set_cursor, session.original_win, original_cursor)
-    pcall(vim.api.nvim_win_set_cursor, session.modified_win, modified_cursor)
+    pcall(vim.api.nvim_win_set_cursor, original_win, original_cursor)
+    pcall(vim.api.nvim_win_set_cursor, modified_win, modified_cursor)
 
-    if current_tab == target_tab then
+    local ok3, target_tab = pcall(vim.api.nvim_win_get_tabpage, modified_win)
+    if ok3 and current_tab == target_tab then
         pcall(vim.cmd, "syncbind")
     end
 end
@@ -249,10 +272,15 @@ local function clear_session_folds(tabpage, keep_enabled)
 end
 
 local function clear_orphaned_folds()
+    local to_prune = {}
     for tabpage, _ in pairs(state_by_tabpage) do
         if not get_session(tabpage) then
-            clear_session_folds(tabpage, false)
+            to_prune[#to_prune + 1] = tabpage
         end
+    end
+
+    for _, tabpage in ipairs(to_prune) do
+        clear_session_folds(tabpage, false)
     end
 end
 
@@ -278,8 +306,15 @@ local function sync_tracked_windows(tabpage)
 end
 
 local function sync_all_tracked_windows()
+    local tabpages = {}
     for tabpage, _ in pairs(state_by_tabpage) do
-        sync_tracked_windows(tabpage)
+        tabpages[#tabpages + 1] = tabpage
+    end
+
+    for _, tabpage in ipairs(tabpages) do
+        if state_by_tabpage[tabpage] then
+            sync_tracked_windows(tabpage)
+        end
     end
 end
 
