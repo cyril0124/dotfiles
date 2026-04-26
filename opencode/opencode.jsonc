@@ -2,8 +2,8 @@
   "$schema": "https://opencode.ai/config.json",
 
   "plugin": [
-    "@tarquinen/opencode-dcp@latest",
-    "opencode-pty"
+    // "@tarquinen/opencode-dcp@latest",
+    // "opencode-pty"
   ],
 
   "instructions": ["CLAUDE.md"],
@@ -43,83 +43,124 @@
     "external_directory": "allow"
   },
 
-  "agent": {
-    "yolo": {
-      "mode": "primary",
-      "description": "High-trust primary agent that skips approval prompts for bash commands and external file access",
-      "permission": {
-        "bash": "allow",
-        "external_directory": "allow"
-      }
-    }
-  },
-
-  "default_agent": "yolo",
-
-  "model": "cpa/gpt-5.4",
+  "model": "github-copilot/gpt-4.1",
 
   "provider": {
-    "cpa": {
-      "npm": "@ai-sdk/openai",
-      "name": "cpa",
+    "litellm": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "litellm",
       "options": {
-        "baseURL": "{env:CPA_BASE_URL}",
-        // API key for local cliproxy service (placeholder/test key)
-        "apiKey": "{env:CPA_API_KEY}"
+        "baseURL": "http://127.0.0.1:4000/v1",
+        "apiKey": "sk-1234"
       },
       "models": {
-        "gpt-5.3-codex": {
-          "name": "GPT-5.3 Codex",
-          "options": {
-            "reasoningEffort": "high"
-          },
+        "kimi-k2.6": {
+          "name": "Kimi K2.6",
+          "attachment": true,
+          "reasoning": true,
+          "interleaved": { "field": "reasoning_content" },
           "limit": {
-            "context": 200000,
+            "context": 260000,
             "output": 0
           },
+          "modalities": {
+            "input": ["text", "image"],
+            "output": ["text"]
+          }
+        },
+        "deepseek-v4-pro": {
+          "name": "DeepSeek v4 Pro",
+          "attachment": true,
+          "reasoning": true,
+          "interleaved": { "field": "reasoning_content" },
+          "limit": {
+            "context": 1000000,
+            "output": 0
+          },
+          "modalities": {
+            "input": ["text"],
+            "output": ["text"]
+          },
           "variants": {
-            "low": {
-              "reasoningEffort": "low"
-            },
-            "medium": {
-              "reasoningEffort": "medium"
-            },
-            "high": {
-              "reasoningEffort": "high"
-            },
-            "xhigh": {
-              "reasoningEffort": "xhigh"
-            }
+            "high": { "reasoningEffort": "high" },
+            "max": { "reasoningEffort": "max" }
+          }
+        },
+        "deepseek-v4-flash": {
+          "name": "DeepSeek v4 Flash",
+          "attachment": true,
+          "reasoning": true,
+          "interleaved": { "field": "reasoning_content" },
+          "limit": {
+            "context": 1000000,
+            "output": 0
+          },
+          "modalities": {
+            "input": ["text"],
+            "output": ["text"]
+          },
+          "variants": {
+            "high": { "reasoningEffort": "high" },
+            "max": { "reasoningEffort": "max" }
+          }
+        },
+        "minimax-m2.7": {
+          "name": "MiniMax M2.7",
+          "attachment": true,
+          "reasoning": true,
+          "interleaved": { "field": "reasoning_content" },
+          "limit": {
+            "context": 204800,
+            "output": 0
+          },
+          "modalities": {
+            "input": ["text"],
+            "output": ["text"]
+          }
+        },
+        "glm-5.1": {
+          "name": "GLM-5.1",
+          "attachment": true,
+          "reasoning": true,
+          "interleaved": { "field": "reasoning_content" },
+          "limit": {
+            "context": 204800,
+            "output": 0
+          },
+          "modalities": {
+            "input": ["text"],
+            "output": ["text"]
+          }
+        },
+        "mimo-v2.5-pro": {
+          "name": "Mimo v2.5 Pro",
+          "attachment": true,
+          "reasoning": true,
+          "interleaved": { "field": "reasoning_content" },
+          "limit": {
+            "context": 1000000,
+            "output": 0
+          },
+          "modalities": {
+            "input": ["text", "image"],
+            "output": ["text"]
+          },
+          "variants": {
+            "high": { "reasoningEffort": "high" }
           }
         },
         "gpt-5.4": {
           "name": "GPT-5.4",
-          "options": {
-            "reasoningEffort": "high"
-          },
+          "attachment": true,
+          "reasoning": true,
+          "interleaved": { "field": "reasoning_content" },
           "limit": {
-            "context": 200000,
+            "context": 400000,
             "output": 0
           },
-          "variants": {
-            "low": {
-              "reasoningEffort": "low"
-            },
-            "medium": {
-              "reasoningEffort": "medium"
-            },
-            "high": {
-              "reasoningEffort": "high"
-            },
-            "xhigh": {
-              "reasoningEffort": "xhigh"
-            }
-          }
-        },
-        "gpt-5.4-mini": {
-          "name": "GPT-5.4 Mini",
-          "options": {
-            "reasoningEffort": "high"
+          "modalities": {
+            "input": ["text", "image"],
+            "output": ["text"]
           },
           "variants": {
             "low": {

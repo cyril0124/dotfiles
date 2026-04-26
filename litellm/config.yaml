@@ -1,0 +1,61 @@
+# LiteLLM does not read host/port from config.yaml.
+# This repo starts it via run.sh with --host 0.0.0.0 --port 4000.
+model_list:
+  - model_name: kimi-k2.6
+    litellm_params:
+      model: openai/kimi-k2.6
+      api_base: os.environ/JW_API_BASE
+      api_key: os.environ/JW_API_KEY
+
+  - model_name: deepseek-v4-flash
+    litellm_params:
+      model: openai/deepseek-v4-flash
+      api_base: os.environ/JW_API_BASE
+      api_key: os.environ/JW_API_KEY
+
+  - model_name: deepseek-v4-pro
+    litellm_params:
+      model: openai/deepseek-v4-pro
+      api_base: os.environ/JW_API_BASE
+      api_key: os.environ/JW_API_KEY
+
+  - model_name: minimax-m2.7
+    litellm_params:
+      model: anthropic/minimax-m2.7
+      api_base: os.environ/JW_API_ANTHROPIC_BASE
+      api_key: os.environ/JW_API_KEY
+
+  - model_name: glm-5.1
+    litellm_params:
+      model: openai/glm-5.1
+      api_base: os.environ/JW_API_BASE
+      api_key: os.environ/JW_API_KEY
+
+  - model_name: mimo-v2.5-pro
+    litellm_params:
+      model: openai/mimo-v2.5-pro
+      api_base: os.environ/JW_API_BASE
+      api_key: os.environ/JW_API_KEY
+
+  - model_name: gpt-5.4
+    litellm_params:
+      model: anthropic/gpt-5.4
+      api_base: os.environ/JW_API_ANTHROPIC_BASE
+      api_key: os.environ/JW_API_KEY_1
+
+router_settings:
+  model_group_alias:
+    claude-opus-4-7: deepseek-v4-pro
+    claude-sonnet-4-6: deepseek-v4-flash
+    claude-haiku-4-5-20251001: deepseek-v4-flash
+
+litellm_settings:
+  callbacks: anthropic_sse_fix.proxy_handler_instance
+  use_chat_completions_url_for_anthropic_messages: true
+  drop_params: true
+  num_retries: 5
+  request_timeout: 600
+  allowed_fails: 5
+
+general_settings:
+  master_key: sk-1234
