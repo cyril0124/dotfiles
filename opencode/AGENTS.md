@@ -29,6 +29,13 @@
 - Calls with dependencies, shared state, result interference, or obviously higher noise and summarization cost when parallelized must be run sequentially.
 - When necessary, use multiple parallel sub-agents to handle work that is decomposable and independent, and let the main agent perform the final aggregation and convergence. Do not split tasks that are tightly coupled, share too much context, or cost too much to merge.
 
+### Search Safety
+
+- Never launch a recursive file search (by name pattern or content) from a high-cardinality directory such as `~`, `/`, `/home`, `/etc`, or any path you have not first inspected.
+- Before searching, read or list the target directory to understand its scope. Use the resulting structure to pick the narrowest viable search path.
+- If you cannot determine a narrow path, narrow the search incrementally (list subdirectories, then search the most relevant one) rather than searching broadly.
+- Scout first, search second: a directory listing always precedes a recursive search.
+
 ### OpenCode-Specific Rules (OpenCode Only)
 
 - In OpenCode, do not use `spawn_agent` by default. Parallel subtasks should be handled through multiple `task` calls within the same round so each subtask remains observable and resumable.
