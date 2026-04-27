@@ -37,11 +37,11 @@ model_list:
       api_base: os.environ/JW_API_BASE
       api_key: os.environ/JW_API_KEY
 
-  - model_name: gpt-5.4
+  - model_name: gpt-5.5
     litellm_params:
-      model: anthropic/gpt-5.4
-      api_base: os.environ/JW_API_ANTHROPIC_BASE
-      api_key: os.environ/JW_API_KEY_1
+      model: openai/gpt-5.5
+      api_base: os.environ/JW_API_BASE
+      api_key: os.environ/JW_API_KEY_2
 
 router_settings:
   model_group_alias:
@@ -50,9 +50,10 @@ router_settings:
     claude-haiku-4-5-20251001: deepseek-v4-flash
 
 litellm_settings:
-  callbacks: anthropic_sse_fix.proxy_handler_instance
-  use_chat_completions_url_for_anthropic_messages: true
+  # callbacks: anthropic_sse_fix.proxy_handler_instance
+  # use_chat_completions_url_for_anthropic_messages: true
   drop_params: true
+  modify_params: true
   num_retries: 5
   request_timeout: 600
   allowed_fails: 5

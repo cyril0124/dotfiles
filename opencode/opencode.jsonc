@@ -149,8 +149,46 @@
             "high": { "reasoningEffort": "high" }
           }
         },
-        "gpt-5.4": {
-          "name": "GPT-5.4",
+        "gpt-5.5": {
+          "name": "GPT-5.5",
+          "attachment": true,
+          "reasoning": true,
+          "interleaved": { "field": "reasoning_content" },
+          "limit": {
+            "context": 400000,
+            "output": 0
+          },
+          "modalities": {
+            "input": ["text", "image"],
+            "output": ["text"]
+          },
+          "variants": {
+            "low": {
+              "reasoningEffort": "low"
+            },
+            "medium": {
+              "reasoningEffort": "medium"
+            },
+            "high": {
+              "reasoningEffort": "high"
+            },
+            "xhigh": {
+              "reasoningEffort": "xhigh"
+            }
+          }
+        }
+      }
+    },
+    "litellm-gpt": {
+      "npm": "@ai-sdk/openai",
+      "name": "litellm-gpt",
+      "options": {
+        "baseURL": "http://127.0.0.1:4000/v1",
+        "apiKey": "sk-1234"
+      },
+      "models": {
+        "gpt-5.5": {
+          "name": "GPT-5.5",
           "attachment": true,
           "reasoning": true,
           "interleaved": { "field": "reasoning_content" },
