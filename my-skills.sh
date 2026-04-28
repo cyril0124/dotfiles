@@ -2,9 +2,16 @@
 
 set -euo pipefail
 
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 SKILLS_RUNNER=(npx skills)
 AGENTS=(codex claude-code opencode)
 declare -A INSTALLED_SKILLS=()
+LOCAL_SKILLS_ROOT="$SCRIPT_DIR/skills"
+
+LOCAL_SKILLS=(
+  "generic-writing"
+  "cyril-notes"
+)
 
 REMOTE_SKILLS=(
   "vercel-labs/agent-browser@agent-browser"
@@ -24,6 +31,13 @@ REMOTE_SKILLS=(
   "imxv/pretty-mermaid-skills@pretty-mermaid"
   "upstash/context7|context7-cli@context7-cli"
   "rknall/claude-skills|SVG Logo Designer@svg-logo-designer"
+  "siviter-xyz/dot-agent@create-skill"
+  "microsoft/github-copilot-for-azure@skill-authoring"
+  "juliusbrussee/caveman@caveman"
+  "juliusbrussee/caveman@caveman-compress"
+  "juliusbrussee/caveman@caveman-review"
+  "https://github.com/baidu-netdisk/bdpan-storage|baidu-drive@baidu-drive"
+  "https://skills.sh/alchaincyf/darwin-skill/darwin-skill"
 )
 
 info() {
@@ -37,12 +51,13 @@ fail() {
 
 show_help() {
   cat <<EOF
-Usage: ./my-skills.sh [all|list]
+Usage: ./my-skills.sh [all|local|list]
 
 Install the skills recorded in this repo.
 
 Commands:
   all     Install all recorded skills (default)
+  local   Install local repo skills only
   list    Print the configured remote skills
   help    Show this message
 EOF
@@ -120,6 +135,10 @@ run_skills_add() {
   DISABLE_TELEMETRY=1 "${SKILLS_RUNNER[@]}" add "$@" -g -a "${AGENTS[@]}" -y
 }
 
+run_skills_remove() {
+  DISABLE_TELEMETRY=1 "${SKILLS_RUNNER[@]}" remove "$@" -g -a "${AGENTS[@]}" -y
+}
+
 run_skills_add_for_spec() {
   local spec=$1
   local source selector
@@ -131,6 +150,28 @@ run_skills_add_for_spec() {
   fi
 
   run_skills_add "$source"
+}
+
+install_local_skills() {
+  local skill_name skill_path
+
+  [ -d "$LOCAL_SKILLS_ROOT" ] || fail "local skills directory not found: $LOCAL_SKILLS_ROOT"
+
+  info "installing local skills"
+  load_installed_skills
+
+  for skill_name in "${LOCAL_SKILLS[@]}"; do
+    skill_path="$LOCAL_SKILLS_ROOT/$skill_name"
+    [ -d "$skill_path" ] || fail "local skill not found: $skill_path"
+
+    if [ -n "${INSTALLED_SKILLS[$skill_name]:-}" ]; then
+      info "refresh local skill: $skill_name"
+      run_skills_remove "$skill_name"
+    fi
+
+    info "local: $skill_path"
+    run_skills_add "$skill_path"
+  done
 }
 
 install_remote_skills() {
@@ -156,6 +197,8 @@ install_remote_skills() {
 }
 
 print_list() {
+  printf 'Local skills:\n'
+  printf '  %s\n' "${LOCAL_SKILLS[@]}"
   printf 'Remote skills:\n'
   printf '  %s\n' "${REMOTE_SKILLS[@]}"
 }
@@ -170,9 +213,14 @@ main() {
     list)
       print_list
       ;;
+    local)
+      require_tools
+      install_local_skills
+      ;;
     all)
       require_tools
       install_remote_skills
+      install_local_skills
       ;;
     *)
       show_help
