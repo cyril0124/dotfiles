@@ -11,6 +11,8 @@ LOCAL_SKILLS_ROOT="$SCRIPT_DIR/skills"
 LOCAL_SKILLS=(
   "generic-writing"
   "cyril-notes"
+  "commit-stage"
+  "grill-me"
 )
 
 REMOTE_SKILLS=(
@@ -20,7 +22,6 @@ REMOTE_SKILLS=(
   "anthropics/skills@pdf"
   "anthropics/skills@frontend-design"
   "jeffallan/claude-skills@code-reviewer"
-  "anthropics/skills@skill-creator"
   "github/awesome-copilot@refactor"
   "othmanadi/planning-with-files@planning-with-files"
   "lyndonkl/claude@socratic-teaching-scaffolds"
@@ -31,13 +32,12 @@ REMOTE_SKILLS=(
   "imxv/pretty-mermaid-skills@pretty-mermaid"
   "upstash/context7|context7-cli@context7-cli"
   "rknall/claude-skills|SVG Logo Designer@svg-logo-designer"
-  "siviter-xyz/dot-agent@create-skill"
-  "microsoft/github-copilot-for-azure@skill-authoring"
   "juliusbrussee/caveman@caveman"
   "juliusbrussee/caveman@caveman-compress"
   "juliusbrussee/caveman@caveman-review"
   "https://github.com/baidu-netdisk/bdpan-storage|baidu-drive@baidu-drive"
   "https://skills.sh/alchaincyf/darwin-skill/darwin-skill"
+  "mattpocock/skills@write-a-skill"
 )
 
 info() {
