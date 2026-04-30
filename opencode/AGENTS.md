@@ -24,14 +24,14 @@
 
 ## Tool Usage Principles
 
-- Use fff MCP tools for file search and grep operations when available.
 - Calls that are parallelizable, independent, free of shared writes, free of ordering dependencies, and cheaper to summarize than to serialize should be run in parallel.
 - Calls with dependencies, shared state, result interference, or obviously higher noise and summarization cost when parallelized must be run sequentially.
 - When necessary, use multiple parallel sub-agents to handle work that is decomposable and independent, and let the main agent perform the final aggregation and convergence. Do not split tasks that are tightly coupled, share too much context, or cost too much to merge.
 
 ### Search Safety
 
-- Never launch a recursive file search (by name pattern or content) from a high-cardinality directory such as `~`, `/`, `/home`, `/etc`, or any path you have not first inspected.
+- Never launch a recursive file search or content search from a high-cardinality directory such as `~`, `$HOME`, `/`, `/home`, `/etc`, or any path you have not first inspected.
+- This includes shell commands and tools such as `grep`, `rg`, `find`, `fd`, `glob`, and any recursive search mode.
 - Before searching, read or list the target directory to understand its scope. Use the resulting structure to pick the narrowest viable search path.
 - If you cannot determine a narrow path, narrow the search incrementally (list subdirectories, then search the most relevant one) rather than searching broadly.
 - Scout first, search second: a directory listing always precedes a recursive search.
