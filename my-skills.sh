@@ -13,6 +13,7 @@ LOCAL_SKILLS=(
   "cyril-notes"
   "commit-stage"
   "grill-me"
+  "update-agents-md"
 )
 
 REMOTE_SKILLS=(
