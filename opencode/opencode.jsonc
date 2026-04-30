@@ -3,7 +3,7 @@
 
   "plugin": [
     // "@tarquinen/opencode-dcp@latest",
-    // "opencode-pty"
+    "opencode-session-header"
   ],
 
   "instructions": ["CLAUDE.md"],
@@ -44,14 +44,18 @@
   },
 
   "model": "github-copilot/gpt-4.1",
+  "small_model": "litellm/deepseek-v4-flash",
 
   "provider": {
     "litellm": {
       "npm": "@ai-sdk/openai-compatible",
       "name": "litellm",
       "options": {
-        "baseURL": "http://127.0.0.1:4000/v1",
-        "apiKey": "sk-1234"
+        "setCacheKey": true,
+        "baseURL": "{env:JW_API_BASE}",
+        "apiKey": "{env:JW_API_KEY}"
+        // "baseURL": "http://127.0.0.1:4000/v1",
+        // "apiKey": "sk-1234"
       },
       "models": {
         "kimi-k2.6": {
@@ -148,12 +152,60 @@
           "variants": {
             "high": { "reasoningEffort": "high" }
           }
-        },
+        }
+      }
+    },
+
+    "litellm-gpt": {
+      "npm": "@ai-sdk/openai",
+      "name": "litellm-gpt",
+      "options": {
+        "setCacheKey": true,
+        "baseURL": "{env:JW_API_BASE}",
+        "apiKey": "{env:JW_API_KEY_2}"
+      },
+      "models": {
         "gpt-5.5": {
           "name": "GPT-5.5",
           "attachment": true,
           "reasoning": true,
           "interleaved": { "field": "reasoning_content" },
+          "options": {
+            "reasoningSummary": "detailed",
+            "store": false
+          },
+          "limit": {
+            "context": 400000,
+            "output": 0
+          },
+          "modalities": {
+            "input": ["text", "image"],
+            "output": ["text"]
+          },
+          "variants": {
+            "low": {
+              "reasoningEffort": "low"
+            },
+            "medium": {
+              "reasoningEffort": "medium"
+            },
+            "high": {
+              "reasoningEffort": "high"
+            },
+            "xhigh": {
+              "reasoningEffort": "xhigh"
+            }
+          }
+        },
+        "gpt-5.4": {
+          "name": "GPT-5.4",
+          "attachment": true,
+          "reasoning": true,
+          "interleaved": { "field": "reasoning_content" },
+          "options": {
+            "reasoningSummary": "detailed",
+            "store": false
+          },
           "limit": {
             "context": 400000,
             "output": 0
@@ -179,40 +231,56 @@
         }
       }
     },
-    "litellm-gpt": {
-      "npm": "@ai-sdk/openai",
-      "name": "litellm-gpt",
+
+    "litellm-claude": {
+      "npm": "@ai-sdk/anthropic",
+      "name": "litellm-claude",
       "options": {
-        "baseURL": "http://127.0.0.1:4000/v1",
-        "apiKey": "sk-1234"
+        "setCacheKey": true,
+        "baseURL": "{env:JW_API_ANTHROPIC_BASE}",
+        "apiKey": "{env:JW_API_KEY_2}"
       },
       "models": {
-        "gpt-5.5": {
-          "name": "GPT-5.5",
+        "claude-opus-4-7": {
+          "name": "Claude Opus 4.7",
           "attachment": true,
           "reasoning": true,
           "interleaved": { "field": "reasoning_content" },
           "limit": {
-            "context": 400000,
+            "context": 200000,
             "output": 0
           },
           "modalities": {
             "input": ["text", "image"],
             "output": ["text"]
+          }
+        },
+        "claude-opus-4-6": {
+          "name": "Claude Opus 4.6",
+          "attachment": true,
+          "reasoning": true,
+          "interleaved": { "field": "reasoning_content" },
+          "limit": {
+            "context": 200000,
+            "output": 0
           },
-          "variants": {
-            "low": {
-              "reasoningEffort": "low"
-            },
-            "medium": {
-              "reasoningEffort": "medium"
-            },
-            "high": {
-              "reasoningEffort": "high"
-            },
-            "xhigh": {
-              "reasoningEffort": "xhigh"
-            }
+          "modalities": {
+            "input": ["text", "image"],
+            "output": ["text"]
+          }
+        },
+        "claude-sonnet-4-6": {
+          "name": "Claude Sonnet 4.6",
+          "attachment": true,
+          "reasoning": true,
+          "interleaved": { "field": "reasoning_content" },
+          "limit": {
+            "context": 200000,
+            "output": 0
+          },
+          "modalities": {
+            "input": ["text", "image"],
+            "output": ["text"]
           }
         }
       }
