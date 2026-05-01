@@ -8,3 +8,4 @@ shell/local/bash.sh
 shell/local/zsh.sh
 .cache
 .local
+opencode/node_modules
