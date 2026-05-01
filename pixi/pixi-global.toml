@@ -115,11 +115,6 @@ channels = ["conda-forge"]
 dependencies = { ruff = "*" }
 exposed = { ruff = "ruff" }
 
-[envs.rtk-cli]
-channels = ["conda-forge"]
-dependencies = { rtk-cli = "*" }
-exposed = { rtk = "rtk" }
-
 [envs.tmux]
 channels = ["conda-forge"]
 dependencies = { tmux = "3.5.*" }

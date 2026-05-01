@@ -11,12 +11,12 @@
 # Called only if <command> exists in PATH
 # ============================================
 
-post_install_rtk() {
-    rtk --version &>/dev/null || rtk init -g --opencode
-}
-
 # ============================================
 # Standalone tool installers
 # Function: install_<tool>
 # Called only if <tool> command NOT in PATH
 # ============================================
+
+install_uv() {
+    curl -LsSf https://astral.sh/uv/install.sh | sh
+}
