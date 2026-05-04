@@ -65,11 +65,11 @@ Failure output format:
 ## Result
 Commit stopped.
 
+## Plain Explanation
+<one-sentence plain-language summary of what went wrong>
+
 ## Problem
 <what you found>
-
-## Relation to Staged Changes
-<related | unrelated | unclear>
 
 ## Reason
 <short explanation>
@@ -94,6 +94,9 @@ Success output format:
 ```markdown
 ## Result
 Commit created.
+
+## Plain Explanation
+<one-sentence plain-language summary of what this commit does>
 
 ## Commit Message
 `<type>: <description>`
