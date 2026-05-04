@@ -32,6 +32,7 @@ Collect diff + parse intent → Launch ≥3 subagents → Triage → Report to u
 | File paths: `cross-check src/foo.ts` | Uncommitted changes for those files | General review |
 | Arbitrary message: `cross-check 刚才改的认证逻辑` | Main agent parses which files/changes | Main agent parses review angle |
 | Message with angle: `cross-check 性能问题` | Main agent parses scope | Review focuses on performance |
+| Subagent count: `cross-check sub=5` | Same scope logic, count overridden | Uses N subagents instead of default |
 
 Default (no arguments): scope to **only changes agent made in this conversation** — exclude pre-existing dirty state. Use conversation history to determine actual scope.
 
@@ -44,7 +45,7 @@ No fixed thresholds. Main agent judges based on diff size and complexity.
 | Small | Each subagent sees full diff | Full diff |
 | Large | Partition by domain | Each subagent gets its domain's diff + cross-domain interface summary |
 
-Min 3 subagents. All use `general` type, same role, independent views. If domains < minimum, assign extra subagents to largest domain or fall back to full-diff review.
+Default 3 subagents (overridden by `sub=N` in message). All use `general` type, same role, independent views. If domains < count, assign extra subagents to largest domain or fall back to full-diff review.
 
 Partition by domain (large diffs):
 
@@ -63,7 +64,7 @@ Partition by domain (large diffs):
 
 ### Step 2 — Launch subagents
 
-Use `task` tool with `subagent_type: "general"`. **Launch all in parallel** in one message, min 3.
+Use `task` tool with `subagent_type: "general"`. **Launch all in parallel** in one message. Default 3 subagents unless overridden by `sub=N`.
 
 Each subagent prompt MUST include:
 
@@ -189,7 +190,7 @@ No decision prompt in final result.
 
 ## Constraints
 
-- **Min 3 subagents**: More for large diffs. User can specify count. Domains < minimum → assign extra to largest domain or fall back to full-diff review.
+- **Default 3 subagents**: Overridden by `sub=N` in user message. More for large diffs. Domains < count → assign extra to largest domain or fall back to full-diff review.
 - **Parallel launch**: All subagents in one message, never sequential.
 - **No editing during review**: Collect diff, launch reviews, then act on findings.
 - **Report before fixing**: Always show findings to user first. User decides.
