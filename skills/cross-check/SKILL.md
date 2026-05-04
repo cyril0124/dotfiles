@@ -137,7 +137,7 @@ Return ONLY this structured report:
 - If you explored files to verify a concern and found no issue, explicitly state "Verified: no issue" for that item — do not leave it ambiguous.
 ```
 
-### Step 3 — Triage and fix
+### Step 3 — Triage and present findings
 
 Collect all subagent results. Merge findings, de-duplicate, resolve contradictions by re-reading code.
 
@@ -145,15 +145,19 @@ Collect all subagent results. Merge findings, de-duplicate, resolve contradictio
 
 | Finding | Action |
 |---------|--------|
-| **Valid and should fix** | Fix it now. Apply suggested fix or write better one. |
+| **Valid and should fix** | Present to user with `question` tool if available. Let user decide to apply, skip, or modify. |
 | **Valid but out of scope** | Note for user. Do NOT fix tangential things. |
 | **Invalid / false positive** | Discard. Note why (e.g., "line 42 handles null already"). |
 | **Style preference** | Discard. Only flag if contradicts project convention. |
 
-**Fixing is mandatory for valid findings.** After fixes, re-run cross-check from Step 1 to verify fixes.
+**Present findings to user and ask for confirmation** before applying any fix. Use the `question` tool to list all valid findings and let user choose which to apply.
+
+After user confirms, apply fixes. Then re-run cross-check from Step 1 to verify fixes.
 
 | Overall verdict | Action |
 |-----------------|--------|
+| User approved all fixes | Apply fixes, then re-verify from Step 1. |
+| User skipped some issues | Re-verify remaining changes from Step 1, then proceed to Step 4. |
 | All findings resolved | Proceed to Step 4. |
 | Valid issues you cannot fix | Report to user with explanation. |
 | Round limit reached | Report remaining issues, let user decide. |
@@ -191,7 +195,7 @@ Collect all subagent results. Merge findings, de-duplicate, resolve contradictio
 - **Reviewing from memory**: Subagent must explore when unsure — unverified assumptions are not findings.
 - **Ignoring warnings**: Warnings often indicate real issues. Surface them.
 - **Over-fixing**: Style preferences ≠ correctness. Note but don't block.
-- **Listing without fixing**: Valid findings must be fixed, not just listed. Always triage and fix before re-verify.
+- **Fixing without user confirmation**: Always present findings to user with `question` tool before applying fixes. Let user decide.
 - **Sequential launches**: Always launch in parallel.
 - **Missing cross-domain issues**: Each subagent needs key interfaces from other domains to flag incompatibilities.
 - **Scope creep**: Without arguments, `git diff` includes pre-existing dirty state not from this conversation. Scope to agent's own changes only.

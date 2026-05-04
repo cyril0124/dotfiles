@@ -23,7 +23,25 @@ When all branches are resolved and no further questions remain, produce a final 
 - <What this plan covers>
 - <What is explicitly out of scope>
 
-Confirm: proceed with implementation? (yes / no / revise)
+Confirm: proceed with implementation? (yes / no / revise / save / show)
 ```
 
-Do not begin implementation until the user explicitly confirms "yes".
+Do not begin implementation until user confirms "yes".
+
+### Save option
+
+On **save**, write summary to file:
+
+1. Filename: `plan-<topic-slug>.md` (topic lowercased, spaces→`-`, strip non-alnum/dash).
+2. If exists, try `plan-<topic-slug>-1.md`, then `-2.md`, etc.
+3. Write full Design Summary (Decisions Made + Scope).
+4. Tell user filename; implementation **not** started — "yes" to proceed, "revise" to revisit.
+5. Re-prompt: `Confirm: proceed with implementation? (yes / no / revise / save / show)`
+
+### Show option
+
+On **show**, render design as ASCII architecture diagram:
+
+1. Use box-drawing chars (`─`, `│`, `┌`, `┐`, `└`, `┘`, `├`, `┤`, `┬`, `┴`, `┼`) for components, data flow, relationships, layers.
+2. Bird's-eye view of final design, not discussion process.
+3. Re-prompt: `Confirm: proceed with implementation? (yes / no / revise / save / show)`
