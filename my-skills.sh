@@ -14,6 +14,7 @@ LOCAL_SKILLS=(
   "commit-stage"
   "grill-me"
   "update-agents-md"
+  "cross-check"
 )
 
 REMOTE_SKILLS=(
