@@ -5,8 +5,11 @@ set -euo pipefail
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 SKILLS_RUNNER=(npx skills)
 AGENTS=(codex claude-code opencode)
-declare -A INSTALLED_SKILLS=()
-LOCAL_SKILLS_ROOT="$SCRIPT_DIR/skills"
+ declare -A INSTALLED_SKILLS=()
+ LOCAL_SKILLS_ROOT="$SCRIPT_DIR/skills"
+ AGENTS_SKILLS_DIR="$HOME/.agents/skills"
+ CLAUDE_SKILLS_DIR="$HOME/.claude/skills"
+ CODEX_SKILLS_DIR="$HOME/.codex/skills"
 
 LOCAL_SKILLS=(
   "generic-writing"
@@ -15,6 +18,8 @@ LOCAL_SKILLS=(
   "grill-me"
   "update-agents-md"
   "cross-check"
+  "minimal-change"
+  "parallelize"
 )
 
 REMOTE_SKILLS=(
@@ -148,24 +153,48 @@ run_skills_add_for_spec() {
 }
 
 install_local_skills() {
-  local skill_name skill_path
+  local skill_name skill_path agents_target claude_target codex_target
 
   [ -d "$LOCAL_SKILLS_ROOT" ] || fail "local skills directory not found: $LOCAL_SKILLS_ROOT"
 
-  info "installing local skills"
-  load_installed_skills
+  info "installing local skills (symlink)"
 
   for skill_name in "${LOCAL_SKILLS[@]}"; do
     skill_path="$LOCAL_SKILLS_ROOT/$skill_name"
     [ -d "$skill_path" ] || fail "local skill not found: $skill_path"
 
-    if [ -n "${INSTALLED_SKILLS[$skill_name]:-}" ]; then
-      info "refresh local skill: $skill_name"
+    agents_target="$AGENTS_SKILLS_DIR/$skill_name"
+    claude_target="$CLAUDE_SKILLS_DIR/$skill_name"
+    codex_target="$CODEX_SKILLS_DIR/$skill_name"
+
+    if [ -L "$agents_target" ]; then
+      info "refresh local skill symlink: $skill_name"
+      rm "$agents_target"
+    elif [ -e "$agents_target" ]; then
+      info "replace local skill copy with symlink: $skill_name"
       run_skills_remove "$skill_name"
+      rm -rf "$agents_target"
     fi
 
-    info "local: $skill_path"
-    run_skills_add "$skill_path"
+    mkdir -p "$AGENTS_SKILLS_DIR"
+    info "local: $skill_path → $agents_target"
+    ln -s "$skill_path" "$agents_target"
+
+    if [ -L "$claude_target" ]; then
+      rm "$claude_target"
+    elif [ -e "$claude_target" ]; then
+      rm -rf "$claude_target"
+    fi
+    mkdir -p "$CLAUDE_SKILLS_DIR"
+    ln -s "../../.agents/skills/$skill_name" "$claude_target"
+
+    if [ -L "$codex_target" ]; then
+      rm "$codex_target"
+    elif [ -e "$codex_target" ]; then
+      rm -rf "$codex_target"
+    fi
+    mkdir -p "$CODEX_SKILLS_DIR"
+    ln -s "../../.agents/skills/$skill_name" "$codex_target"
   done
 }
 
