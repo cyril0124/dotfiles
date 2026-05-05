@@ -20,6 +20,7 @@ LOCAL_SKILLS=(
   "cross-check"
   "minimal-change"
   "parallelize"
+  "git-add-hunk"
 )
 
 REMOTE_SKILLS=(
