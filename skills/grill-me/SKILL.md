@@ -5,7 +5,7 @@ description: Interview the user relentlessly about a plan or design until reachi
 
 Interview me relentlessly about every aspect of this plan until we reach a shared understanding. Walk down each branch of the design tree, resolving dependencies between decisions one-by-one. For each question, provide your recommended answer.
 
-Ask the questions one at a time, using the `question` tool if available. When providing options, mark the recommended one with "(Recommended)" so the user has a clear reference.
+Use the `question` tool to ask questions. If multiple questions have no dependency on each other, batch them into a single `questions` array. When providing options, mark the recommended one with "(Recommended)" so the user has a clear reference.
 
 If a question can be answered by exploring the codebase, explore the codebase instead.
 
@@ -34,7 +34,7 @@ On **save**, write summary to file:
 
 1. Filename: `plan-<topic-slug>.md` (topic lowercased, spaces→`-`, strip non-alnum/dash).
 2. If exists, try `plan-<topic-slug>-1.md`, then `-2.md`, etc.
-3. Write full Design Summary (Decisions Made + Scope).
+3. Write full Design Summary (Decisions Made + Scope). Do not include the "Confirm" prompt line in the file.
 4. Tell user filename; implementation **not** started — "yes" to proceed, "revise" to revisit.
 5. Re-prompt: `Confirm: proceed with implementation? (yes / no / revise / save / show)`
 
