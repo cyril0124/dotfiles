@@ -96,6 +96,7 @@ Diff:
 - Correctness: logic errors, off-by-one, wrong variable names?
 - Completeness: edge cases, error paths, missed callers?
 - Consistency: follows existing patterns in surrounding code?
+- Performance: unnecessary work, repeated computation, large allocations in hot paths?
 - Safety: security issues, leaked secrets, destructive ops?
 - Side effects: breaks other callers, tests, downstream?
 - Cross-domain (if applicable): interfaces between this domain and other changed domains still compatible?
