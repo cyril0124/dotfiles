@@ -106,9 +106,9 @@ If user-specified focus exists, weight findings in that area more heavily.
 
 One line per finding, caveman-review style:
 
-- `<file>:L<line>: 🔴 bug: <problem>. impact: <what breaks>. <fix>.`
-- `<file>:L<line>: 🟡 risk: <problem>. impact: <what could go wrong>. <fix>.`
-- `<file>:L<line>: 🔵 nit: <problem>. impact: <why it matters>. <fix>.`
+1. `<file>:L<line>: 🔴 bug: <problem>. impact: <what breaks>. <fix>.`
+2. `<file>:L<line>: 🟡 risk: <problem>. impact: <what could go wrong>. <fix>.`
+3. `<file>:L<line>: 🔵 nit: <problem>. impact: <why it matters>. <fix>.`
 - `<file>:L<line>: ❓ q: <genuine question>.`
 
 **impact must be in plain language**: describe the consequence in terms any user would understand. No jargon. e.g. "can't log in" not "auth token mismatch", "blank page" not "React render tree error".
@@ -142,8 +142,8 @@ Present findings to user BEFORE applying any fix:
 - <list of files changed>
 
 ### Issues Found
-- 🔴 L<line>: <description>. impact: <what breaks>. Suggested fix: <concrete suggestion>
-- 🟡 L<line>: <description>. impact: <what could go wrong>. Suggested fix: <concrete suggestion>
+1. 🔴 L<line>: <description>. impact: <what breaks>. Suggested fix: <concrete suggestion>
+2. 🟡 L<line>: <description>. impact: <what could go wrong>. Suggested fix: <concrete suggestion>
 
 Apply fixes? (fix / no / revise)
 ```
