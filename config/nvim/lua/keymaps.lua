@@ -159,12 +159,15 @@ vim.keymap.set("v", ">", ">gv", { noremap = true, silent = true })
 vim.keymap.set("v", "<leader>m", menus.show, { desc = "Show menu" })
 vim.keymap.set("v", "<leader>M", menus.show, { desc = "Show menu" })
 
-vim.keymap.set("v", "<leader>gs",
-    '"ay<CMD>lua require("lua.codediff").run_outside_current_session(function() require("fff").live_grep({ query = vim.fn.getreg("a") }) end)<CR>', {
-        noremap = true,
-        silent = true,
-        desc = "Grep selection into register 'a'",
-    })
+vim.keymap.set("v", "<leader>gs", function()
+    local saved = vim.fn.getreg("a")
+    vim.cmd('noautocmd normal! "ay')
+    local query = vim.fn.getreg("a")
+    vim.fn.setreg("a", saved)
+    require("lua.codediff").run_outside_current_session(function()
+        require("fff").live_grep({ query = query })
+    end)
+end, { desc = "Grep selection" })
 
 vim.keymap.set("x", "<leader>sr", "<CMD>'<,'>GrugFarWithin<CR>", { desc = "Search and replace in selection" })
 

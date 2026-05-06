@@ -7,6 +7,10 @@ vim.api.nvim_create_autocmd("WinEnter", {
     group = wrap_augroup,
     pattern = "*",
     callback = function()
+        if vim.api.nvim_win_get_config(0).relative ~= "" then
+            return
+        end
+
         if _G.global_wrap_enabled then
             vim.wo.wrap = true
         else

@@ -38,8 +38,6 @@ return {
         local managed_diagnostic_buffers = {}
         local managed_inlay_hint_buffers = {}
         local managed_lsp_clients = {}
-        local managed_lsp_blocked_buffers = {}
-        local managed_lsp_start_requests = {}
         local option_names = {
             "number",
             "relativenumber",
@@ -67,8 +65,6 @@ return {
         local original_side_show_added_virtual_file = assert_api(side_by_side_view.show_added_virtual_file, "side_by_side_view.show_added_virtual_file")
         local original_side_show_deleted_virtual_file = assert_api(side_by_side_view.show_deleted_virtual_file, "side_by_side_view.show_deleted_virtual_file")
         local original_side_show_welcome = assert_api(side_by_side_view.show_welcome, "side_by_side_view.show_welcome")
-        local original_lsp_start = assert_api(vim.lsp.start, "vim.lsp.start")
-        local original_lsp_buf_attach_client = assert_api(vim.lsp.buf_attach_client, "vim.lsp.buf_attach_client")
         local function status_signature(status_result)
             local groups = { "conflicts", "unstaged", "staged" }
             local chunks = {}
@@ -458,99 +454,6 @@ return {
             end, delay_ms)
         end
 
-        local function block_lsp_start(bufnr)
-            if not (bufnr and vim.api.nvim_buf_is_valid(bufnr)) then
-                return
-            end
-
-            vim.b[bufnr].codediff_disable_lsp = true
-            managed_lsp_blocked_buffers[bufnr] = true
-        end
-
-        local function queue_lsp_start_request(bufnr, config, opts)
-            if not bufnr then
-                return
-            end
-
-            local replay_opts = vim.tbl_extend("force", {}, opts or {})
-            replay_opts.bufnr = bufnr
-
-            local requests = managed_lsp_start_requests[bufnr] or {}
-            requests[#requests + 1] = {
-                config = config,
-                opts = replay_opts,
-            }
-            managed_lsp_start_requests[bufnr] = requests
-        end
-
-        local function replay_lsp_start_requests(bufnr)
-            if not (bufnr and vim.api.nvim_buf_is_valid(bufnr)) then
-                return
-            end
-
-            local requests = managed_lsp_start_requests[bufnr]
-            if not requests then
-                return
-            end
-
-            managed_lsp_start_requests[bufnr] = nil
-            for _, request in ipairs(requests) do
-                original_lsp_start(request.config, request.opts)
-            end
-        end
-
-        local function restore_lsp_start(bufnr, diff_set)
-            if not bufnr then
-                return
-            end
-
-            if not vim.api.nvim_buf_is_valid(bufnr) then
-                managed_lsp_blocked_buffers[bufnr] = nil
-                managed_lsp_start_requests[bufnr] = nil
-                return
-            end
-
-            if diff_set and diff_set[bufnr] then
-                return
-            end
-
-            vim.b[bufnr].codediff_disable_lsp = nil
-            managed_lsp_blocked_buffers[bufnr] = nil
-            replay_lsp_start_requests(bufnr)
-        end
-
-        local function sync_lsp_start_blocks(tabpage)
-            local diff_set = build_active_diff_buf_set()
-            local session = tabpage and lifecycle.get_session(tabpage) or nil
-            if session then
-                block_lsp_start(session.original_bufnr)
-                block_lsp_start(session.modified_bufnr)
-                block_lsp_start(session.result_bufnr)
-            end
-
-            for bufnr, _ in pairs(managed_lsp_blocked_buffers) do
-                restore_lsp_start(bufnr, diff_set)
-            end
-        end
-
-        local function schedule_lsp_start_block_restore(delay_ms, attempts_left)
-            local function attempt(i)
-                if i > attempts_left then
-                    return
-                end
-                sync_lsp_start_blocks(nil)
-                if i < attempts_left and next(managed_lsp_blocked_buffers) ~= nil then
-                    vim.defer_fn(function()
-                        attempt(i + 1)
-                    end, 80)
-                end
-            end
-
-            vim.defer_fn(function()
-                attempt(1)
-            end, delay_ms)
-        end
-
         local function detach_lsp_clients(bufnr)
             if not (bufnr and vim.api.nvim_buf_is_valid(bufnr)) then
                 return
@@ -575,7 +478,6 @@ return {
             end
 
             if detached_any then
-                managed_lsp_start_requests[bufnr] = nil
                 managed_lsp_clients[bufnr] = detached_client_ids
             end
         end
@@ -601,7 +503,7 @@ return {
 
             local all_attached = true
             for client_id, _ in pairs(detached_client_ids) do
-                local ok, attached = pcall(original_lsp_buf_attach_client, bufnr, client_id)
+                local ok, attached = pcall(vim.lsp.buf_attach_client, bufnr, client_id)
                 if not (ok and attached) then
                     all_attached = false
                 end
@@ -769,7 +671,6 @@ return {
             local g_delay = groups_delay or 60
 
             local function sync_opts()
-                sync_lsp_start_blocks(tabpage)
                 apply_current_explorer_window_opts(tabpage)
                 sync_markview(tabpage)
                 sync_diagnostics(tabpage)
@@ -902,32 +803,6 @@ return {
             end)
         end
 
-        vim.lsp.start = function(config, opts)
-            if opts and opts.attach == false then
-                return original_lsp_start(config, opts)
-            end
-
-            local bufnr = opts and opts.bufnr or 0
-            if bufnr == 0 then
-                bufnr = vim.api.nvim_get_current_buf()
-            end
-
-            if bufnr and vim.api.nvim_buf_is_valid(bufnr) and vim.b[bufnr].codediff_disable_lsp then
-                queue_lsp_start_request(bufnr, config, opts)
-                return nil
-            end
-
-            return original_lsp_start(config, opts)
-        end
-
-        vim.lsp.buf_attach_client = function(bufnr, client_id)
-            if bufnr and vim.api.nvim_buf_is_valid(bufnr) and vim.b[bufnr].codediff_disable_lsp then
-                return false
-            end
-
-            return original_lsp_buf_attach_client(bufnr, client_id)
-        end
-
         view.update = wrap_with_explorer_sync(original_view_update)
         inline_view.show_single_file = wrap_with_explorer_sync(original_inline_show_single_file)
         inline_view.show_welcome = wrap_with_explorer_sync(original_inline_show_welcome)
@@ -1031,17 +906,7 @@ return {
                 codediff_folds.schedule_reapply(tabpage, 60)
                 sync_diagnostics(tabpage)
                 sync_inlay_hints(tabpage)
-                sync_lsp_start_blocks(tabpage)
                 sync_lsp_clients(tabpage)
-            end,
-        })
-
-        vim.api.nvim_create_autocmd({ "BufReadPre", "BufNewFile" }, {
-            group = group,
-            callback = function(ev)
-                if lifecycle.get_session(vim.api.nvim_get_current_tabpage()) then
-                    block_lsp_start(ev.buf)
-                end
             end,
         })
 
@@ -1102,7 +967,6 @@ return {
                 schedule_markview_restore(20, 6)
                 schedule_diagnostic_restore(20, 6)
                 schedule_inlay_hint_restore(20, 6)
-                schedule_lsp_start_block_restore(20, 6)
                 schedule_lsp_restore(20, 6)
                 codediff_folds.clear_closed(ev.data and ev.data.tabpage or nil)
             end,
@@ -1144,10 +1008,7 @@ return {
                     return
                 end
 
-                if not buffer_in_active_diff(ev.buf) then
-                    restore_lsp_start(ev.buf, build_active_diff_buf_set())
-                elseif is_listable_session_buffer(ev.buf) then
-                    block_lsp_start(ev.buf)
+                if is_listable_session_buffer(ev.buf) then
                     disable_markview(ev.buf)
                     detach_lsp_clients(ev.buf)
                     disable_diagnostics(ev.buf)

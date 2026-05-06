@@ -11,11 +11,6 @@ vim.api.nvim_create_user_command("FF", function()
     vim.cmd("w")
 end, { desc = "Format and save" })
 
-vim.api.nvim_create_user_command("FW", function()
-    formatter.format()
-    vim.cmd("w")
-end, { desc = "Format and save" })
-
 -- Trim whitespace
 vim.api.nvim_create_user_command("TS", function()
     require("mini.trailspace").trim()

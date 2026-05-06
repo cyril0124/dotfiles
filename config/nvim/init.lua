@@ -14,23 +14,6 @@ vim.filetype.add({
 	},
 })
 
--- vim.o.clipboard = 'unamedplus'
--- vim.g.clipboard = 'osc52'
--- local function no_paste(reg)
---     return function() end
--- end
--- vim.g.clipboard = {
---     name = 'OSC52',
---     copy = {
---         ['+'] = require('vim.ui.clipboard.osc52').copy('+'),
---         ['*'] = require('vim.ui.clipboard.osc52').copy('*'),
---     },
---     paste = {
---         ['+'] = no_paste('+'),
---         ['*'] = no_paste('*'),
---     },
--- }
-
 local function configure_package_path()
 	local config_dir = vim.fn.stdpath("config")
 	local package_paths = {

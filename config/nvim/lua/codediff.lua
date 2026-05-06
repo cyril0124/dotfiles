@@ -512,7 +512,10 @@ function M.run_outside_current_session(fn)
         apply_outside_context(outside_context)
 
         local ok = run_safely(function()
-            vim.cmd(vim.api.nvim_tabpage_get_number(current_tab) .. "tabclose")
+            if vim.api.nvim_tabpage_is_valid(current_tab) then
+                local tab_num = vim.api.nvim_tabpage_get_number(current_tab)
+                vim.cmd(tab_num .. "tabclose")
+            end
         end, "CodeDiff close")
 
         if not ok then
