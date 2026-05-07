@@ -41,6 +41,7 @@ Review every line. Do not assume correctness. Look for:
 - Commented-out debug, formatting issues
 
 Need context? Inspect nearby code/files. Do not guess.
+Suspected bug? Reproduce it before confirming — no speculation; practice is the sole criterion for truth.
 
 ### Step 3 — Classify findings
 
