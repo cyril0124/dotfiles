@@ -21,6 +21,7 @@ LOCAL_SKILLS=(
   "minimal-change"
   "parallelize"
   "git-add-hunk"
+  "self-improve"
 )
 
 REMOTE_SKILLS=(
