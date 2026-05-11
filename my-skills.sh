@@ -18,6 +18,7 @@ LOCAL_SKILLS=(
   "grill-me"
   "update-agents-md"
   "cross-check"
+  "explain-diff"
   "minimal-change"
   "parallelize"
   "git-add-hunk"
