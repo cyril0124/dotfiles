@@ -23,6 +23,7 @@ LOCAL_SKILLS=(
   "parallelize"
   "git-add-hunk"
   "self-improve"
+  "handoff"
 )
 
 REMOTE_SKILLS=(
