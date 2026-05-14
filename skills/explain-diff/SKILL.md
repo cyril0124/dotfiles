@@ -1,6 +1,6 @@
 ---
 name: explain-diff
-description: Explain a Git diff hunk by hunk and write a Chinese markdown explanation file named explain-<topic>.md. Use when the user asks to explain a diff, uses /explain-diff, or wants a written change explanation from git diff output.
+description: Explain Git diffs hunk by hunk and write a Chinese explain-<topic>.md report. Use when user asks to explain a diff, run /explain-diff, document staged/unstaged changes, or review change intent.
 ---
 
 # Explain Diff
@@ -13,15 +13,18 @@ Explain Git changes in plain Chinese. Group by file + hunk. Write exactly one ma
    - No explicit target: inspect `git diff` + `git diff --cached` together as current uncommitted changes.
    - Explicit target after `/explain-diff`: run `git diff <user-argument>` exactly.
    - Natural-language scope/filter: translate intent to proper Git diff scope. Do not run raw text as shell command.
-2. Analyze each contiguous diff hunk.
-3. Create `explain-<topic-slug>.md`; if exists, use `-2`, `-3`, etc.
-4. Reply with created filename + short 2-3 sentence summary only.
+2. If resolved diff is empty: do not create file. Reply `No diff to explain.`
+3. Inspect complete resolved diff before writing. Do not explain from memory or partial output.
+4. Analyze each contiguous diff hunk.
+5. Create `explain-<topic-slug>.md`; if exists, use `-2`, `-3`, etc.
+6. Reply with created filename + short 2-3 sentence summary only.
 
 ## Explanation Rules
 
 - Explain hunk by hunk.
 - Group by file.
 - Include exact raw diff hunk in diff format before explanation.
+- If a hunk exceeds 30 lines, split its explanation into logical parts under the same hunk. Each part should reference the relevant line range or changed block and explain that part separately. Still include the full raw diff hunk; never omit diff lines or replace them with ellipses.
 - Focus intent, effect, user-visible impact; avoid literal restatement.
 - Plain language. Avoid jargon.
 - Keep each hunk concise, usually 1-3 sentences.
@@ -63,6 +66,10 @@ Use exact structure in generated file:
 ```
 
 <plain-language explanation of what changed, why it matters, and what effect it has>
+
+[For hunks over 30 lines, repeat as needed]
+**Part <n>: <short label>**
+<plain-language explanation for this logical part>
 
 #### Bug Check
 <brief note describing the obvious bug, risk, or suspicious issue in the user's language>
