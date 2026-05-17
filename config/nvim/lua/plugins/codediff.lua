@@ -20,7 +20,6 @@ return {
 
         local codediff = require("lua.codediff")
         local codediff_shared = require("lua.codediff_shared")
-        local codediff_folds = require("lua.codediff_folds")
         local lifecycle = require("codediff.ui.lifecycle")
         local lifecycle_state = require("codediff.ui.lifecycle.state")
         local layout = require("codediff.ui.layout")
@@ -706,7 +705,6 @@ return {
                     return nil
                 end
                 schedule_explorer_sync(tabpage, opts_delay, groups_delay)
-                codediff_folds.schedule_reapply(tabpage, math.max(opts_delay or 20, groups_delay or 40))
                 return result
             end
         end
@@ -833,7 +831,6 @@ return {
             apply_current_session_wrap(tabpage)
             ensure_current_session_buflisted(tabpage)
             schedule_explorer_sync(tabpage, 20, 40)
-            codediff_folds.schedule_reapply(tabpage, 60)
         end
 
         explorer_actions.toggle_view_mode = function(explorer, ...)
@@ -903,7 +900,6 @@ return {
                 schedule_current_session_wrap(tabpage)
                 ensure_current_session_buflisted(tabpage)
                 schedule_explorer_sync(tabpage, 20, 40)
-                codediff_folds.schedule_reapply(tabpage, 60)
                 sync_diagnostics(tabpage)
                 sync_inlay_hints(tabpage)
                 sync_lsp_clients(tabpage)
@@ -956,7 +952,6 @@ return {
             callback = function(ev)
                 local tabpage = ev.data and ev.data.tabpage or nil
                 schedule_explorer_sync(tabpage)
-                codediff_folds.schedule_reapply(tabpage, 60)
             end,
         })
 
@@ -968,7 +963,6 @@ return {
                 schedule_diagnostic_restore(20, 6)
                 schedule_inlay_hint_restore(20, 6)
                 schedule_lsp_restore(20, 6)
-                codediff_folds.clear_closed(ev.data and ev.data.tabpage or nil)
             end,
         })
 
