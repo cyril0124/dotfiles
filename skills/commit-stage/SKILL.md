@@ -37,6 +37,7 @@ Review every line. Do not assume correctness. Look for:
 - Logic errors, off-by-one, missing error handling
 - Wrong variable names, broken assumptions, race conditions
 - API misuse, regressions, behavior-breaking changes
+- Security/privacy leaks: secrets, tokens, private keys, credentials, `.env` values, personal data, internal hosts/IPs, user absolute paths, machine-local cache/build paths, accidentally staged logs/caches/build outputs
 - Missing tests, incomplete refactors, dead code
 - Commented-out debug, formatting issues
 
