@@ -24,6 +24,7 @@ LOCAL_SKILLS=(
   "git-add-hunk"
   "self-improve"
   "handoff"
+  "public-page"
 )
 
 REMOTE_SKILLS=(
