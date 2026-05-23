@@ -24,6 +24,7 @@ LOCAL_SKILLS=(
   "git-add-hunk"
   "self-improve"
   "handoff"
+  "ascii-visual"
   "public-page"
 )
 
