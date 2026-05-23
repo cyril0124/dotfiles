@@ -1,6 +1,6 @@
 ---
 name: public-page
-description: Publish static HTML files or static site directories to temporary public URLs with automatic TTL expiry, without platform auth or local tunnels. Uses ZeroDeploy Drop by default and can fall back to PageDrop or Aired. Use when the user wants a public web page, shareable demo, hosted HTML report, or non-local preview without using a personal hosting account; do not use for permanent production sites or dynamic backends.
+description: Publish static HTML files or static site directories to temporary public URLs with automatic TTL expiry, without platform auth or local tunnels. Uses PageDrop by default and can fall back to Aired. Use when the user wants a public web page, shareable demo, hosted HTML report, or non-local preview without using a personal hosting account; do not use for permanent production sites or dynamic backends.
 ---
 
 # Public Page
@@ -23,15 +23,13 @@ Do not use it for dynamic servers, databases, authenticated apps, long-term prod
 
 Default fallback order:
 
-1. ZeroDeploy Drop — simple temporary deploy; fixed 72-hour expiry; supports HTML and tar.gz.
-2. PageDrop — supports TTL, password, HTML/Markdown/ZIP/PDF; good first fallback.
-3. Aired — supports TTL, PIN, update/delete tokens; good second fallback for HTML and small pages.
+1. PageDrop — supports TTL, password, HTML/Markdown/ZIP/PDF; default provider.
+2. Aired — supports TTL, PIN, update/delete tokens; fallback for HTML and small pages.
 
 Use TTL-capable providers only. Do not use permanent/no-expiry mode for this skill unless the user explicitly asks.
 
 ## Limits
 
-- ZeroDeploy Drop: 72-hour expiry, 10 MB per file, 25 MB total, 1,000 files, 5 deploys/hour/IP.
 - PageDrop: TTL supported, HTML JSON body conservatively 5 MB, ZIP/PDF 10 MB, 50 files per ZIP, 10 creates/minute/IP.
 - Aired: TTL supported, default 7 days, max page size 2 MB, 5 uploads/hour/IP.
 
@@ -54,7 +52,6 @@ Choose a provider:
 ```bash
 bash skills/public-page/scripts/deploy.sh ./index.html --provider pagedrop --ttl 1d
 bash skills/public-page/scripts/deploy.sh ./index.html --provider aired --ttl 24h
-bash skills/public-page/scripts/deploy.sh ./index.html --provider zerodeploy
 ```
 
 ## Workflow
@@ -79,12 +76,12 @@ When deployment succeeds, return only the useful details:
 
 ```text
 Public URL: https://...
-Provider: zerodeploy | pagedrop | aired
+Provider: pagedrop | aired
 Expires: 72 hours / expires_at ...
 Note: Hosted as a temporary public page; not localhost.
 ```
 
-Do not expose provider update/delete/claim tokens unless the user needs redeploy or deletion instructions; treat them like capability tokens.
+Do not expose provider update/delete tokens unless the user needs redeploy or deletion instructions; treat them like capability tokens.
 
 ## Common pitfalls
 
@@ -92,4 +89,5 @@ Do not expose provider update/delete/claim tokens unless the user needs redeploy
 - Do not present a local tunnel as permanent hosting.
 - Do not claim the URL is permanent; this skill is for TTL-expiring public pages.
 - Do not upload personal privacy data, secrets, credentials, private notes, tokens, internal documents, or non-public user data.
-- If a provider fails, surface the provider failure and then explicitly try the next configured fallback.
+- If PageDrop fails, surface the provider failure and then explicitly try Aired.
+- Aired fallback in this script supports single HTML files only.

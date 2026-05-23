@@ -4,23 +4,21 @@ set -euo pipefail
 INPUT=""
 PROVIDER="auto"
 TTL="72h"
-CLAIM_TOKEN=""
 PIN=""
 
 usage() {
   cat <<'USAGE'
 Usage:
-  deploy.sh <index.html|static-dir|site.tar.gz> [options]
+  deploy.sh <index.html|static-dir> [options]
 
 Options:
-  --provider auto|zerodeploy|pagedrop|aired  Provider to use (default: auto)
-  --ttl 72h|1d|86400                         TTL target for providers that support custom TTL
-  --claim-token TOKEN                        ZeroDeploy claim token for redeploy
-  --pin PIN                                  Aired PIN protection
-  -h, --help                                 Show help
+  --provider auto|pagedrop|aired  Provider to use (default: auto)
+  --ttl 72h|1d|86400              TTL target
+  --pin PIN                       Aired PIN protection
+  -h, --help                      Show help
 
 Publishes a static page/site to a temporary public URL with automatic expiry.
-Auto provider order: zerodeploy -> pagedrop -> aired.
+Auto provider order: pagedrop -> aired.
 USAGE
 }
 
@@ -34,11 +32,6 @@ while [ "$#" -gt 0 ]; do
     --ttl)
       [ "$#" -ge 2 ] || { echo "Error: --ttl requires a value" >&2; exit 2; }
       TTL="$2"
-      shift 2
-      ;;
-    --claim-token)
-      [ "$#" -ge 2 ] || { echo "Error: --claim-token requires a token" >&2; exit 2; }
-      CLAIM_TOKEN="$2"
       shift 2
       ;;
     --pin)
@@ -62,7 +55,7 @@ while [ "$#" -gt 0 ]; do
 done
 
 case "$PROVIDER" in
-  auto|zerodeploy|pagedrop|aired) ;;
+  auto|pagedrop|aired) ;;
   *) echo "Error: unsupported provider: $PROVIDER" >&2; exit 2 ;;
 esac
 
@@ -84,7 +77,6 @@ trap cleanup EXIT
 
 INPUT_KIND=""
 HTML_PATH=""
-TARBALL_PATH=""
 ZIP_PATH=""
 
 prepare_input() {
@@ -94,25 +86,21 @@ prepare_input() {
         INPUT_KIND="html"
         HTML_PATH="$INPUT"
         ;;
-      *.tar.gz|*.tgz)
-        INPUT_KIND="tarball"
-        TARBALL_PATH="$INPUT"
-        ;;
       *)
-        echo "Error: file input must be .html, .htm, .tar.gz, or .tgz" >&2
+        echo "Error: file input must be .html or .htm" >&2
         exit 2
         ;;
     esac
   elif [ -d "$INPUT" ]; then
     [ -f "$INPUT/index.html" ] || { echo "Error: static directory must contain index.html at its root" >&2; exit 2; }
+    if ! command -v zip >/dev/null 2>&1; then
+      echo "Error: zip is required for static directory deployment" >&2
+      exit 127
+    fi
     TMP_DIR=$(mktemp -d)
     INPUT_KIND="directory"
-    TARBALL_PATH="$TMP_DIR/site.tar.gz"
-    tar -czf "$TARBALL_PATH" -C "$INPUT" .
-    if command -v zip >/dev/null 2>&1; then
-      ZIP_PATH="$TMP_DIR/site.zip"
-      (cd "$INPUT" && zip -qr "$ZIP_PATH" .)
-    fi
+    ZIP_PATH="$TMP_DIR/site.zip"
+    (cd "$INPUT" && zip -qr "$ZIP_PATH" .)
   else
     echo "Error: input path does not exist: $INPUT" >&2
     exit 2
@@ -179,12 +167,7 @@ except json.JSONDecodeError:
     print(raw)
     raise SystemExit("Error: provider response was not JSON")
 
-if provider == "zerodeploy":
-    payload = data.get("data") or {}
-    url = payload.get("url")
-    expires = payload.get("expires_at")
-    token = payload.get("claim_token")
-elif provider == "pagedrop":
+if provider == "pagedrop":
     payload = data.get("data") or {}
     url = payload.get("url")
     expires = payload.get("expiresAt")
@@ -210,29 +193,6 @@ print(json.dumps({
 PY
 }
 
-deploy_zerodeploy() {
-  local endpoint="https://api.zerodeploy.dev/drop" upload_path content_type response
-  if [ "$INPUT_KIND" = "html" ]; then
-    upload_path="$HTML_PATH"
-    content_type="text/html"
-  else
-    [ -n "$TARBALL_PATH" ] || { echo "zerodeploy requires html, directory, or tarball input" >&2; return 1; }
-    upload_path="$TARBALL_PATH"
-    content_type="application/gzip"
-  fi
-  check_size "$upload_path" $((25 * 1024 * 1024)) "ZeroDeploy upload" || return 1
-  if [ -n "$CLAIM_TOKEN" ]; then
-    response=$(curl -sS -X POST "$endpoint" -H "Content-Type: $content_type" -H "X-Claim-Token: $CLAIM_TOKEN" --data-binary "@$upload_path")
-  else
-    response=$(curl -sS -X POST "$endpoint" -H "Content-Type: $content_type" --data-binary "@$upload_path")
-  fi
-  if echo "$response" | grep -q '"error"'; then
-    echo "$response" >&2
-    return 1
-  fi
-  emit_result zerodeploy "$response"
-}
-
 deploy_pagedrop() {
   local endpoint="https://pagedrop.dev/api/v1/sites" response ttl_pd
   ttl_pd=$(ttl_to_pagedrop)
@@ -248,10 +208,6 @@ print(json.dumps({"html": html, "ttl": ttl}))
 PY
 )
   else
-    if [ -z "$ZIP_PATH" ]; then
-      echo "PageDrop fallback requires zip command for directory input; tar.gz input is not supported" >&2
-      return 1
-    fi
     check_size "$ZIP_PATH" $((10 * 1024 * 1024)) "PageDrop ZIP" || return 1
     response=$(curl -sS -X POST "$endpoint" -F "file=@$ZIP_PATH" -F "ttl=$ttl_pd")
   fi
@@ -263,7 +219,7 @@ PY
 }
 
 deploy_aired() {
-  local endpoint="https://aired.sh/api/publish" ttl_seconds response
+  local ttl_seconds response
   ttl_seconds=$(ttl_to_seconds)
   if [ "$INPUT_KIND" != "html" ]; then
     echo "Aired fallback in this script supports single HTML files only" >&2
@@ -291,13 +247,12 @@ PY
 }
 
 try_provider() {
-  local p=$1
-  echo "Trying provider: $p" >&2
-  case "$p" in
-    zerodeploy) deploy_zerodeploy ;;
+  local provider=$1
+  echo "Trying provider: $provider" >&2
+  case "$provider" in
     pagedrop) deploy_pagedrop ;;
     aired) deploy_aired ;;
-    *) echo "Error: unknown provider: $p" >&2; return 1 ;;
+    *) echo "Error: unknown provider: $provider" >&2; return 1 ;;
   esac
 }
 
@@ -309,17 +264,17 @@ if [ "$PROVIDER" != "auto" ]; then
 fi
 
 errors=""
-for p in zerodeploy pagedrop aired; do
+for provider in pagedrop aired; do
   out_file=$(mktemp)
   err_file=$(mktemp)
-  if try_provider "$p" >"$out_file" 2>"$err_file"; then
+  if try_provider "$provider" >"$out_file" 2>"$err_file"; then
     cat "$out_file"
     rm -f "$out_file" "$err_file"
     exit 0
   fi
-  echo "Provider failed: $p" >&2
+  echo "Provider failed: $provider" >&2
   cat "$err_file" >&2
-  errors="$errors\n[$p]\n$(cat "$err_file")"
+  errors="$errors\n[$provider]\n$(cat "$err_file")"
   rm -f "$out_file" "$err_file"
 done
 
