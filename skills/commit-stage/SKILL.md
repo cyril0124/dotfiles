@@ -70,6 +70,12 @@ Commit stopped.
 ## Plain Explanation
 <one-sentence plain-language summary of what went wrong>
 
+## Review Checklist
+- [ ] Staged diff reviewed line by line
+- [ ] Correctness/regression risks checked
+- [ ] Security/privacy leaks checked
+- [ ] Commit scope boundary checked
+
 ## Problem
 <what you found>
 
@@ -99,6 +105,12 @@ Commit created.
 
 ## Plain Explanation
 <one-sentence plain-language summary of what this commit does>
+
+## Review Checklist
+- [ ] Staged diff reviewed line by line
+- [ ] Correctness/regression risks checked
+- [ ] Security/privacy leaks checked
+- [ ] Commit scope boundary checked
 
 ## Commit Message
 `<type>: <description>`
