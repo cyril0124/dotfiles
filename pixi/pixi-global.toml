@@ -10,11 +10,6 @@ channels = ["conda-forge"]
 dependencies = { gawk = "*" }
 exposed = { awk = "awk", gawk = "gawk", "gawk-5.3.1" = "gawk-5.3.1", gawkbug = "gawkbug" }
 
-[envs.tealdeer]
-channels = ["conda-forge"]
-dependencies = { tealdeer = "*" }
-exposed = { tldr = "tldr" }
-
 [envs.hyperfine]
 channels = ["conda-forge"]
 dependencies = { hyperfine = "*" }
@@ -70,16 +65,6 @@ channels = ["conda-forge"]
 dependencies = { git-lfs = "*" }
 exposed = { git-lfs = "git-lfs" }
 
-[envs.direnv]
-channels = ["conda-forge"]
-dependencies = { direnv = "*" }
-exposed = { direnv = "direnv" }
-
-[envs.bear]
-channels = ["conda-forge"]
-dependencies = { bear = "*" }
-exposed = { bear = "bear" }
-
 [envs.clang-tools]
 channels = ["conda-forge"]
 dependencies = { clang-tools = "*" }
@@ -114,6 +99,11 @@ exposed = { lazysql = "lazysql" }
 channels = ["conda-forge"]
 dependencies = { ruff = "*" }
 exposed = { ruff = "ruff" }
+
+[envs.diffnav]
+channels = ["conda-forge"]
+dependencies = { diffnav = "*" }
+exposed = { diffnav = "diffnav" }
 
 [envs.tmux]
 channels = ["conda-forge"]
