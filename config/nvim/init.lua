@@ -11,6 +11,7 @@ vim.g.loaded_netrwPlugin = 1
 vim.filetype.add({
 	extension = {
 		jsonl = "json",
+		mdx = "markdown",
 	},
 })
 
