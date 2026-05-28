@@ -538,10 +538,16 @@ if vim.env.DOTFILES_CI ~= "1" then
   if not ok then fail(err) end
 end
 
--- Safety timeout: force-quit after 5 minutes to prevent hanging forever
-local timeout_ms = 5 * 60 * 1000
+-- In CI, skip Mason (large binary downloads not needed for validation)
+if vim.env.DOTFILES_CI == "1" then
+  vim.cmd("qa")
+  return
+end
+
+-- Safety timeout: force-quit after 15 minutes to prevent hanging forever
+local timeout_ms = 15 * 60 * 1000
 vim.defer_fn(function()
-  vim.api.nvim_err_writeln("ERROR: mason install timed out after 5 minutes")
+  vim.api.nvim_err_writeln("ERROR: mason install timed out after 15 minutes")
   vim.cmd("cquit 1")
 end, timeout_ms)
 

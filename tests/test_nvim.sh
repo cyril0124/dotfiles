@@ -43,16 +43,20 @@ done
 [ "$all_ok" -eq 1 ] && pass "treesitter parsers present: ${parsers[*]}"
 
 echo "==> Mason packages"
-mason_dir="$NVIM_DATA/mason/packages"
-ensure=(emmylua_ls clangd json-lsp rust-analyzer ty)
-all_ok=1
-for pkg in "${ensure[@]}"; do
-  if [ ! -d "$mason_dir/$pkg" ]; then
-    fail "mason package missing: $pkg"
-    all_ok=0
-  fi
-done
-[ "$all_ok" -eq 1 ] && pass "mason packages present: ${ensure[*]}"
+if [ "${DOTFILES_CI:-}" = "1" ]; then
+  pass "mason check skipped in CI (no binary downloads)"
+else
+  mason_dir="$NVIM_DATA/mason/packages"
+  ensure=(emmylua_ls clangd json-lsp rust-analyzer ty)
+  all_ok=1
+  for pkg in "${ensure[@]}"; do
+    if [ ! -d "$mason_dir/$pkg" ]; then
+      fail "mason package missing: $pkg"
+      all_ok=0
+    fi
+  done
+  [ "$all_ok" -eq 1 ] && pass "mason packages present: ${ensure[*]}"
+fi
 
 echo "==> checkhealth"
 tmp_health=$(mktemp /tmp/nvim_health_XXXXXX.log)
