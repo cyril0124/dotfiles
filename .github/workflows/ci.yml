@@ -49,6 +49,7 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y zsh build-essential
 
       - name: First bootstrap run
+        timeout-minutes: 45
         env:
           DOTFILES_CI: "1"
         run: |
@@ -56,6 +57,7 @@ jobs:
           echo "$HOME/.pixi/bin" >> "$GITHUB_PATH"
 
       - name: Second bootstrap run (idempotency)
+        timeout-minutes: 30
         env:
           DOTFILES_CI: "1"
         run: ./bootstrap

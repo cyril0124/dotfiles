@@ -67,7 +67,7 @@ exposed = { git-lfs = "git-lfs" }
 
 [envs.clang-tools]
 channels = ["conda-forge"]
-dependencies = { clang-tools = "*" }
+dependencies = { clang-tools = "22.*" }
 exposed = { amdgpu-arch = "amdgpu-arch", analyze-build = "analyze-build", clang-apply-replacements = "clang-apply-replacements", clang-change-namespace = "clang-change-namespace", clang-check = "clang-check", clang-doc = "clang-doc", clang-extdef-mapping = "clang-extdef-mapping", clang-include-cleaner = "clang-include-cleaner", clang-include-fixer = "clang-include-fixer", clang-installapi = "clang-installapi", clang-linker-wrapper = "clang-linker-wrapper", clang-move = "clang-move", clang-nvlink-wrapper = "clang-nvlink-wrapper", clang-offload-bundler = "clang-offload-bundler", clang-query = "clang-query", clang-refactor = "clang-refactor", clang-reorder-fields = "clang-reorder-fields", clang-repl = "clang-repl", clang-scan-deps = "clang-scan-deps", clang-sycl-linker = "clang-sycl-linker", clang-tidy = "clang-tidy", clangd = "clangd", diagtool = "diagtool", find-all-symbols = "find-all-symbols", git-clang-format = "git-clang-format", hmaptool = "hmaptool", intercept-build = "intercept-build", modularize = "modularize", nvptx-arch = "nvptx-arch", offload-arch = "offload-arch", pp-trace = "pp-trace", run-clang-tidy = "run-clang-tidy", scan-build = "scan-build", scan-build-py = "scan-build-py", scan-view = "scan-view" }
 
 [envs.parallel]
@@ -112,5 +112,16 @@ exposed = { tmux = "tmux" }
 
 [envs.rust]
 channels = ["conda-forge"]
-dependencies = { rust = "*", rust-analyzer = "*" }
+dependencies = { rust = "1.*", rust-analyzer = "*" }
 exposed = { cargo = "cargo", rustc = "rustc", rustdoc = "rustdoc", rust-gdb = "rust-gdb", rust-lldb = "rust-lldb", rust-analyzer = "rust-analyzer" }
+
+[envs.postgresql]
+channels = ["conda-forge"]
+dependencies = { postgresql = "18.*" }
+exposed = { clusterdb = "clusterdb", createdb = "createdb", createuser = "createuser", dropdb = "dropdb", dropuser = "dropuser", ecpg = "ecpg", initdb = "initdb", oid2name = "oid2name", pg_amcheck = "pg_amcheck", pg_archivecleanup = "pg_archivecleanup", pg_basebackup = "pg_basebackup", pg_checksums = "pg_checksums", pg_combinebackup = "pg_combinebackup", pg_controldata = "pg_controldata", pg_createsubscriber = "pg_createsubscriber", pg_ctl = "pg_ctl", pg_dump = "pg_dump", pg_dumpall = "pg_dumpall", pg_isready = "pg_isready", pg_receivewal = "pg_receivewal", pg_recvlogical = "pg_recvlogical", pg_resetwal = "pg_resetwal", pg_restore = "pg_restore", pg_rewind = "pg_rewind", pg_test_fsync = "pg_test_fsync", pg_test_timing = "pg_test_timing", pg_upgrade = "pg_upgrade", pg_verifybackup = "pg_verifybackup", pg_waldump = "pg_waldump", pg_walsummary = "pg_walsummary", pgbench = "pgbench", postgres = "postgres", psql = "psql", reindexdb = "reindexdb", vacuumdb = "vacuumdb", vacuumlo = "vacuumlo" }
+
+[envs.btop]
+channels = ["conda-forge"]
+dependencies = { btop = "*" }
+exposed = { btop = "btop" }
+
