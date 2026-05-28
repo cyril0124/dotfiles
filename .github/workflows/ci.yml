@@ -67,4 +67,6 @@ jobs:
 
       - name: Test neovim
         timeout-minutes: 10
+        env:
+          DOTFILES_CI: "1"
         run: ./tests/test_nvim.sh

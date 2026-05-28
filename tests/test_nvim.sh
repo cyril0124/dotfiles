@@ -31,11 +31,23 @@ else
 fi
 
 echo "==> Treesitter parsers"
-parser_dir="$NVIM_DATA/lazy/nvim-treesitter/parser"
+# Parsers may be in different locations depending on nvim-treesitter version
+parser_dirs=(
+  "$NVIM_DATA/lazy/nvim-treesitter/parser"
+  "$NVIM_DATA/treesitter/parser"
+  "$NVIM_DATA/site/parser"
+)
 parsers=(c lua python markdown markdown_inline diff)
 all_ok=1
 for p in "${parsers[@]}"; do
-  if ! ls "$parser_dir/${p}.so" "$parser_dir/${p}.dll" 2>/dev/null | grep -q .; then
+  found=0
+  for dir in "${parser_dirs[@]}"; do
+    if ls "$dir/${p}.so" "$dir/${p}.dll" 2>/dev/null | grep -q .; then
+      found=1
+      break
+    fi
+  done
+  if [ "$found" -eq 0 ]; then
     fail "treesitter parser missing: $p"
     all_ok=0
   fi
@@ -62,9 +74,15 @@ echo "==> checkhealth"
 tmp_health=$(mktemp /tmp/nvim_health_XXXXXX.log)
 trap 'rm -f "$tmp_health"' EXIT
 nvim --headless "+checkhealth" "+w! $tmp_health" +qa 2>/dev/null || true
-if [ -f "$tmp_health" ] && grep -qiE "^.*ERROR" "$tmp_health"; then
-  fail "checkhealth reported errors:"
-  grep -iE "^.*ERROR" "$tmp_health" | sed 's/^/    /'
+if [ -f "$tmp_health" ]; then
+  # Filter out known CI-irrelevant errors
+  errors=$(grep -iE "^.*ERROR" "$tmp_health" | grep -vE "(luarocks|infocmp)" || true)
+  if [ -n "$errors" ]; then
+    fail "checkhealth reported errors:"
+    echo "$errors" | sed 's/^/    /'
+  else
+    pass "checkhealth clean (or only CI-irrelevant errors)"
+  fi
 else
   pass "checkhealth clean"
 fi
