@@ -33,6 +33,10 @@ fi
 
 export NIX_HOME="${NIX_HOME:-$HOME/.config/nixpkgs}"
 
+if [ -f "$HOME/.cargo/env" ]; then
+    . "$HOME/.cargo/env"
+fi
+
 path_prepend "$HOME/.pixi/bin"
 path_prepend "$HOME/.local/bin"
 
@@ -42,10 +46,6 @@ if command_exists npm; then
         path_append "$dotfiles_npm_prefix/bin"
     fi
     unset dotfiles_npm_prefix
-fi
-
-if [ -f "$HOME/.cargo/env" ]; then
-    . "$HOME/.cargo/env"
 fi
 
 alias c='clear'

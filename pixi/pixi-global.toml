@@ -109,3 +109,8 @@ exposed = { diffnav = "diffnav" }
 channels = ["conda-forge"]
 dependencies = { tmux = "3.5.*" }
 exposed = { tmux = "tmux" }
+
+[envs.rust]
+channels = ["conda-forge"]
+dependencies = { rust = "*", rust-analyzer = "*" }
+exposed = { cargo = "cargo", rustc = "rustc", rustdoc = "rustdoc", rust-gdb = "rust-gdb", rust-lldb = "rust-lldb", rust-analyzer = "rust-analyzer" }
