@@ -527,8 +527,16 @@ end
 local ok, err = pcall(vim.cmd, "Lazy! restore")
 if not ok then fail(err) end
 
-ok, err = pcall(vim.cmd, "TSInstallSync c cpp lua python rust scala markdown markdown_inline diff verilog")
+-- Install treesitter parsers in two batches:
+-- 1. Small/fast parsers (compile quickly)
+-- 2. Large parsers (scala/verilog have huge grammar files, skip in CI)
+ok, err = pcall(vim.cmd, "TSInstallSync c lua python rust markdown markdown_inline diff")
 if not ok then fail(err) end
+
+if vim.env.DOTFILES_CI ~= "1" then
+  ok, err = pcall(vim.cmd, "TSInstallSync cpp scala verilog")
+  if not ok then fail(err) end
+end
 
 -- Safety timeout: force-quit after 5 minutes to prevent hanging forever
 local timeout_ms = 5 * 60 * 1000
