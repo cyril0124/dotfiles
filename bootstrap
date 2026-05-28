@@ -65,6 +65,7 @@ Components:
   opencode    OpenCode configuration
   claude      Claude configuration
   codex       Codex configuration
+  nvim_setup  Neovim plugins, treesitter parsers, and LSP servers
   skills      Install skills recorded in ./my-skills.sh
   codex_sync  Sync ~/.codex into repo/codex with sanitization
 
@@ -94,7 +95,14 @@ link_file () {
   if [ -f "$dst" -o -d "$dst" -o -L "$dst" ]
   then
 
-    if [ "$overwrite_all" == "false" ] && [ "$backup_all" == "false" ] && [ "$skip_all" == "false" ]
+    if [ "${DOTFILES_CI:-}" = "1" ]; then
+      local currentSrc="$(readlink $dst)"
+      if [ "$currentSrc" == "$src" ]; then
+        skip=true
+      else
+        overwrite=true
+      fi
+    elif [ "$overwrite_all" == "false" ] && [ "$backup_all" == "false" ] && [ "$skip_all" == "false" ]
     then
 
       local currentSrc="$(readlink $dst)"
@@ -188,6 +196,8 @@ install_dotfiles () {
 
     local overwrite_all=false backup_all=false skip_all=false
 
+    mkdir -p "$HOME/.config"
+
     for src in $(find -H "$DOTFILES_ROOT/config" -mindepth 1 -maxdepth 1 -type d -not -path '*.git*')
     do
         dst="$HOME/.config/$(basename "${src%.*}")"
@@ -208,9 +218,14 @@ backup_and_link_file() {
   fi
 
   if [ -e "$dst" ] || [ -L "$dst" ]; then
-    backup_path="${dst}.backup.$(date +%Y%m%d%H%M%S)"
-    mv "$dst" "$backup_path"
-    success "backed up $dst to $backup_path"
+    if [ "${DOTFILES_CI:-}" = "1" ]; then
+      rm -rf "$dst"
+      success "removed $dst (CI mode)"
+    else
+      backup_path="${dst}.backup.$(date +%Y%m%d%H%M%S)"
+      mv "$dst" "$backup_path"
+      success "backed up $dst to $backup_path"
+    fi
   fi
 
   ln -s "$src" "$dst"
@@ -232,7 +247,7 @@ install_pixi() {
 
     # Install pixi if not installed
     if ! command -v pixi &> /dev/null; then
-        curl -fsSL https://pixi.sh/install.sh | $shell
+        curl -fsSL https://pixi.sh/install.sh | PIXI_NO_PATH_UPDATE=1 $shell
         pixi_cmd=$HOME/.pixi/bin/pixi
         success "Pixi installed"
     else
@@ -251,6 +266,9 @@ install_pixi() {
 
 run_pixi_post_install() {
     local post_install_file="$DOTFILES_ROOT/pixi/post-install.sh"
+    local before_functions
+
+    before_functions=$(declare -F | awk '{print $3}')
 
     if [ ! -f "$post_install_file" ]; then
         return 0
@@ -280,7 +298,7 @@ run_pixi_post_install() {
 
     # Run install_* functions for missing commands
     info 'running standalone tool installers'
-    for func in $(declare -F | awk '{print $3}' | grep '^install_'); do
+    for func in $(comm -13 <(printf '%s\n' "$before_functions" | sort) <(declare -F | awk '{print $3}' | sort) | grep '^install_'); do
         cmd="${func#install_}"
 
         if command -v "$cmd" &> /dev/null; then
@@ -367,6 +385,8 @@ install_claude() {
     local overwrite_all=false backup_all=false skip_all=false
     local src_dir="$DOTFILES_ROOT/claude"
     local dst_dir="$HOME/.claude"
+
+    mkdir -p "$dst_dir"
 
     # Iterate through all items in claude directory
     for item in "$src_dir"/*; do
@@ -475,6 +495,97 @@ install_skills() {
     "$DOTFILES_ROOT/my-skills.sh"
 }
 
+install_nvim_setup() {
+    info 'setting up neovim plugins and LSP servers'
+
+    local nvim_cmd=nvim
+    if ! command -v nvim &>/dev/null; then
+        if [ -x "$HOME/.pixi/bin/nvim" ]; then
+            nvim_cmd="$HOME/.pixi/bin/nvim"
+        else
+            info "nvim not found, skipping nvim setup"
+            return 0
+        fi
+    fi
+
+    # Restore plugins from lazy-lock.json
+    info 'restoring plugins (Lazy restore)'
+
+    # Install treesitter parsers
+    info 'installing treesitter parsers'
+
+    # Install mason LSP servers
+    info 'installing mason LSP servers'
+    local nvim_script mason_status
+    nvim_script=$(mktemp /tmp/bootstrap-nvim-XXXXXX.lua)
+    cat >"$nvim_script" <<'LUA'
+local function fail(msg)
+  vim.api.nvim_err_writeln(msg)
+  vim.cmd("cquit 1")
+end
+
+local ok, err = pcall(vim.cmd, "Lazy! restore")
+if not ok then fail(err) end
+
+ok, err = pcall(vim.cmd, "TSInstallSync c cpp lua python rust scala markdown markdown_inline diff verilog")
+if not ok then fail(err) end
+
+vim.defer_fn(function()
+  local ok_reg, registry = pcall(require, "mason-registry")
+  if not ok_reg then fail("mason-registry unavailable") end
+  registry.refresh(function()
+    local ensure = { "emmylua_ls", "clangd", "json-lsp", "rust-analyzer", "ty" }
+    local pending = #ensure
+    local failed = {}
+    local function finish()
+      if pending ~= 0 then
+        return
+      end
+      if #failed > 0 then
+        fail("mason failures: " .. table.concat(failed, ", "))
+      else
+        vim.cmd("qa")
+      end
+    end
+
+    if pending == 0 then
+      finish()
+      return
+    end
+
+    for _, name in ipairs(ensure) do
+      local ok_pkg, pkg = pcall(registry.get_package, name)
+      if not ok_pkg then
+        table.insert(failed, name .. " (not found)")
+        pending = pending - 1
+        finish()
+      elseif pkg:is_installed() then
+        pending = pending - 1
+        finish()
+      else
+        pkg:install():once("closed", function()
+          if not pkg:is_installed() then
+            table.insert(failed, name)
+          end
+          pending = pending - 1
+          finish()
+        end)
+      end
+    end
+  end)
+end, 1000)
+LUA
+    if $nvim_cmd --headless -c "luafile $nvim_script" +qa 2>&1; then
+        rm -f "$nvim_script"
+    else
+        mason_status=$?
+        rm -f "$nvim_script"
+        return "$mason_status"
+    fi
+
+    success 'neovim setup complete'
+}
+
 git submodule update --init --recursive
 
 # Parameter handling: install specific component or all
@@ -487,7 +598,10 @@ if [ $# -eq 0 ]; then
     install_opencode
     install_claude
     install_codex
-    install_skills
+    install_nvim_setup
+    if [ "${DOTFILES_CI:-}" != "1" ]; then
+        install_skills
+    fi
 else
     # Install specified components
     for target in "$@"; do

@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+  schedule:
+    - cron: "0 9 * * 1" # Every Monday 09:00 UTC
+
+jobs:
+  bootstrap:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+
+    runs-on: ${{ matrix.os }}
+    name: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - name: Install system dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y zsh build-essential
+
+      - name: First bootstrap run
+        env:
+          DOTFILES_CI: "1"
+        run: |
+          ./bootstrap
+          echo "$HOME/.pixi/bin" >> "$GITHUB_PATH"
+
+      - name: Second bootstrap run (idempotency)
+        env:
+          DOTFILES_CI: "1"
+        run: ./bootstrap
+
+      - name: Test bootstrap
+        run: ./tests/test_bootstrap.sh
+
+      - name: Test neovim
+        timeout-minutes: 10
+        run: ./tests/test_nvim.sh
