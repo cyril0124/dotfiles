@@ -4,7 +4,9 @@ return {
     build = ':TSUpdate',
     config = function()
         require('nvim-treesitter.configs').setup {
-            ensure_installed = { 'c', 'cpp', 'lua', 'python', 'rust', 'scala', 'markdown', 'markdown_inline', 'diff', 'verilog' },
+            ensure_installed = vim.env.DOTFILES_CI == '1'
+                and {}  -- bootstrap handles TSInstallSync explicitly
+                or  { 'c', 'cpp', 'lua', 'python', 'rust', 'scala', 'markdown', 'markdown_inline', 'diff', 'verilog' },
             highlight = { enable = true },
             fold = {
                 enable = true,

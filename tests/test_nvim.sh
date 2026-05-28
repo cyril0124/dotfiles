@@ -32,7 +32,7 @@ fi
 
 echo "==> Treesitter parsers"
 parser_dir="$NVIM_DATA/lazy/nvim-treesitter/parser"
-parsers=(c lua python rust markdown markdown_inline diff)
+parsers=(c lua python markdown markdown_inline diff)
 all_ok=1
 for p in "${parsers[@]}"; do
   if ! ls "$parser_dir/${p}.so" "$parser_dir/${p}.dll" 2>/dev/null | grep -q .; then
