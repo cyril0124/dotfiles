@@ -527,6 +527,9 @@ end
 local ok, err = pcall(vim.cmd, "Lazy! restore")
 if not ok then fail(err) end
 
+-- Force-load nvim-treesitter (it's lazy-loaded on BufReadPost)
+vim.cmd("Lazy load nvim-treesitter")
+
 -- Install treesitter parsers in two batches:
 -- 1. Small/fast parsers (compile quickly)
 -- 2. Large parsers (cpp/rust/scala/verilog have huge grammar files, skip in CI)
