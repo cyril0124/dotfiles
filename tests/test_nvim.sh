@@ -32,27 +32,27 @@ fi
 
 echo "==> Treesitter parsers"
 # Parsers may be in different locations depending on nvim-treesitter version
-parser_dirs=(
-  "$NVIM_DATA/lazy/nvim-treesitter/parser"
-  "$NVIM_DATA/treesitter/parser"
-  "$NVIM_DATA/site/parser"
-)
+# Find actual parser location first
+parser_search=$(find "$NVIM_DATA" -name "c.so" -path "*/parser/*" 2>/dev/null | head -1)
+if [ -n "$parser_search" ]; then
+  actual_parser_dir=$(dirname "$parser_search")
+else
+  actual_parser_dir=""
+fi
 parsers=(c lua python markdown markdown_inline diff)
 all_ok=1
-for p in "${parsers[@]}"; do
-  found=0
-  for dir in "${parser_dirs[@]}"; do
-    if ls "$dir/${p}.so" "$dir/${p}.dll" 2>/dev/null | grep -q .; then
-      found=1
-      break
+if [ -z "$actual_parser_dir" ]; then
+  fail "no treesitter parser directory found (searched under $NVIM_DATA)"
+  all_ok=0
+else
+  for p in "${parsers[@]}"; do
+    if [ ! -f "$actual_parser_dir/${p}.so" ] && [ ! -f "$actual_parser_dir/${p}.dll" ]; then
+      fail "treesitter parser missing: $p (searched in $actual_parser_dir)"
+      all_ok=0
     fi
   done
-  if [ "$found" -eq 0 ]; then
-    fail "treesitter parser missing: $p"
-    all_ok=0
-  fi
-done
-[ "$all_ok" -eq 1 ] && pass "treesitter parsers present: ${parsers[*]}"
+fi
+[ "$all_ok" -eq 1 ] && pass "treesitter parsers present: ${parsers[*]} (in $actual_parser_dir)"
 
 echo "==> Mason packages"
 if [ "${DOTFILES_CI:-}" = "1" ]; then
