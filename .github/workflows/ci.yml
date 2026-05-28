@@ -60,7 +60,7 @@ jobs:
         timeout-minutes: 30
         env:
           DOTFILES_CI: "1"
-        run: ./bootstrap
+        run: ./bootstrap dotfiles shell pixi tmux_conf opencode claude codex
 
       - name: Test bootstrap
         run: ./tests/test_bootstrap.sh
