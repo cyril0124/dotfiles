@@ -530,6 +530,13 @@ if not ok then fail(err) end
 ok, err = pcall(vim.cmd, "TSInstallSync c cpp lua python rust scala markdown markdown_inline diff verilog")
 if not ok then fail(err) end
 
+-- Safety timeout: force-quit after 5 minutes to prevent hanging forever
+local timeout_ms = 5 * 60 * 1000
+vim.defer_fn(function()
+  vim.api.nvim_err_writeln("ERROR: mason install timed out after 5 minutes")
+  vim.cmd("cquit 1")
+end, timeout_ms)
+
 vim.defer_fn(function()
   local ok_reg, registry = pcall(require, "mason-registry")
   if not ok_reg then fail("mason-registry unavailable") end
@@ -575,7 +582,7 @@ vim.defer_fn(function()
   end)
 end, 1000)
 LUA
-    if $nvim_cmd --headless -c "luafile $nvim_script" +qa 2>&1; then
+    if $nvim_cmd --headless -c "luafile $nvim_script" 2>&1; then
         rm -f "$nvim_script"
     else
         mason_status=$?

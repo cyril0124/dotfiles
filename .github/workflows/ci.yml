@@ -23,6 +23,27 @@ jobs:
         with:
           submodules: true
 
+      - name: Cache pixi envs
+        uses: actions/cache@v4
+        with:
+          path: ~/.pixi
+          key: ${{ runner.os }}-pixi-${{ hashFiles('pixi/pixi-global.toml') }}
+          restore-keys: ${{ runner.os }}-pixi-
+
+      - name: Cache nvim lazy plugins
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/share/nvim/lazy
+          key: ${{ runner.os }}-nvim-lazy-${{ hashFiles('config/nvim/lazy-lock.json') }}
+          restore-keys: ${{ runner.os }}-nvim-lazy-
+
+      - name: Cache nvim mason packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/share/nvim/mason
+          key: ${{ runner.os }}-nvim-mason-${{ hashFiles('config/nvim/lua/plugins/**') }}
+          restore-keys: ${{ runner.os }}-nvim-mason-
+
       - name: Install system dependencies (Linux)
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y zsh build-essential
