@@ -508,103 +508,14 @@ install_nvim_setup() {
         fi
     fi
 
-    # Restore plugins from lazy-lock.json
-    info 'restoring plugins (Lazy restore)'
-
-    # Install treesitter parsers
-    info 'installing treesitter parsers'
-
-    # Install mason LSP servers
-    info 'installing mason LSP servers'
-    local nvim_script mason_status
-    nvim_script=$(mktemp /tmp/bootstrap-nvim-XXXXXX.lua)
-    cat >"$nvim_script" <<'LUA'
-local function fail(msg)
-  vim.api.nvim_err_writeln(msg)
-  vim.cmd("cquit 1")
-end
-
-local ok, err = pcall(vim.cmd, "Lazy! restore")
-if not ok then fail(err) end
-
--- Force-load nvim-treesitter (it's lazy-loaded on BufReadPost)
-vim.cmd("Lazy load nvim-treesitter")
-
--- Install treesitter parsers in two batches:
--- 1. Small/fast parsers (compile quickly)
--- 2. Large parsers (cpp/rust/scala/verilog have huge grammar files, skip in CI)
-ok, err = pcall(vim.cmd, "TSInstallSync c lua python markdown markdown_inline diff")
-if not ok then fail(err) end
-
-if vim.env.DOTFILES_CI ~= "1" then
-  ok, err = pcall(vim.cmd, "TSInstallSync cpp rust scala verilog")
-  if not ok then fail(err) end
-end
-
--- In CI, skip Mason (large binary downloads not needed for validation)
-if vim.env.DOTFILES_CI == "1" then
-  vim.cmd("qa")
-  return
-end
-
--- Safety timeout: force-quit after 15 minutes to prevent hanging forever
-local timeout_ms = 15 * 60 * 1000
-vim.defer_fn(function()
-  vim.api.nvim_err_writeln("ERROR: mason install timed out after 15 minutes")
-  vim.cmd("cquit 1")
-end, timeout_ms)
-
-vim.defer_fn(function()
-  local ok_reg, registry = pcall(require, "mason-registry")
-  if not ok_reg then fail("mason-registry unavailable") end
-  registry.refresh(function()
-    local ensure = { "emmylua_ls", "clangd", "json-lsp", "rust-analyzer", "ty" }
-    local pending = #ensure
-    local failed = {}
-    local function finish()
-      if pending ~= 0 then
-        return
-      end
-      if #failed > 0 then
-        fail("mason failures: " .. table.concat(failed, ", "))
-      else
-        vim.cmd("qa")
-      end
-    end
-
-    if pending == 0 then
-      finish()
-      return
-    end
-
-    for _, name in ipairs(ensure) do
-      local ok_pkg, pkg = pcall(registry.get_package, name)
-      if not ok_pkg then
-        table.insert(failed, name .. " (not found)")
-        pending = pending - 1
-        finish()
-      elseif pkg:is_installed() then
-        pending = pending - 1
-        finish()
-      else
-        pkg:install():once("closed", function()
-          if not pkg:is_installed() then
-            table.insert(failed, name)
-          end
-          pending = pending - 1
-          finish()
-        end)
-      end
-    end
-  end)
-end, 1000)
-LUA
-    if $nvim_cmd --headless -c "luafile $nvim_script" 2>&1; then
-        rm -f "$nvim_script"
-    else
-        mason_status=$?
-        rm -f "$nvim_script"
-        return "$mason_status"
+    # Restore plugins, install treesitter parsers and Mason LSP servers.
+    # The heavy lifting lives in scripts/nvim_setup.lua: it filters treesitter
+    # parsers through has_parser() (avoiding the interactive reinstall prompt
+    # that hangs headless nvim) and drives async Mason installs synchronously
+    # via vim.wait().
+    info 'restoring plugins and installing treesitter parsers + Mason LSP servers'
+    if ! NVIM_BOOTSTRAP=1 $nvim_cmd --headless -c "luafile $DOTFILES_ROOT/scripts/nvim_setup.lua"; then
+        return 1
     fi
 
     success 'neovim setup complete'

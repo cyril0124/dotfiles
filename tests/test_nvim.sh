@@ -31,15 +31,15 @@ else
 fi
 
 echo "==> Treesitter parsers"
-# Parsers may be in different locations depending on nvim-treesitter version
-# Find actual parser location first
+# nvim-treesitter installs parsers as <lang>.so under a .../parser/ directory.
+# Resolve the actual location (varies by version) from any known parser.
 parser_search=$(find "$NVIM_DATA" -name "c.so" -path "*/parser/*" 2>/dev/null | head -1)
 if [ -n "$parser_search" ]; then
   actual_parser_dir=$(dirname "$parser_search")
 else
   actual_parser_dir=""
 fi
-parsers=(c lua python markdown markdown_inline diff)
+parsers=(c cpp lua python rust scala markdown markdown_inline diff verilog)
 all_ok=1
 if [ -z "$actual_parser_dir" ]; then
   fail "no treesitter parser directory found (searched under $NVIM_DATA)"
@@ -55,20 +55,16 @@ fi
 [ "$all_ok" -eq 1 ] && pass "treesitter parsers present: ${parsers[*]} (in $actual_parser_dir)"
 
 echo "==> Mason packages"
-if [ "${DOTFILES_CI:-}" = "1" ]; then
-  pass "mason check skipped in CI (no binary downloads)"
-else
-  mason_dir="$NVIM_DATA/mason/packages"
-  ensure=(emmylua_ls clangd json-lsp rust-analyzer ty)
-  all_ok=1
-  for pkg in "${ensure[@]}"; do
-    if [ ! -d "$mason_dir/$pkg" ]; then
-      fail "mason package missing: $pkg"
-      all_ok=0
-    fi
-  done
-  [ "$all_ok" -eq 1 ] && pass "mason packages present: ${ensure[*]}"
-fi
+mason_dir="$NVIM_DATA/mason/packages"
+ensure=(emmylua_ls clangd json-lsp rust-analyzer ty)
+all_ok=1
+for pkg in "${ensure[@]}"; do
+  if [ ! -d "$mason_dir/$pkg" ]; then
+    fail "mason package missing: $pkg"
+    all_ok=0
+  fi
+done
+[ "$all_ok" -eq 1 ] && pass "mason packages present: ${ensure[*]}"
 
 echo "==> checkhealth"
 tmp_health=$(mktemp /tmp/nvim_health_XXXXXX.log)
