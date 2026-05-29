@@ -30,6 +30,7 @@ Blocks:    █ ▓ ░ ▏▎▍▌▋▊▉
 4. **No CJK/emoji in code blocks** — use ASCII placeholders `[_] [^] [X]`
 5. **Right-pad labels** to align columns
 6. **Annotations**: `!!` risk, `**` new, `[A/M/D]` change type
+7. **Alignment check** — before outputting, visually verify that box edges, columns, and connectors are aligned
 
 ## Patterns
 
