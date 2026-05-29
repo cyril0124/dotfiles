@@ -10,6 +10,11 @@ fail() { FAIL=$((FAIL + 1)); printf '  \033[31m✗\033[0m %s\n' "$1"; }
 
 NVIM_DATA="${XDG_DATA_HOME:-$HOME/.local/share}/nvim"
 
+# Single cleanup trap for all temp files created below.
+cleanup_files=()
+cleanup() { rm -f "${cleanup_files[@]}"; }
+trap cleanup EXIT
+
 echo "==> Lazy plugins"
 if [ -d "$NVIM_DATA/lazy" ] && [ "$(ls -A "$NVIM_DATA/lazy" 2>/dev/null)" ]; then
   pass "lazy plugin directory exists and is non-empty"
@@ -31,28 +36,48 @@ else
 fi
 
 echo "==> Treesitter parsers"
-# nvim-treesitter installs parsers as <lang>.so under a .../parser/ directory.
-# Resolve the actual location (varies by version) from any known parser.
-parser_search=$(find "$NVIM_DATA" -name "c.so" -path "*/parser/*" 2>/dev/null | head -1)
-if [ -n "$parser_search" ]; then
-  actual_parser_dir=$(dirname "$parser_search")
-else
-  actual_parser_dir=""
-fi
+# Ask nvim directly which parsers are loadable, rather than guessing the
+# on-disk path (which varies by nvim-treesitter version and install method).
 parsers=(c cpp lua python rust scala markdown markdown_inline diff verilog)
+ts_check=$(mktemp /tmp/test-nvim-ts-XXXXXX.lua)
+cleanup_files+=("$ts_check")
+cat >"$ts_check" <<'LUA'
+local want = { "c", "cpp", "lua", "python", "rust", "scala", "markdown", "markdown_inline", "diff", "verilog" }
+pcall(vim.cmd, "Lazy load nvim-treesitter")
+local ok, parsers = pcall(require, "nvim-treesitter.parsers")
+if not ok then
+  io.stdout:write("TS_MODULE_MISSING\n")
+  vim.cmd("qa")
+  return
+end
+for _, lang in ipairs(want) do
+  local present = false
+  if type(parsers.has_parser) == "function" then
+    present = parsers.has_parser(lang)
+  end
+  -- Fallback: probe the runtime for a compiled parser library.
+  if not present then
+    present = #vim.api.nvim_get_runtime_file("parser/" .. lang .. ".so", false) > 0
+      or #vim.api.nvim_get_runtime_file("parser/" .. lang .. ".dll", false) > 0
+  end
+  io.stdout:write((present and "OK " or "MISSING ") .. lang .. "\n")
+end
+vim.cmd("qa")
+LUA
+ts_result=$(nvim --headless -c "luafile $ts_check" +qa 2>/dev/null)
 all_ok=1
-if [ -z "$actual_parser_dir" ]; then
-  fail "no treesitter parser directory found (searched under $NVIM_DATA)"
+if printf '%s' "$ts_result" | grep -q "TS_MODULE_MISSING"; then
+  fail "nvim-treesitter.parsers module unavailable"
   all_ok=0
 else
   for p in "${parsers[@]}"; do
-    if [ ! -f "$actual_parser_dir/${p}.so" ] && [ ! -f "$actual_parser_dir/${p}.dll" ]; then
-      fail "treesitter parser missing: $p (searched in $actual_parser_dir)"
+    if ! printf '%s\n' "$ts_result" | grep -qx "OK $p"; then
+      fail "treesitter parser missing: $p"
       all_ok=0
     fi
   done
 fi
-[ "$all_ok" -eq 1 ] && pass "treesitter parsers present: ${parsers[*]} (in $actual_parser_dir)"
+[ "$all_ok" -eq 1 ] && pass "treesitter parsers present: ${parsers[*]}"
 
 echo "==> Mason packages"
 mason_dir="$NVIM_DATA/mason/packages"
@@ -68,7 +93,7 @@ done
 
 echo "==> checkhealth"
 tmp_health=$(mktemp /tmp/nvim_health_XXXXXX.log)
-trap 'rm -f "$tmp_health"' EXIT
+cleanup_files+=("$tmp_health")
 nvim --headless "+checkhealth" "+w! $tmp_health" +qa 2>/dev/null || true
 if [ -f "$tmp_health" ]; then
   # Filter out known CI-irrelevant errors
