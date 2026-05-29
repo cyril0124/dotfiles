@@ -41,6 +41,18 @@ Explain Git changes in plain Chinese: full hunk-by-hunk analysis + ASCII diagram
 - Keep visuals readable in terminal. Prefer under 80 chars wide, but clarity wins.
 - Diagram labels may use English for paths + technical terms.
 
+## Necessity Rules
+
+- Add exactly one necessity blockquote per hunk, placed after the intent explanation and before any `Bug Check`.
+- Two fixed tags only: `needed` or `unneeded`. No other tag is allowed.
+- `needed` is the default and is written as a bare tag with no reason.
+- Mark `unneeded` only when the hunk clearly exceeds task scope, adds defensive code unrelated to intent, refactors something unrelated to the stated intent, or duplicates another hunk. When in doubt, prefer `needed`.
+- `unneeded` must include a parenthesized reason explaining why the change is redundant or out-of-scope.
+- Necessity asks whether the hunk could be omitted. Bug Check asks whether the hunk is wrong. Keep the two responsibilities separate; do not move quality concerns into Necessity.
+- For hunks split into multiple parts (>30 lines), write only one overall necessity line after all parts. Never write per-part necessity.
+- Necessity is a hunk-level attribute. Do not surface it in `Overview`, `Visual Overview`, or `Summary`.
+- Output format: `> Necessity: needed` or `> Necessity: unneeded (<reason>)`.
+
 ## Bug Check Rules
 
 - Add `Bug Check` only when hunk has obvious bug, risk, or suspicious issue.
@@ -87,6 +99,8 @@ Use exact structure in generated file:
 **Part <n>: <short label>**
 <plain-language explanation for this logical part>
 
+> Necessity: <needed | unneeded (<reason>)>
+
 #### Bug Check
 <brief note describing the obvious bug, risk, or suspicious issue in the user's language>
 
@@ -100,4 +114,4 @@ Use exact structure in generated file:
 <short 2-3 sentence wrap-up of the overall impact in the user's language>
 ````
 
-Keep `Visual Overview` flexible and non-boilerplate. Omit entire `Bug Check` subsection for hunks without obvious issue.
+Keep `Visual Overview` flexible and non-boilerplate. Always include the `> Necessity: ...` line for every hunk. Omit entire `Bug Check` subsection for hunks without obvious issue.
