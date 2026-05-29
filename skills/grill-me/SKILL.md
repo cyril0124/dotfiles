@@ -23,8 +23,16 @@ When all branches are resolved and no further questions remain, produce a final 
 - <What this plan covers>
 - <What is explicitly out of scope>
 
+### Suggested Skills
+- <skill-name> — <one-line reason it helps>
+
 Confirm: proceed with implementation? (yes / no / revise / save / show)
 ```
+
+Rules for `### Suggested Skills`:
+- Always include the section. If no skill is a good fit, write a single bullet: `- None`.
+- Only recommend skills that are loadable in the current session's `<available_skills>` list. Do not recommend skills the user has not installed.
+- Keep each bullet to one line: skill name plus a brief reason it applies to this plan.
 
 Do not begin implementation until user confirms "yes".
 
@@ -34,7 +42,7 @@ On **save**, write summary to file:
 
 1. Filename: `plan-<topic-slug>.md` (topic lowercased, spaces→`-`, strip non-alnum/dash).
 2. If exists, try `plan-<topic-slug>-1.md`, then `-2.md`, etc.
-3. Write full Design Summary (Decisions Made + Scope). Do not include the "Confirm" prompt line in the file.
+3. Write full Design Summary (Decisions Made + Scope + Suggested Skills). Do not include the "Confirm" prompt line in the file.
 4. Tell user filename; implementation **not** started — "yes" to proceed, "revise" to revisit.
 5. Re-prompt: `Confirm: proceed with implementation? (yes / no / revise / save / show)`
 
