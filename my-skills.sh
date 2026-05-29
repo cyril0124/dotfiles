@@ -25,6 +25,7 @@ LOCAL_SKILLS=(
   "self-improve"
   "handoff"
   "explain-diff-visual"
+  "plain-speak"
   "ascii-visual"
   "public-page"
 )
