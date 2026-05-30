@@ -27,6 +27,7 @@ LOCAL_SKILLS=(
   "explain-diff-visual"
   "plain-speak"
   "ascii-visual"
+  "visual-comment"
   "public-page"
 )
 
