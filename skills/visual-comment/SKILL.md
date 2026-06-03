@@ -57,6 +57,65 @@ concurrency       plain CRUD passthrough
 One high-signal diagram beats many boilerplate. Unit obvious from name + one line
 of code: no diagram.
 
+## Value test: never restate the code
+
+Before inserting any diagram, apply the **"reveals hidden structure"** test:
+
+> Does this diagram show a relationship, lifecycle, data shape, or dependency
+> that a reader **cannot** see within 5 seconds of reading the code itself?
+
+If no → don't add it. A diagram that mirrors the code's own structure is noise.
+
+### Anti-patterns (NEVER do these)
+
+```python
+# BAD: just restates the sequential code below it
+# load_config() -> connect_db() -> start_server()
+def main():
+    load_config()
+    connect_db()
+    start_server()
+```
+
+```python
+# BAD: mirrors obvious if/elif with no added insight
+# type == "a" -> handle_a
+# type == "b" -> handle_b
+# else        -> handle_default
+if type == "a":
+    handle_a()
+elif type == "b":
+    handle_b()
+else:
+    handle_default()
+```
+
+```go
+// BAD: box diagram of a struct that is already self-documenting
+// ┌────────────────┐
+// │ User           │
+// │  Name   string │
+// │  Age    int    │
+// └────────────────┘
+type User struct {
+    Name string
+    Age  int
+}
+```
+
+### What earns a diagram
+
+A diagram earns its place when it reveals:
+
+- **Hidden lifecycle** — states and transitions not obvious from a single read.
+- **Non-local relationships** — how this code connects to distant modules.
+- **Implicit protocol** — ordering constraints, handshake rules, retry semantics.
+- **Data shape transformation** — byte layout, serialization boundaries, reshaping.
+- **Concurrency topology** — which goroutines/tasks talk to which, via what channel.
+- **Timing / sequencing** — signal dependencies across clock cycles.
+
+If the code already reads like a diagram (short, flat, well-named), leave it alone.
+
 ## Comment syntax: line comments only
 
 Embed diagrams using language's **line-comment prefix**, one prefix per line. Never
