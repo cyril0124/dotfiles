@@ -36,11 +36,6 @@
 - If you cannot determine a narrow path, narrow the search incrementally (list subdirectories, then search the most relevant one) rather than searching broadly.
 - Scout first, search second: a directory listing always precedes a recursive search.
 
-### OpenCode-Specific Rules (OpenCode Only)
-
-- In OpenCode, do not use `spawn_agent` by default. Parallel subtasks should be handled through multiple `task` calls within the same round so each subtask remains observable and resumable.
-- Use `spawn_agent` only when the user explicitly requests it, or when the task is a one-off batch job that does not require per-subtask observability.
-
 ## Engineering Quality Baseline
 
 - Follow SOLID, DRY, KISS, separation of concerns, and YAGNI.
@@ -59,6 +54,7 @@
 ## Testing and Validation
 
 - Keep code testable and verify behavior with automated checks whenever feasible.
+- Do not write tests just for the sake of testing: avoid obvious, trivial, or meaningless tests, including getter/setter snapshots, mock-only assertions, implementation-detail checks, and no-risk happy paths that do not reduce real risk.
 - When running backend unit tests, enforce a hard timeout of 60 seconds to avoid stuck tasks.
 - Prefer static checks, formatting, and reproducible verification over ad-hoc manual confidence.
 
