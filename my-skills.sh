@@ -47,6 +47,8 @@ REMOTE_SKILLS=(
   "juliusbrussee/caveman@caveman-review"
   "juliusbrussee/caveman@cavecrew"
   "mattpocock/skills@write-a-skill"
+  "mattpocock/skills|tdd@tdd"
+  "mattpocock/skills|teach@teach"
 )
 
 info() {
