@@ -146,7 +146,7 @@ Present findings to user BEFORE applying any fix:
 1. 🔴 L<line>: <description>. impact: <what breaks>. Suggested fix: <concrete suggestion>
 2. 🟡 L<line>: <description>. impact: <what could go wrong>. Suggested fix: <concrete suggestion>
 
-Apply fixes? (fix / no / revise)
+Apply fixes? (fix / no)
 ```
 
 Use `question` tool. Wait for user decision.
@@ -157,7 +157,6 @@ Use `question` tool. Wait for user decision.
 |----------|--------|
 | fix | Apply fixes, then re-run from Step 1. |
 | no | Proceed to Step 5. |
-| revise | Discuss and adjust, then re-present findings via Step 3. If code changes, re-verify from Step 1. |
 
 After fixes, always re-verify from Step 1 — fixes can introduce new problems.
 
