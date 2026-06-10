@@ -33,20 +33,19 @@ LOCAL_SKILLS=(
 
 REMOTE_SKILLS=(
   "vercel-labs/agent-browser@agent-browser"
-  "vercel-labs/skills@find-skills"
-  "jeffallan/claude-skills@code-reviewer"
-  "github/awesome-copilot@refactor"
-  "lyndonkl/claude@socratic-teaching-scaffolds"
-  "openai/skills@frontend-skill"
-  "kepano/obsidian-skills@obsidian-markdown"
+  "vercel-labs/skills|find-skills@find-skills"
+  "jeffallan/claude-skills|code-reviewer@code-reviewer"
+  "github/awesome-copilot|refactor@refactor"
+  "lyndonkl/claude|socratic-teaching-scaffolds@socratic-teaching-scaffolds"
+  "kepano/obsidian-skills|obsidian-markdown@obsidian-markdown"
   "imxv/pretty-mermaid-skills@pretty-mermaid"
   "https://github.com/baidu-netdisk/bdpan-storage|baidu-drive@baidu-drive"
-  "https://skills.sh/alchaincyf/darwin-skill/darwin-skill"
-  "juliusbrussee/caveman@caveman"
-  "juliusbrussee/caveman@compress"
-  "juliusbrussee/caveman@caveman-review"
-  "juliusbrussee/caveman@cavecrew"
-  "mattpocock/skills@write-a-skill"
+  "alchaincyf/darwin-skill@darwin-skill"
+  "juliusbrussee/caveman|caveman@caveman"
+  "juliusbrussee/caveman|caveman-compress@caveman-compress"
+  "juliusbrussee/caveman|caveman-review@caveman-review"
+  "juliusbrussee/caveman|cavecrew@cavecrew"
+  "mattpocock/skills|write-a-skill@write-a-skill"
   "mattpocock/skills|tdd@tdd"
   "mattpocock/skills|teach@teach"
 )
@@ -116,24 +115,6 @@ load_installed_skills() {
     [ -n "$installed_name" ] || continue
     INSTALLED_SKILLS["$installed_name"]=1
   done < <(installed_skill_names)
-}
-
-has_installed_remote_skills() {
-  local spec
-  for spec in "${REMOTE_SKILLS[@]}"; do
-    if [ -n "${INSTALLED_SKILLS[$(spec_skill_name "$spec")]:-}" ]; then
-      return 0
-    fi
-  done
-
-  return 1
-}
-
-run_skills_update() {
-  # The official CLI exposes update as a global operation, not a single-skill
-  # operation. We therefore run it once when any declared skill is already
-  # present, then follow with add to install missing skills and refresh agents.
-  DISABLE_TELEMETRY=1 "${SKILLS_RUNNER[@]}" update
 }
 
 run_skills_add() {
@@ -212,11 +193,6 @@ install_local_skills() {
 install_remote_skills() {
   info "installing remote skills"
   load_installed_skills
-
-  if has_installed_remote_skills; then
-    info "updating already-installed skills"
-    run_skills_update
-  fi
 
   local spec skill_name
   for spec in "${REMOTE_SKILLS[@]}"; do

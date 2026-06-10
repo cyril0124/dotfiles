@@ -121,7 +121,7 @@ Codex configuration and prompt files:
 `my-skills.sh` is the single place where skill installation is declared.
 
 - Local repo skills live in `skills/` and are installed through `./my-skills.sh local` or `./my-skills.sh`
-- Remote skills are recorded directly in `my-skills.sh` as `npx skills add ...` specs
+- Remote skills are recorded in `my-skills.sh`; use `source@name` for single-skill sources and `source|selector@name` when a source contains multiple skills
 - Installed global skill directories such as `~/.agents/skills` and `~/.claude/skills` are not synced back into this repo
 
 ## Requirements
