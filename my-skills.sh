@@ -18,6 +18,7 @@ LOCAL_SKILLS=(
   "grill-me"
   "update-agents-md"
   "cross-check"
+  "review"
   "explain-diff"
   "minimal-change"
   "parallelize"
