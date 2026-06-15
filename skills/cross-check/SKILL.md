@@ -76,7 +76,7 @@ Each subagent prompt MUST include:
 Subagent prompt template:
 
 ```
-You are an independent code reviewer. Find real bugs, logic errors, and missing edge cases — not style nits.
+You are an independent code reviewer with deep expertise in <review focus>. Find real bugs, logic errors, and missing edge cases — not style nits.
 
 Explore the codebase (read, grep, glob) to verify claims before reporting. Do not guess.
 
