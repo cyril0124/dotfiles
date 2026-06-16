@@ -1,16 +1,16 @@
 ---
 name: commit-stage
-description: "Validate staged git changes and commit them safely after thorough review. Trigger on: 'commit-stage', 'commit staged', 'review and commit', '提交暂存区', '检查并提交'. Do not use for general git operations without staged-change review intent."
+description: "Validate staged git changes and commit them safely after staged-scope, security, correctness, and documentation-drift review. Trigger on: 'commit-stage', 'commit staged', 'review and commit', '提交暂存区', '检查并提交'. Do not use for general git operations or review-only requests without staged-change commit intent."
 ---
 
 # Commit-Stage
 
-Validate staged git changes and commit only when review passes. Never modify files or widen commit scope.
+Validate staged git changes and commit only when review passes. Never modify files, stage files, or widen commit scope.
 
 ## TL;DR
 
 ```
-git diff --cached → line-by-line review + documentation drift check → commit or report failure
+git status --short + git diff --cached → staged-scope gate → security/correctness/doc drift review → final staged-boundary check → commit or report failure
 ```
 
 ## When to use
@@ -21,29 +21,44 @@ git diff --cached → line-by-line review + documentation drift check → commit
 ## When not to use
 
 - General git ops without staged-change review intent.
-- Creating or modifying files.
+- Review-only requests where the user does not want a commit.
+- Creating, editing, formatting, or staging files.
 
 ## Workflow
 
 ### Step 1 — Inspect staged changes
 
-- Run `git diff --cached`.
-- Nothing staged → report "Nothing staged for commit." and stop.
+Run both commands before review:
+
+```bash
+git status --short
+git diff --cached
+```
+
+If `git diff --cached` is empty → report `Nothing staged for commit.` and stop.
+If unstaged or untracked files exist → keep them out of scope; do not inspect them unless needed only as read-only context for the staged diff.
 
 ### Step 2 — Line-by-line review
 
-Review every line. Do not assume correctness. Look for:
+Review every staged line. Do not assume correctness. Apply these gates in order:
+
+1. **Scope gate** — confirm every finding and the eventual commit message refer only to staged content.
+2. **Security/privacy gate** — stop immediately for staged secrets, credentials, `.env` values, private keys, tokens, personal data, internal hosts/IPs, user absolute paths, machine-local cache/build paths, or staged logs/caches/build outputs.
+3. **Correctness gate** — inspect behavior, tests, interfaces, and regressions line by line.
+4. **Documentation drift gate** — compare staged behavior/interface/command changes against tracked markdown.
+
+Look for:
 
 - Logic errors, off-by-one, missing error handling
 - Wrong variable names, broken assumptions, race conditions
 - API misuse, regressions, behavior-breaking changes
-- Security/privacy leaks: secrets, tokens, private keys, credentials, `.env` values, personal data, internal hosts/IPs, user absolute paths, machine-local cache/build paths, accidentally staged logs/caches/build outputs
+- Security/privacy leaks from the security/privacy gate
 - Missing tests, incomplete refactors, dead code
 - Commented-out debug, formatting issues
 - **Documentation drift**: repository `.md` files that describe changed behavior/interfaces/commands but were not updated in this commit (see below)
 
-Need context? Inspect nearby code/files. Do not guess.
-Suspected bug? Reproduce it before confirming — no speculation; practice is the sole criterion for truth.
+Need context? Inspect nearby code/files as read-only context. Do not guess.
+Suspected behavior bug? Reproduce it before confirming when a focused, safe check exists; otherwise classify as **Unclear** and stop.
 
 #### Documentation drift check
 
@@ -57,7 +72,9 @@ Suspected bug? Reproduce it before confirming — no speculation; practice is th
 
 ### Step 2.5 — Parallel subagent review (when warranted)
 
-When the review workload is large (many staged files, many candidate `.md` files, or both), split the work into atomic subtasks and delegate to parallel subagents. The decision to split is heuristic — use your judgment based on diff size, candidate count, and available context budget. Do **not** split trivially small reviews.
+When the review workload is large (many staged files, many candidate `.md` files, or both), split the work into atomic subtasks and delegate to parallel subagents. Use this explicit trigger: delegate when staged review would exceed the current context budget, when there are more than 5 staged files, or when there are more than 8 plausible documentation candidates. Do **not** split trivially small reviews.
+
+Subagents are advisory and read-only: they must not edit files, stage files, create commits, or write artifacts.
 
 **Splitting rules:**
 
@@ -77,6 +94,7 @@ When the review workload is large (many staged files, many candidate `.md` files
 classification: Related | Unrelated | Unclear
 kind: Code | DocumentationDrift
 location: <file:line or file:section>
+evidence: <staged diff line, markdown section, or command output>
 problem: <one-sentence>
 reason: <short explanation>
 suggested_fix: <diff block or "N/A">
@@ -135,9 +153,21 @@ Commit stopped.
 ````
 ```
 
-### Step 5 — Success path
+### Step 5 — Final staged-boundary check
 
-No material problems found:
+Before committing, rerun:
+
+```bash
+git status --short
+git diff --cached --check
+git diff --cached
+```
+
+Stop if the final staged diff differs materially from the reviewed diff, if whitespace errors are reported, or if the commit would require staging additional files.
+
+### Step 6 — Success path
+
+No material problems found after the final staged-boundary check:
 
 - Write conventional commit: `<type>: <description>`.
 - Use user hint as commit-message intent when provided.
@@ -170,7 +200,29 @@ Commit created.
 
 ## Constraints
 
-- **No file modifications**: do not edit, create, or patch source files.
-- **No scope widening**: commit only what is staged; no `git add` unless explicitly asked.
+- **No file modifications**: do not edit, create, format, or patch source files.
+- **No staging**: do not run `git add`, `git restore --staged`, or any command that changes the index unless explicitly asked.
+- **No scope widening**: commit only what was reviewed in the staged diff.
 - **No .md artifacts**: report failures in chat only.
+- **No hidden success path**: if a check cannot run or evidence is insufficient, stop as **Unclear** instead of committing.
 - All user-facing chat output in **Chinese**.
+
+## Failure Modes
+
+| Trigger | Action |
+|---|---|
+| `git diff --cached` is empty | Stop with `Nothing staged for commit.` |
+| Staged secret/privacy leak is found | Stop as **Related**, explain the leak type, and provide a removal diff |
+| Staged behavior changes but docs may be stale | Stop as **Related** or **Unclear** under the documentation drift rules |
+| Reproduction/check command is unsafe, too broad, or unavailable | Stop as **Unclear**; do not commit on assumption |
+| Final staged diff differs from reviewed diff | Stop and ask the user to rerun commit-stage after restaging |
+| `git diff --cached --check` reports whitespace errors | Stop and report the exact command output |
+
+## Anti-Patterns
+
+- Do not commit first and review afterward.
+- Do not fix issues directly inside this skill; provide a diff recommendation instead.
+- Do not stage documentation updates even when they are obviously needed.
+- Do not treat subagent findings as final without main-agent reclassification.
+- Do not ignore unstaged files by pretending they were reviewed; state that they are out of commit scope.
+- Do not use vague approvals like "looks fine" without checklist evidence.
