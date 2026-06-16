@@ -38,14 +38,14 @@ Default (no arguments): scope to **only changes agent made in this conversation*
 
 ## Dispatch strategy
 
-No fixed thresholds. Main agent judges based on diff size and complexity.
+Choose the smallest dispatch shape that gives independent coverage without hiding context.
 
-| Diff size | Strategy | Subagent gets |
+| Diff shape | Strategy | Subagent gets |
 |-----------|----------|---------------|
-| Small | Each subagent sees full diff | Full diff |
-| Large | Partition by domain | Each subagent gets its domain's diff + cross-domain interface summary |
+| One coherent concern | Each subagent sees full diff | Full diff |
+| Multiple independent concerns | Partition by domain | Each subagent gets its domain's diff + cross-domain interface summary |
 
-Default 3 subagents (overridden by `sub=N` in message). All use `general` type, same role, independent views. If domains < count, assign extra subagents to largest domain or fall back to full-diff review.
+Default 3 subagents (overridden by `sub=N` in message). All use the same general code-review-capable role with independent views. If domains < count, assign extra subagents to largest domain or fall back to full-diff review.
 
 Partition by domain (large diffs):
 
@@ -60,11 +60,13 @@ Partition by domain (large diffs):
 - Determine scope and review focus from user input (see Input resolution).
 - Arbitrary messages: main agent interprets intent → (a) which files/changes to review, (b) what review angle. If scope unclear, ask user.
 - No diff → "No changes to review." → stop.
-- Apply dispatch strategy based on diff size.
+- Apply dispatch strategy based on diff shape.
+
+If user specifies a review focus, sort valid findings in that focus before general findings.
 
 ### Step 2 — Launch subagents
 
-Use `task` tool with `subagent_type: "general"`. **Launch all in parallel** in one message. Default 3 subagents unless overridden by `sub=N`.
+Use the runtime's subagent/delegation tool (`Agent`, `Task`, `task`, or equivalent). Select the most general code-review-capable agent type available (`general-purpose`, `general`, or equivalent). **Launch all in parallel** in one message. Default 3 subagents unless overridden by `sub=N`.
 
 Each subagent prompt MUST include:
 
@@ -78,7 +80,7 @@ Subagent prompt template:
 ```
 You are an independent code reviewer with deep expertise in <review focus>. Find real bugs, logic errors, and missing edge cases — not style nits.
 
-Explore the codebase (read, grep, glob) to verify claims before reporting. Do not guess.
+Explore the codebase with available read/search tools to verify claims before reporting. Do not guess.
 
 ## Task
 
@@ -134,7 +136,7 @@ Collect all subagent results. Merge findings, de-duplicate, verify each against 
 
 No valid findings remain → skip to Step 5 (PASS). Report out-of-scope notes to user as informational.
 
-Present findings to user BEFORE applying any fix:
+🔴 CHECKPOINT — STOP before edits. Present findings to user BEFORE applying any fix:
 
 ```markdown
 ## Cross-Check Result: FAIL
@@ -153,7 +155,7 @@ Present findings to user BEFORE applying any fix:
 Apply fixes? (fix / no)
 ```
 
-Use `question` tool. Wait for user decision.
+Use the runtime's user-question tool (`ask_user_question`, `question`, or equivalent). If no structured question tool exists, ask in plain chat. Wait for an explicit user decision.
 
 ### Step 4 — Fix (or not)
 
@@ -193,6 +195,27 @@ After fixes, always re-verify from Step 1 — fixes can introduce new problems.
 ```
 
 No decision prompt in final result.
+
+## Failure branches
+
+| Trigger | Action |
+|---------|--------|
+| Cannot isolate agent's own edits from pre-existing dirty state | Ask user to choose exact files/range before review; do not guess scope. |
+| `git diff` or range resolution fails | Report the failing command/error and stop; do not invent a diff. |
+| Requested file/path has no matching diff | Say "No changes to review for <path>." and stop without launching subagents. |
+| Subagent launch/result fails or times out | Mark review incomplete, report which reviewer failed, and ask user whether to retry or continue with partial results. |
+| Subagent output lacks file/line/evidence | Verify manually; discard if evidence cannot be found. |
+| Reviewers disagree on a finding | Re-check the referenced code and keep only the evidence-backed conclusion. |
+| Fix introduces new failures in re-verify | Report remaining issues after max rounds; do not loop silently. |
+
+## Anti-pattern blacklist
+
+- Do not review unrelated dirty files unless user explicitly includes them.
+- Do not launch reviewers sequentially; parallel independence is part of the method.
+- Do not pass the main agent's suspected bug list to reviewers; it biases results.
+- Do not fix anything before the 🔴 CHECKPOINT user decision.
+- Do not keep style-only findings unless they violate an existing project convention.
+- Do not claim PASS if any reviewer failed and the user chose not to retry.
 
 ## Constraints
 
