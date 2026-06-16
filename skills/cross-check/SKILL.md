@@ -143,8 +143,12 @@ Present findings to user BEFORE applying any fix:
 - <list of files changed>
 
 ### Issues Found
-1. 🔴 L<line>: <description>. impact: <what breaks>. Suggested fix: <concrete suggestion>
-2. 🟡 L<line>: <description>. impact: <what could go wrong>. Suggested fix: <concrete suggestion>
+1. 🔴 L<line>: <description>.
+   impact: <what breaks>.
+   Suggested fix: <concrete suggestion>
+2. 🟡 L<line>: <description>.
+   impact: <what could go wrong>.
+   Suggested fix: <concrete suggestion>
 
 Apply fixes? (fix / no)
 ```
