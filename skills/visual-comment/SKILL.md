@@ -1,6 +1,6 @@
 ---
 name: visual-comment
-description: Add ASCII visual diagrams as inline comments directly into source code so the code becomes visually readable. Inserts a file-header overview plus per-function/class and complex-block diagrams using line comments, in place. Use when the user runs /visual-comment, asks to "add ascii comments", "visualize this code with comments", "annotate code with diagrams", or wants annotated source that explains control flow, data flow, state machines, or call relationships.
+description: Add ASCII visual diagrams as inline comments directly into source code so the code becomes visually readable. Supports whole-file, function/class, or explicit-region annotation using line comments, with diagrams scoped to the requested target. Use when the user runs /visual-comment, asks to "add ascii comments", "visualize this code with comments", "annotate code with diagrams", or wants annotated source that explains control flow, data flow, state machines, or call relationships.
 ---
 
 # Visual Comment
@@ -17,20 +17,32 @@ Self-contained: all char tables, rules, diagram patterns below. No dependency on
 可视化注释 这个文件
 ```
 
-1. Resolve target from prompt (file, or function/region inside it).
-2. Read full target before writing. Never annotate from memory or partial reads.
-3. Detect comment prefix for language (`#`, `//`, `--`, `;`, …).
-4. Insert diagrams at three layers (below), line comments only.
-5. Edit source in place. Re-run safe: see Idempotency.
+1. Resolve target from prompt: whole file, named function/class, or explicit region.
+2. Read the full containing file before writing. Never annotate from memory or partial reads.
+3. Lock scope:
+   - Whole-file target → file header + key units + complex blocks.
+   - Function/class target → that unit and its inner complex blocks only; no new file header.
+   - Region target → only the selected region; no unrelated edits.
+4. Detect comment prefix for language (`#`, `//`, `--`, `;`, …).
+5. 🔴 CHECKPOINT · STOP before editing when target is ambiguous, scope would expand beyond the user request, or more than one file appears relevant. Ask the user to choose one exact file/region.
+6. Insert diagrams at the allowed layers (below), line comments only.
+7. Edit source in place. Re-run safe: see Idempotency.
 
 ## Placement: three layers
 
+Apply only the layers allowed by the locked scope.
+
 ```
-File top ──► one architecture / data-flow OVERVIEW of the whole file
+Whole file target
    │
-Func/Class ──► control flow · call graph · state machine for that unit
+   ├─ File top ──► one architecture / data-flow OVERVIEW of the whole file
    │
-Complex block ──► local data flow / structure layout, inside the body
+   ├─ Func/Class ──► control flow · call graph · state machine for key units
+   │
+   └─ Complex block ──► local data flow / structure layout, inside body
+
+Function/Class target ──► unit diagram + complex blocks inside that unit only
+Region target         ──► local diagrams inside selected region only
 ```
 
 - **File header**: one compact overview of file's modules, data flow, or
@@ -177,8 +189,29 @@ Source may already hold diagrams from prior run. Before inserting, read existing
 comments, recognize prior visual-comment diagrams (box-drawing blocks in line
 comments). Refresh in place, don't stack a second diagram. No duplicates.
 
+## Failure handling
+
+| Trigger | First action | If still blocked |
+|---|---|---|
+| Target path/function/region cannot be resolved | Search only inside user-named file or nearest explicit path | 🔴 CHECKPOINT · STOP and ask for the exact file/region |
+| Prompt names a directory or batch | Explain this skill edits one file or region at a time | Ask user to pick one file; do not annotate the directory |
+| Comment prefix is unknown | Infer from extension and existing comments | STOP and ask before editing rather than using a block comment |
+| Existing diagrams overlap target | Refresh the matching diagram in place | If ownership is unclear, ask before replacing user-written comments |
+| Diagram would only restate simple code | Skip that insertion | Report that no high-signal diagram was added for that unit |
+| Waveform alignment cannot be kept fixed-width | Simplify labels or widen cycle windows consistently | STOP instead of writing misaligned timing diagrams |
+| File appears generated, minified, vendored, or read-only | Do not edit immediately | Ask for confirmation or a non-generated source target |
+
 ## Scope
 
-- In scope: one file (or region within it) named by user.
+- In scope: one file, one function/class, or one explicit region named by user.
 - Out of scope: directory/batch annotation, separate `.md`, copy file,
   compile/syntax verification, forcing label language or diagram type.
+
+## Do not do
+
+- Do not annotate files from partial snippets when the full containing file is available.
+- Do not expand a function/region request into whole-file edits.
+- Do not add diagrams to getters, setters, wrappers, plain CRUD, or code already obvious from names.
+- Do not use block comments, unterminated comment forms, emoji, or CJK text inside aligned boxes/waveforms.
+- Do not stack duplicate visual-comment diagrams on rerun.
+- Do not change executable code while adding comments.
