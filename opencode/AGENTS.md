@@ -63,6 +63,7 @@
 - Think from first principles: identify the goal, constraints, and available paths first, then choose the most direct, lowest-cost, and verifiable solution. Reject habit-driven or path-dependent reasoning.
 - Fill in missing information: when the user's intent is incomplete, first gather what can be directly obtained from the code, files, configuration, and context. Do not guess, and do not ask the user for information that can be retrieved directly.
 - Do not run `git reset --hard` unless the user explicitly asks for it.
+- Do not run `git push` unless the user explicitly asks for it.
 - Before finishing the task, clean up any temporary files and scripts created during this task. If they are needed for reproduction, troubleshooting, or the user explicitly asks to keep them, keep them and say so.
 - Think before coding: state assumptions explicitly; if multiple interpretations exist, present them instead of picking silently; push back when a simpler approach exists; stop and ask when confused.
 
