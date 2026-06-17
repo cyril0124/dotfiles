@@ -19,6 +19,10 @@ Review only the content the user specified. Keep findings evidence-based, action
 5. Provide the smallest focused patch for each issue as a unified diff.
 6. Follow the user's language for explanations; keep identifiers, code, and diffs in their original language.
 
+## Large Reviews
+
+When the review target is too large for one high-quality pass, use read-only subagents to review separate files or independent sections. Subagent findings are advisory only: the main agent must deduplicate them, verify the evidence, set final severity, and produce the final report in this skill's output format.
+
 ## Output Format
 
 If issues exist, start with the reviewed content summary, then use this format for each issue:
