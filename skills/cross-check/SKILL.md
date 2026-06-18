@@ -20,7 +20,7 @@ Collect diff + parse intent → Launch ≥3 subagents → Triage → Report to u
 
 ## When not to use
 
-- Existing PR review → use `code-reviewer` skill or `gh`.
+- Existing PR review unrelated to recent local changes.
 - Code exploration without changes to verify.
 
 ## Input resolution
@@ -107,7 +107,7 @@ If user-specified focus exists, weight findings in that area more heavily.
 
 ## Output format
 
-One line per finding, caveman-review style:
+One line per finding:
 
 1. `<file>:L<line>: 🔴 bug: <problem>. impact: <what breaks>. <fix>.`
 2. `<file>:L<line>: 🟡 risk: <problem>. impact: <what could go wrong>. <fix>.`

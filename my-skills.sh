@@ -35,7 +35,6 @@ LOCAL_SKILLS=(
 REMOTE_SKILLS=(
   "vercel-labs/agent-browser@agent-browser"
   "vercel-labs/skills|find-skills@find-skills"
-  "jeffallan/claude-skills|code-reviewer@code-reviewer"
   "github/awesome-copilot|refactor@refactor"
   "lyndonkl/claude|socratic-teaching-scaffolds@socratic-teaching-scaffolds"
   "kepano/obsidian-skills|obsidian-markdown@obsidian-markdown"
@@ -44,9 +43,7 @@ REMOTE_SKILLS=(
   "alchaincyf/darwin-skill@darwin-skill"
   "juliusbrussee/caveman|caveman@caveman"
   "juliusbrussee/caveman|caveman-compress@caveman-compress"
-  "juliusbrussee/caveman|caveman-review@caveman-review"
-  "juliusbrussee/caveman|cavecrew@cavecrew"
-  "mattpocock/skills|write-a-skill@write-a-skill"
+  "mattpocock/skills|writing-great-skills@writing-great-skills"
   "mattpocock/skills|tdd@tdd"
   "mattpocock/skills|teach@teach"
 )
