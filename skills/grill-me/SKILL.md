@@ -26,6 +26,11 @@ When all branches are resolved and no further questions remain, produce a final 
 ### Suggested Skills
 - <skill-name> — <one-line reason it helps>
 
+### Implementation Steps
+1. <Concrete implementation step>
+2. <Concrete implementation step>
+3. <Concrete implementation step>
+
 Confirm: proceed with implementation? (yes / yes-verify / no / revise / save / show / to-add)
 ```
 
@@ -33,6 +38,12 @@ Rules for `### Suggested Skills`:
 - Always include the section. If no skill is a good fit, write a single bullet: `- None`.
 - Only recommend skills that are loadable in the current session's `<available_skills>` list. Do not recommend skills the user has not installed.
 - Keep each bullet to one line: skill name plus a brief reason it applies to this plan.
+
+Rules for `### Implementation Steps`:
+- Include only implementation actions, not rationale, alternatives, or discussion history.
+- Keep each numbered step to one line.
+- Keep each step concrete enough that another agent can execute it directly.
+- Preserve the current design decisions and scope; do not reopen resolved questions.
 
 Do not implement until user says "yes" or "yes-verify".
 
@@ -73,6 +84,7 @@ On **to-add**, write the grill outcome as an Architecture Design Document (ADD),
    - risks/technical debt
    - validation plan
    - acceptance checklist
+   - implementation steps / concrete delivery plan
    - glossary/links when useful
 3. If no existing ADD is found, create a new Markdown ADD.
    - Prefer an existing architecture/design docs directory if present.
@@ -121,11 +133,16 @@ Summarize the concrete technologies, frameworks, infrastructure, data stores, pr
 
 Use checkboxes for end-to-end acceptance criteria. Each checkbox validates full user/system flow: trigger/input → processing → observable outcome. Independent subagent must verify acceptance; implementing agent cannot accept own work. When every checkbox has evidence, ADD is implemented + accepted. Evidence: review, tests, metrics, demos, rollout checks, or production proof.
 
-## 14. Glossary
+## 14. Implementation Steps
+
+List concrete delivery steps, one numbered step per line.
+
+## 15. Glossary
 ```
 
    Section selection rules:
    - Always include `Overview` and `Acceptance Checklist`.
+   - Include `Implementation Steps` when the grill outcome includes concrete implementation steps.
    - Usually include `System Scope and Context`, `Solution Strategy`, `Technology Stack`, and `Key Design Decisions` for a meaningful ADD.
    - Do not include `Introduction and Goals`; put high-level purpose + scope in `Overview`.
    - Include `Related Documents` only when useful links or paths exist; file paths must be relative to the ADD file that contains the link.
@@ -178,7 +195,7 @@ On **save**, write summary to file:
 
 1. Filename: `plan-<topic-slug>.md` (topic lowercased, spaces→`-`, strip non-alnum/dash).
 2. If exists, try `plan-<topic-slug>-1.md`, then `-2.md`, etc.
-3. Write full Design Summary (Decisions Made + Scope + Suggested Skills). Do not include the "Confirm" prompt line in the file.
+3. Write full Design Summary (Decisions Made + Scope + Suggested Skills + Implementation Steps). Do not include the "Confirm" prompt line in the file.
 4. Tell user filename; implementation **not** started — "yes" or "yes-verify" to proceed, "revise" to revisit.
 5. Re-prompt: `Confirm: proceed with implementation? (yes / yes-verify / no / revise / save / show / to-add)`
 
