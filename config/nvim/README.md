@@ -102,7 +102,7 @@ Open the context menu with `<leader>m`. The menu adapts to the current filetype 
 
 **Default Menu:** Trim spaces, Format, Find files/words (no-ignore), Search & replace, LSP Actions submenu, Git Actions submenu, Edit Config
 
-**Shared Items (all menus):** Notification history, Lock/Unlock quit, DiffviewOpen, DiffviewFileHistory, Toggle git blame, Last commit diff (incremental), Reset commit depth, Switch colorscheme
+**Shared Items (all menus):** Notification history, Lock/Unlock quit, Toggle line numbers, CodeDiffOpen, CodeDiffFileHistory, Toggle git blame, Last commit diff (incremental), Switch colorscheme
 
 ## Installed Plugins
 

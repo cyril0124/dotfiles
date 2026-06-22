@@ -14,6 +14,14 @@ return function()
         require("lua.quit_guard").menu_item(),
 
         {
+            name = "Toggle line numbers",
+            cmd = function()
+                vim.wo.number = not vim.wo.number
+            end,
+            rtxt = "ln",
+        },
+
+        {
             name = "CodeDiffOpen",
             cmd = function()
                 require("lua.codediff").open()
@@ -45,13 +53,6 @@ return function()
             rtxt = "lc",
         },
 
-        {
-            name = "Reset commit depth",
-            cmd = function()
-                require("lua.git_diff").reset_last_commit_depth()
-            end,
-            rtxt = "rc",
-        },
 
         {
             name = "Switch colorscheme",
