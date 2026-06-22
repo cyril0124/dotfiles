@@ -29,6 +29,7 @@ LOCAL_SKILLS=(
   "plain-speak"
   "ascii-visual"
   "visual-comment"
+  "with-evidence"
   "public-page"
 )
 
