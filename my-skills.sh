@@ -3,13 +3,14 @@
 set -euo pipefail
 
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-SKILLS_RUNNER=(npx skills)
+SKILLS_RUNNER=(npx --yes skills)
+SKILLS_TIMEOUT_SECONDS=${SKILLS_TIMEOUT_SECONDS:-120}
 AGENTS=(codex claude-code opencode)
- declare -A INSTALLED_SKILLS=()
- LOCAL_SKILLS_ROOT="$SCRIPT_DIR/skills"
- AGENTS_SKILLS_DIR="$HOME/.agents/skills"
- CLAUDE_SKILLS_DIR="$HOME/.claude/skills"
- CODEX_SKILLS_DIR="$HOME/.codex/skills"
+declare -A INSTALLED_SKILLS=()
+LOCAL_SKILLS_ROOT="$SCRIPT_DIR/skills"
+AGENTS_SKILLS_DIR="$HOME/.agents/skills"
+CLAUDE_SKILLS_DIR="$HOME/.claude/skills"
+CODEX_SKILLS_DIR="$HOME/.codex/skills"
 
 LOCAL_SKILLS=(
   "generic-writing"
@@ -69,11 +70,37 @@ Commands:
   local   Install local repo skills only
   list    Print the configured remote skills
   help    Show this message
+
+Environment:
+  SKILLS_TIMEOUT_SECONDS  Per skills CLI command timeout (default: 120)
 EOF
 }
 
 require_tools() {
   command -v npx >/dev/null 2>&1 || fail "npx is required to install skills"
+}
+
+run_skills() {
+  local timeout_cmd=()
+  local status
+
+  if command -v timeout >/dev/null 2>&1; then
+    timeout_cmd=(timeout "${SKILLS_TIMEOUT_SECONDS}s")
+  elif command -v gtimeout >/dev/null 2>&1; then
+    timeout_cmd=(gtimeout "${SKILLS_TIMEOUT_SECONDS}s")
+  fi
+
+  if "${timeout_cmd[@]}" "${SKILLS_RUNNER[@]}" "$@"; then
+    return 0
+  else
+    status=$?
+  fi
+
+  if [ "$status" -eq 124 ]; then
+    fail "skills command timed out after ${SKILLS_TIMEOUT_SECONDS}s: skills $*"
+  fi
+
+  return "$status"
 }
 
 spec_skill_name() {
@@ -96,7 +123,7 @@ spec_skill_selector() {
 }
 
 installed_skill_names() {
-  "${SKILLS_RUNNER[@]}" ls -g --json | python3 -c '
+  run_skills ls -g --json | python3 -c '
 import json
 import sys
 
@@ -123,11 +150,11 @@ run_skills_add() {
   # explicit instead of relying on the CLI's default agent selection behavior.
   # -y keeps bootstrap non-interactive, which matters for unattended setup.
   # DISABLE_TELEMETRY=1 avoids emitting telemetry during dotfiles bootstrap.
-  DISABLE_TELEMETRY=1 "${SKILLS_RUNNER[@]}" add "$@" -g -a "${AGENTS[@]}" -y
+  DISABLE_TELEMETRY=1 run_skills add "$@" -g -a "${AGENTS[@]}" -y
 }
 
 run_skills_remove() {
-  DISABLE_TELEMETRY=1 "${SKILLS_RUNNER[@]}" remove "$@" -g -a "${AGENTS[@]}" -y
+  DISABLE_TELEMETRY=1 run_skills remove "$@" -g -a "${AGENTS[@]}" -y
 }
 
 run_skills_add_for_spec() {
