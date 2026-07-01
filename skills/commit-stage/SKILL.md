@@ -5,7 +5,7 @@ description: "Validate staged git changes and commit them safely after staged-sc
 
 # Commit-Stage
 
-Validate staged git changes and commit only when review passes. Never modify files, stage files, or widen commit scope.
+Validate staged git changes and commit only when review passes. During initial review, never modify files, stage files, or widen commit scope.
 
 ## TL;DR
 
@@ -198,10 +198,25 @@ Commit created.
 - <optional short bullet for notable scope or boundary>
 ```
 
+## Follow-up options
+
+Append this prompt to any stopped result that includes a suggested fix:
+
+```text
+Confirm: next action? (fix / fr (fix-recommit))
+```
+
+| Option | Meaning |
+|---|---|
+| `fix` | Leave commit-stage review and apply the suggested fix only. Do not stage or commit. |
+| `fr` | Fix-recommit: run `fix`, stage only the files changed by that fix, then restart the full commit-stage workflow from Step 1. |
+
+Do not append follow-up options when there is nothing staged, when the final boundary check changed, or when no reliable fix can be proposed.
+
 ## Constraints
 
-- **No file modifications**: do not edit, create, format, or patch source files.
-- **No staging**: do not run `git add`, `git restore --staged`, or any command that changes the index unless explicitly asked.
+- **No file modifications during initial review**: do not edit, create, format, or patch source files unless the user chooses `fix` or `fr` after a stopped result.
+- **No staging**: do not run `git add`, `git restore --staged`, or any command that changes the index unless explicitly asked by `fr` or a direct user request.
 - **No scope widening**: commit only what was reviewed in the staged diff.
 - **No .md artifacts**: report failures in chat only.
 - **No hidden success path**: if a check cannot run or evidence is insufficient, stop as **Unclear** instead of committing.
@@ -221,7 +236,7 @@ Commit created.
 ## Anti-Patterns
 
 - Do not commit first and review afterward.
-- Do not fix issues directly inside this skill; provide a diff recommendation instead.
+- Do not fix issues directly during initial review; provide a diff recommendation instead.
 - Do not stage documentation updates even when they are obviously needed.
 - Do not treat subagent findings as final without main-agent reclassification.
 - Do not ignore unstaged files by pretending they were reviewed; state that they are out of commit scope.

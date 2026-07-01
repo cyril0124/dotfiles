@@ -1,15 +1,32 @@
 ---
 name: minimal-change
-description: Prefer the smallest change that solves the problem. Reject over-engineering, unnecessary refactoring, or scope creep. Use when user wants a change, implementation, adjustment, or fix and mentions "minimal", "smallest change", "lean", or when the task is clearly targeted.
+description: Prefer the smallest sufficient change. Reject broad refactors, abstractions, dependencies, fallbacks, and scope creep. Use for targeted fixes/changes, "minimal", "smallest change", "lean", or tight requests.
 ---
 
-Make the smallest possible change that achieves the stated goal. Do not refactor, reorganize, or "improve" surrounding code unless those changes are required to achieve the goal.
+Keep work limited to the stated goal.
 
-Rules:
+## Workflow
 
-- If a one-line change works, do not write five lines.
-- If a local change works, do not introduce a new abstraction.
-- If an existing utility already does the job, do not write a new one.
-- If the change can be a surgical edit, do not rewrite the whole function.
-- If the goal can be achieved without touching other files, do not touch other files.
-- When multiple valid minimal changes exist, prefer the one with the fewest side effects and the easiest rollback.
+1. Restate goal + narrow success check.
+2. Inspect only files needed for the edit.
+3. Choose smallest sufficient change: one line → local block → existing utility → abstraction only if required.
+4. Edit surgically; leave unrelated names and structure unchanged.
+5. Verify narrowly.
+
+## 🔴 CHECKPOINT / STOP
+
+Stop before widening scope if the change spreads beyond the request, changes unrelated behavior, adds a dependency, or needs a broad refactor. If asking is disallowed, report the blocker instead of widening silently.
+
+## Failure Modes
+
+- If a one-line fix fails → widen only to nearest local block.
+- If an existing utility might fit → inspect nearby callers first.
+- If verification fails outside touched code → report it as unrelated.
+- If two minimal fixes tie → choose fewer side effects and easier rollback.
+
+## Do Not
+
+- Do not refactor, rename, reformat, or clean nearby code.
+- Do not add abstractions, dependencies, config, compatibility paths, or fallback layers.
+- Do not touch extra files unless needed for goal or verification.
+- Do not hide failures with mocks, silent fallbacks, or unrelated guards.
