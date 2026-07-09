@@ -49,6 +49,7 @@ Confirm: proceed? (revise / run / run-verify)
 
 ## Output Rules
 
+- Match the user's language for all user-facing plan output.
 - Use the section order shown above.
 - Use `None` when a section has no content.
 - Start each implementation step with an action verb.
