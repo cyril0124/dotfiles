@@ -32,6 +32,7 @@ LOCAL_SKILLS=(
   "visual-comment"
   "with-evidence"
   "public-page"
+  "simple-plan"
 )
 
 REMOTE_SKILLS=(
