@@ -14,6 +14,41 @@ function M.is_virtual_buffer_name(name)
     return type(name) == "string" and name:match("^codediff://") ~= nil
 end
 
+function M.is_active_diff_buffer(bufnr)
+    if not (bufnr and vim.api.nvim_buf_is_valid(bufnr)) then
+        return false
+    end
+
+    local ok, session_module = pcall(require, "codediff.ui.lifecycle.session")
+    if not ok then
+        return false
+    end
+
+    for _, session in pairs(session_module.get_active_diffs()) do
+        if session.original_bufnr == bufnr or session.modified_bufnr == bufnr or session.result_bufnr == bufnr then
+            return true
+        end
+    end
+
+    return false
+end
+
+function M.is_codediff_buffer(bufnr)
+    if not (bufnr and vim.api.nvim_buf_is_valid(bufnr)) then
+        return false
+    end
+
+    if M.is_auxiliary_filetype(vim.bo[bufnr].filetype) then
+        return true
+    end
+
+    if M.is_virtual_buffer_name(vim.api.nvim_buf_get_name(bufnr)) then
+        return true
+    end
+
+    return M.is_active_diff_buffer(bufnr)
+end
+
 function M.is_listable_buffer(bufnr)
     if not (bufnr and vim.api.nvim_buf_is_valid(bufnr)) then
         return false

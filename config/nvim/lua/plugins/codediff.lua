@@ -37,6 +37,7 @@ return {
         local managed_diagnostic_buffers = {}
         local managed_inlay_hint_buffers = {}
         local managed_lsp_clients = {}
+        local managed_treesitter_buffers = {}
         local option_names = {
             "number",
             "relativenumber",
@@ -244,6 +245,108 @@ return {
             end
 
             return build_active_diff_buf_set()[bufnr] == true
+        end
+
+        local function has_treesitter_highlighter(bufnr)
+            return vim.treesitter.highlighter
+                and vim.treesitter.highlighter.active
+                and vim.treesitter.highlighter.active[bufnr] ~= nil
+        end
+
+        local function apply_virtual_file_syntax(bufnr)
+            local name = vim.api.nvim_buf_get_name(bufnr)
+            if not codediff_shared.is_virtual_buffer_name(name) then
+                return
+            end
+
+            local _, _, filepath = require("codediff.core.virtual_file").parse_url(name)
+            if not filepath then
+                return
+            end
+
+            local filetype = vim.filetype.match({ filename = filepath, buf = bufnr })
+            if filetype and filetype ~= "" then
+                vim.bo[bufnr].syntax = filetype
+            end
+        end
+
+        local function disable_treesitter(bufnr)
+            if not (bufnr and vim.api.nvim_buf_is_valid(bufnr)) then
+                return
+            end
+
+            if not has_treesitter_highlighter(bufnr) then
+                return
+            end
+
+            vim.treesitter.stop(bufnr)
+            apply_virtual_file_syntax(bufnr)
+            managed_treesitter_buffers[bufnr] = true
+        end
+
+        local function restore_treesitter(bufnr, diff_set)
+            if not (bufnr and vim.api.nvim_buf_is_valid(bufnr)) then
+                if bufnr then
+                    managed_treesitter_buffers[bufnr] = nil
+                end
+                return
+            end
+
+            if diff_set and diff_set[bufnr] then
+                return
+            end
+
+            if codediff_shared.is_virtual_buffer_name(vim.api.nvim_buf_get_name(bufnr)) then
+                managed_treesitter_buffers[bufnr] = nil
+                return
+            end
+
+            require("nvim-treesitter.configs").reattach_module("highlight", bufnr)
+            managed_treesitter_buffers[bufnr] = nil
+        end
+
+        local function sync_treesitter(tabpage)
+            local diff_set = build_active_diff_buf_set()
+            local session = tabpage and lifecycle.get_session(tabpage) or nil
+            if session then
+                disable_treesitter(session.original_bufnr)
+                disable_treesitter(session.modified_bufnr)
+                disable_treesitter(session.result_bufnr)
+            end
+
+            for bufnr, _ in pairs(managed_treesitter_buffers) do
+                restore_treesitter(bufnr, diff_set)
+            end
+        end
+
+        local function schedule_treesitter_sync(tabpage, delay_ms)
+            local function sync()
+                sync_treesitter(tabpage)
+            end
+
+            if delay_ms and delay_ms > 0 then
+                vim.defer_fn(sync, delay_ms)
+            else
+                vim.schedule(sync)
+            end
+        end
+
+        local function schedule_treesitter_restore(delay_ms, attempts_left)
+            local function attempt(i)
+                if i > attempts_left then
+                    return
+                end
+                sync_treesitter(nil)
+                if i < attempts_left and next(managed_treesitter_buffers) ~= nil then
+                    vim.defer_fn(function()
+                        attempt(i + 1)
+                    end, 80)
+                end
+            end
+
+            vim.defer_fn(function()
+                attempt(1)
+            end, delay_ms)
         end
 
         local function disable_markview(bufnr)
@@ -900,6 +1003,7 @@ return {
                 schedule_current_session_wrap(tabpage)
                 ensure_current_session_buflisted(tabpage)
                 schedule_explorer_sync(tabpage, 20, 40)
+                sync_treesitter(tabpage)
                 sync_diagnostics(tabpage)
                 sync_inlay_hints(tabpage)
                 sync_lsp_clients(tabpage)
@@ -951,6 +1055,7 @@ return {
             pattern = "CodeDiffFileSelect",
             callback = function(ev)
                 local tabpage = ev.data and ev.data.tabpage or nil
+                schedule_treesitter_sync(tabpage, 20)
                 schedule_explorer_sync(tabpage)
             end,
         })
@@ -959,10 +1064,20 @@ return {
             group = group,
             pattern = "CodeDiffClose",
             callback = function(ev)
+                schedule_treesitter_restore(20, 6)
                 schedule_markview_restore(20, 6)
                 schedule_diagnostic_restore(20, 6)
                 schedule_inlay_hint_restore(20, 6)
                 schedule_lsp_restore(20, 6)
+            end,
+        })
+
+        vim.api.nvim_create_autocmd("User", {
+            group = group,
+            pattern = "CodeDiffVirtualFileLoaded",
+            callback = function(ev)
+                local bufnr = ev.data and ev.data.buf or nil
+                disable_treesitter(bufnr)
             end,
         })
 
@@ -1003,6 +1118,7 @@ return {
                 end
 
                 if is_listable_session_buffer(ev.buf) then
+                    disable_treesitter(ev.buf)
                     disable_markview(ev.buf)
                     detach_lsp_clients(ev.buf)
                     disable_diagnostics(ev.buf)
@@ -1014,6 +1130,7 @@ return {
                     vim.schedule(function()
                         pcall(vim.cmd, "redrawtabline")
                     end)
+                    schedule_treesitter_sync(tabpage, 20)
                     schedule_markview_sync(tabpage, 20)
                     schedule_diagnostic_sync(tabpage, 20)
                     schedule_inlay_hint_sync(tabpage, 20)

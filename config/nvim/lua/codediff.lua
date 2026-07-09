@@ -7,6 +7,7 @@ local state = {
     last_close_ms = 0,
     ui_suspended = false,
     paused_winsep = false,
+    paused_reactive = false,
     tabline_buffers = {},
 }
 
@@ -207,6 +208,12 @@ local function suspend_ui_effects()
         state.paused_winsep = true
         winsep.disable()
     end
+
+    local ok_reactive, reactive_commands = pcall(require, "reactive.commands")
+    if ok_reactive and reactive_commands.listeners_initialized then
+        state.paused_reactive = true
+        vim.cmd("ReactiveStop")
+    end
 end
 
 local function resume_ui_effects()
@@ -216,6 +223,11 @@ local function resume_ui_effects()
             winsep.enable()
         end
         state.paused_winsep = false
+    end
+
+    if state.paused_reactive then
+        vim.cmd("ReactiveStart")
+        state.paused_reactive = false
     end
 end
 
@@ -405,8 +417,10 @@ end
 
 local function run_command(command, delay_ms)
     local run = function()
+        suspend_ui_effects()
         local ok, err = pcall(vim.cmd, command)
         if not ok then
+            resume_ui_effects()
             vim.notify("CodeDiff failed: " .. tostring(err), vim.log.levels.ERROR)
         end
     end

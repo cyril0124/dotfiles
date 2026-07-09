@@ -31,6 +31,11 @@ local function should_show_buffer(codediff_shared, buf)
 	return true
 end
 
+local function is_codediff_reactive_buffer()
+	local ok, codediff_shared = pcall(require, "lua.codediff_shared")
+	return ok and codediff_shared.is_codediff_buffer(vim.api.nvim_get_current_buf())
+end
+
 local function is_codediff_window(codediff_shared, buf, win)
 	if not (buf and vim.api.nvim_buf_is_valid(buf) and win and vim.api.nvim_win_is_valid(win)) then
 		return false
@@ -367,6 +372,14 @@ return {
 		event = "UIEnter",
 		opts = {
 			load = { "catppuccin-mocha-cursor", "catppuccin-mocha-cursorline" },
+			configs = {
+				["catppuccin-mocha-cursor"] = {
+					skip = is_codediff_reactive_buffer,
+				},
+				["catppuccin-mocha-cursorline"] = {
+					skip = is_codediff_reactive_buffer,
+				},
+			},
 		},
 	},
 }

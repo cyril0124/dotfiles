@@ -15,7 +15,12 @@ return {
 
         require('nvim-treesitter.configs').setup {
             ensure_installed = ensure_installed,
-            highlight = { enable = true },
+            highlight = {
+                enable = true,
+                disable = function(_, bufnr)
+                    return require("lua.codediff_shared").is_codediff_buffer(bufnr)
+                end,
+            },
             fold = {
                 enable = true,
             },
