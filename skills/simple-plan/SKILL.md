@@ -13,7 +13,7 @@ Turn available context into a clear, executable implementation plan for the next
 2. Inspect only the context needed to know current state, constraints, and likely touch points.
 3. Separate hard constraints from narrow assumptions. Name missing facts instead of inventing them.
 4. Choose the smallest sufficient path: existing pattern -> standard library/native feature -> installed dependency -> minimal new code.
-5. Decompose work into dependency-ordered steps; give each step a verification target.
+5. Explain the implementation approach, add a one-sentence plain-language summary, then decompose it into dependency-ordered steps; give each step a verification target.
 6. List only visible, relevant skills from the current session's available skills list.
 7. End with the exact confirmation line unless the latest request already selects `revise`, `run`, `run-verify`, or asks for no confirmation.
 
@@ -24,6 +24,11 @@ Turn available context into a clear, executable implementation plan for the next
 
 ### Goal
 <One paragraph with the goal and intended outcome.>
+
+### Implementation Approach
+<A concise explanation of how the implementation will achieve the goal.>
+
+In one sentence: <State the core solution in short, plain language.>
 
 ### Assumptions
 - <None, or narrow assumptions used to complete the plan.>
