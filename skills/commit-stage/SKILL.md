@@ -37,15 +37,17 @@ git diff --cached
 
 If `git diff --cached` is empty → report `Nothing staged for commit.` and stop.
 If unstaged or untracked files exist → keep them out of scope; do not inspect them unless needed only as read-only context for the staged diff.
+If `./AGENTS.md` or `./CLAUDE.md` exists → read every existing file before review and treat its instructions as constraints on the staged content.
 
 ### Step 2 — Line-by-line review
 
 Review every staged line. Do not assume correctness. Apply these gates in order:
 
 1. **Scope gate** — confirm every finding and the eventual commit message refer only to staged content.
-2. **Security/privacy gate** — stop immediately for staged secrets, credentials, `.env` values, private keys, tokens, personal data, internal hosts/IPs, user absolute paths, machine-local cache/build paths, or staged logs/caches/build outputs.
-3. **Correctness gate** — inspect behavior, tests, interfaces, and regressions line by line.
-4. **Documentation drift gate** — compare staged behavior/interface/command changes against tracked markdown.
+2. **Project constraints gate** — when `./AGENTS.md` or `./CLAUDE.md` exists, verify every staged change complies with all applicable instructions in those files.
+3. **Security/privacy gate** — stop immediately for staged secrets, credentials, `.env` values, private keys, tokens, personal data, internal hosts/IPs, user absolute paths, machine-local cache/build paths, or staged logs/caches/build outputs.
+4. **Correctness gate** — inspect behavior, tests, interfaces, and regressions line by line.
+5. **Documentation drift gate** — compare staged behavior/interface/command changes against tracked markdown.
 
 Look for:
 
@@ -136,6 +138,7 @@ Commit stopped.
 
 ## Review Checklist
 - [ ] Staged diff reviewed line by line
+- [ ] Current-directory AGENTS.md/CLAUDE.md constraints checked
 - [ ] Correctness/regression risks checked
 - [ ] Security/privacy leaks checked
 - [ ] Related documentation drift checked
@@ -185,6 +188,7 @@ Commit created.
 
 ## Review Checklist
 - [ ] Staged diff reviewed line by line
+- [ ] Current-directory AGENTS.md/CLAUDE.md constraints checked
 - [ ] Correctness/regression risks checked
 - [ ] Security/privacy leaks checked
 - [ ] Related documentation drift checked
