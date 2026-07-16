@@ -13,7 +13,7 @@ Turn available context into a clear, executable implementation plan for the next
 2. Inspect only the context needed to know current state, constraints, and likely touch points.
 3. Separate hard constraints from narrow assumptions. Name missing facts instead of inventing them.
 4. Choose the smallest sufficient path: existing pattern -> standard library/native feature -> installed dependency -> minimal new code.
-5. Explain the implementation approach, add a one-sentence plain-language summary, then decompose it into dependency-ordered steps; give each step a verification target.
+5. Explain the implementation approach, show it as a concise ASCII visual, add a one-sentence plain-language summary, then decompose it into dependency-ordered steps; give each step a verification target.
 6. List only visible, relevant skills from the current session's available skills list.
 7. End with the exact confirmation line unless the latest request already selects `revise`, `run`, `run-verify`, or asks for no confirmation.
 
@@ -27,6 +27,10 @@ Turn available context into a clear, executable implementation plan for the next
 
 ### Implementation Approach
 <A concise explanation of how the implementation will achieve the goal.>
+
+```text
+<ASCII visual of the approach: flow, layers, or touch points.>
+```
 
 In one sentence: <State the core solution in short, plain language.>
 
@@ -56,6 +60,7 @@ Confirm: proceed? (revise / run / run-verify)
 
 - Match the user's language for all user-facing plan output.
 - Use the section order shown above.
+- Under `Implementation Approach`, include a short ASCII visual (fenced `text` block) that shows the approach at a glance.
 - Use `None` when a section has no content.
 - Start each implementation step with an action verb.
 - Keep `Dependencies / Risks` to items that change sequencing, correctness, data safety, security, or verification.
