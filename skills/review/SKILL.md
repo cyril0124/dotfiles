@@ -25,13 +25,14 @@ When the review target is too large for one high-quality pass, use read-only sub
 
 ## Output Format
 
-If issues exist, start with the reviewed content summary, then use this format for each issue:
+If issues exist, start with the reviewed content summary, then use this format for each issue.
+Assign each issue a sequential ID: `R-001`, `R-002`, ... (zero-padded, in report order). Every issue must have an ID.
 
 ````md
 **Reviewed Content Summary**
 <what the reviewed code or content does, in a concise plain-language summary.>
 
-### <Critical|Major|Minor>: <short title> (`path/to/file.ext:<line>`)
+### R-001 <Critical|Major|Minor>: <short title> (`path/to/file.ext:<line>`)
 
 #### Evidence
 <file path and line number plus the relevant original snippet; for pasted content, use a locatable section or quoted snippet.>
@@ -65,6 +66,7 @@ Reviewed: <target summary>
 ## Diff Rules
 
 - The diff must be per issue, minimal, and focused on that issue only.
+- The issue heading must start with an ID (`R-001`, `R-002`, ...) then severity, title, and `path:line` when available.
 - The issue heading must include `path:line` when a line number is available.
 - Every issue must include an `Evidence` field with a file path and line number plus the relevant original snippet; for pasted content, use a locatable section or quoted snippet.
 - The diff hunk must include line numbers in the `@@` header.
