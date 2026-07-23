@@ -33,6 +33,9 @@ LOCAL_SKILLS=(
   "with-evidence"
   "public-page"
   "simple-plan"
+  "lesson-learned"
+  "show-mermaid"
+  "show-mermaid-ascii"
 )
 
 REMOTE_SKILLS=(
