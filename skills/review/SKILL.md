@@ -1,6 +1,6 @@
 ---
 name: review
-description: Reviews user-specified content and reports evidence-based issues with severity, plain-language explanation, and per-issue patch diffs. Use when the user asks to review, audit, check, inspect, or critique code, diffs, files, documents, plans, or pasted content.
+description: Reviews user-specified content and reports evidence-based issues with severity, plain-language explanation, and per-issue fixes (code diffs or text rewrites). Use when the user asks to review, audit, check, inspect, or critique code, diffs, files, documents, plans, or pasted content.
 ---
 
 # Review
@@ -16,7 +16,7 @@ Review only the content the user specified. Keep findings evidence-based, action
    - `Major`: real bug, incorrect behavior, significant maintainability risk, or meaningful performance issue.
    - `Minor`: small correctness edge case, naming, readability, style, or low-risk maintainability issue.
 4. For every issue, include exact evidence from visible content: file path and line number when available.
-5. Provide the smallest focused patch for each issue as a unified diff.
+5. Provide the smallest focused fix for each issue: unified diff for code; rewrite or added text for docs/plans/pasted prose. If no safe fix can be produced, say so and omit a fake patch.
 6. Follow the user's language for explanations; keep identifiers, code, and diffs in their original language.
 
 ## Large Reviews
@@ -44,7 +44,7 @@ Assign each issue a sequential ID: `R-001`, `R-002`, ... (zero-padded, in report
 <same issue explained so a middle school student can understand it, using simple non-jargon language.>
 
 #### Fix
-<why this patch fixes the issue.>
+<why this fix resolves the issue.>
 
 ```diff
 --- a/path/to/file.ext
@@ -53,6 +53,8 @@ Assign each issue a sequential ID: `R-001`, `R-002`, ... (zero-padded, in report
 -<old code>
 +<new code>
 ```
+
+For non-code targets, replace the diff block with a short rewrite or added text that applies the fix.
 ````
 
 If no issues are found:
@@ -63,15 +65,16 @@ Reviewed Content Summary: <what the reviewed code or content does, in a concise 
 Reviewed: <target summary>
 ```
 
-## Diff Rules
+## Fix Rules
 
-- The diff must be per issue, minimal, and focused on that issue only.
+- The fix must be per issue, minimal, and focused on that issue only.
+- Use a unified diff for code issues. Use a short rewrite or added text for documents, plans, and pasted prose.
 - The issue heading must start with an ID (`R-001`, `R-002`, ...) then severity, title, and `path:line` when available.
 - The issue heading must include `path:line` when a line number is available.
 - Every issue must include an `Evidence` field with a file path and line number plus the relevant original snippet; for pasted content, use a locatable section or quoted snippet.
-- The diff hunk must include line numbers in the `@@` header.
-- If an exact patch cannot be produced safely, still provide the closest useful diff and label it `Approximate diff` before the diff block.
-- Do not combine unrelated fixes into one diff.
+- Code diff hunks must include line numbers in the `@@` header.
+- If no safe fix can be produced, say why and omit the patch; do not invent an approximate diff.
+- Do not combine unrelated fixes into one fix block.
 
 ## Common Pitfalls
 
@@ -79,4 +82,4 @@ Reviewed: <target summary>
 - Do not report style preferences as issues unless they affect readability, maintenance, or consistency.
 - Do not repeat the same root cause across multiple severities.
 - Do not review unrelated files or code paths unless the user included them in scope.
-- Do not omit the patch diff for an issue; if exact context is missing, provide an approximate diff and say why.
+- Do not force a unified diff onto non-code targets, and do not invent approximate diffs when the fix is unsafe or unclear.
