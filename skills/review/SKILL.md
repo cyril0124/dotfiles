@@ -34,9 +34,6 @@ Assign each issue a sequential ID: `R-001`, `R-002`, ... (zero-padded, in report
 
 ### R-001 <Critical|Major|Minor>: <short title> (`path/to/file.ext:<line>`)
 
-#### Evidence
-<file path and line number plus the relevant original snippet; for pasted content, use a locatable section or quoted snippet.>
-
 #### Problem
 <technical problem description based on the evidence.>
 
@@ -55,6 +52,9 @@ Assign each issue a sequential ID: `R-001`, `R-002`, ... (zero-padded, in report
 ```
 
 For non-code targets, replace the diff block with a short rewrite or added text that applies the fix.
+
+#### Evidence
+<file path and line number plus the relevant original snippet; for pasted content, use a locatable section or quoted snippet.>
 ````
 
 If no issues are found:
