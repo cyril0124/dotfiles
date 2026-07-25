@@ -26,7 +26,7 @@ If completeness and leanness conflict, keep completeness. Prefer a longer plan o
 3. Separate hard constraints from narrow assumptions. Name missing facts instead of inventing them.
 4. Map **must-preserve** behavior and cost: existing public APIs, user-visible paths, data integrity, tests, sibling features that share the same code path, and known performance characteristics of touched hot paths (latency, throughput, memory, I/O, complexity class).
 5. Choose the leanest implementation path that still satisfies full goal delivery, capability preservation, and performance preservation.
-6. Explain the approach, show a concise ASCII visual, add a one-sentence plain-language summary, then decompose into dependency-ordered steps; give each step a verification target.
+6. Explain the approach, show a concise ASCII visual, add a one-sentence plain-language summary, then decompose into dependency-ordered steps. Each step needs an inspected path, today/change delta, and verification target.
 7. List only visible, relevant skills from the current session's available skills list.
 8. Run a completeness self-check before printing: every requested outcome is in steps/checklist; no required work is hidden in `Out`; must-preserve items are explicit.
 9. End with the exact confirmation line unless the latest request already selects `revise`, `run`, `run-verify`, or asks for no confirmation.
@@ -43,7 +43,7 @@ If completeness and leanness conflict, keep completeness. Prefer a longer plan o
 <A concise explanation of how the implementation will achieve the full goal without cutting adjacent capabilities.>
 
 ```text
-<ASCII visual of the approach: flow, layers, or touch points.>
+<ASCII visual: for UI/layout/CLI screens or other user-visible surfaces, a simple preview of the surface; otherwise flow, layers, or touch points.>
 ```
 
 In one sentence: <State the core solution in short, plain language.>
@@ -63,7 +63,7 @@ In one sentence: <State the core solution in short, plain language.>
 - <None, or visible skill + one-line reason.>
 
 ### Implementation Steps
-1. <Action> in <file/module/area> -> verify: <check>.
+1. <Action> in `path/file` (`symbol` or area) — today: <current behavior>; change: <what this step does> -> verify: <check>.
 
 ### Checklist
 - [ ] <Concrete item that must be true after implementation, including preservation checks.>
@@ -75,9 +75,11 @@ Confirm: proceed? (revise / run / run-verify)
 
 - Match the user's language for all user-facing plan output.
 - Use the section order shown above.
-- Under `Implementation Approach`, include a short ASCII visual (fenced `text` block) that shows the approach at a glance.
+- Under `Implementation Approach`, include a short ASCII visual (fenced `text` block). If the change is a UI, layout, CLI screen, or other user-visible surface, make that block a simple preview of the surface; otherwise show flow, layers, or touch points.
 - Use `None` when a section has no content.
 - Start each implementation step with an action verb.
+- Every step must name a concrete inspected path (and symbol/area when known), plus a short today/change delta. Do not invent paths; put unknowns under `Assumptions` or `Dependencies / Risks`.
+- Every step must map to real work under `Scope.In`; do not restate Scope or the ASCII visual as steps.
 - Keep `Dependencies / Risks` to items that change sequencing, correctness, data safety, security, preservation (capability or performance), or verification.
 - Make `Checklist` concrete enough to verify full goal delivery, must-preserve behavior, and must-preserve performance.
 - Include preservation checks in `Checklist` whenever the change touches shared paths, public APIs, data, multi-caller code, or hot paths.
