@@ -27,13 +27,17 @@ Extract exactly one reusable lesson from the current conversation.
    3. A validated success or failure with reusable consequences.
    4. An incidental implementation detail.
 3. Convert the selected event into an actionable decision rule rather than a recounting of the event.
+   - First draft a surface rule (what happened this time), then a principle rule that still holds in an unrelated domain.
+   - Write only the principle rule. If only the surface rule can be stated, abstract one level further before continuing.
 4. Remove project names, file names, protocol names, issue IDs, local identifiers, and specific numbers unless they are essential to the rule. Preserve the shape of the mistake, not the incident's proper nouns.
 5. Run the portability check:
    - Can a reader apply the lesson in a different repository?
    - Does it describe a decision rule instead of recounting an event?
    - Does its example avoid unnecessary local identifiers?
+   - Domain-strip: remove domain nouns from the title and description; if the rule collapses, abstract again.
+   - Can the bad/good example be read as a different domain without this conversation's local labels?
    - If any answer is no, abstract the lesson one level further and check again.
-6. Write exactly one generic but concrete bad/good example that demonstrates the rule.
+6. Write exactly one generic but concrete bad/good example that demonstrates the rule. The example must not rely on this conversation's local labels as its only carrier.
 7. Resolve the Git repository root with `git rev-parse --show-toplevel`, then reply with the lesson and append the identical Markdown to that root's `LESSON.md`.
 
 When no candidate supports a reliable, portable lesson, reply in the user's language that there is not enough current-context evidence to create one. Do not modify `LESSON.md`.
