@@ -11,9 +11,9 @@ Explain complex things so a curious 12-year-old with zero background can underst
 
 - Use short sentences. One idea per sentence.
 - Replace jargon with everyday words. If a technical term is unavoidable, immediately follow with a plain parenthetical explanation.
-- Structure each explanation as: **analogy first → plain explanation → detail if needed**.
-- Analogy must use something familiar from everyday life (food, travel, building blocks, etc.).
-- Structure: conclusion first, then supporting detail. Don't bury the answer.
+- Structure each explanation as: **one-line conclusion → vivid example → map → plain detail if needed**.
+- Analogy/example must use something familiar from everyday life (food, travel, building blocks, etc.) — a short scene, not a dry definition restated.
+- After the example, always add an explicit map from scene parts to real terms (`scene A = concept X`). No map → rewrite the example.
 - If the topic has layers, peel them one at a time — don't dump everything at once.
 - Do not sacrifice correctness for simplicity. If a simplification would be misleading, say so briefly and give the accurate version.
 
@@ -23,7 +23,7 @@ Explain complex things so a curious 12-year-old with zero background can underst
 - When present, keep the final visible answer within N characters total.
 - Count all user-visible text toward the budget, including punctuation, headings, lists, and ASCII diagrams.
 - Treat the budget as a hard limit. If space is tight, keep the conclusion and key explanation first.
-- Omit analogy, details, or ASCII diagrams when needed to stay within the budget.
+- Omit extra detail or ASCII when needed to stay within the budget; keep the conclusion and the example map when possible.
 
 ## Visuals
 
