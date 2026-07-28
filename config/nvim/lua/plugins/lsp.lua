@@ -92,8 +92,9 @@ return {
         config = function()
             require("mason").setup({})
             require("mason-lspconfig").setup({
+                -- emmylua_ls is managed via cargo (~/.cargo/bin): mason reinstall
+                -- on NFS fails when old LS processes hold deleted binaries (.nfs*).
                 ensure_installed = {
-                    "emmylua_ls",
                     "clangd",
                     "jsonls",
                     "rust_analyzer",

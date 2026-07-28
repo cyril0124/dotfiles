@@ -6,9 +6,11 @@ local function uses_json_range_format(bufnr)
 end
 
 local function full_buffer_range(bufnr)
+    local last = vim.api.nvim_buf_line_count(bufnr)
+    local last_line = vim.api.nvim_buf_get_lines(bufnr, last - 1, last, true)[1] or ""
     return {
         start = { 1, 0 },
-        ["end"] = { vim.api.nvim_buf_line_count(bufnr), 0 },
+        ["end"] = { last, #last_line },
     }
 end
 

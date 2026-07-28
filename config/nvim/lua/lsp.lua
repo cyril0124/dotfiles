@@ -27,6 +27,12 @@ vim.api.nvim_create_autocmd("LspAttach", {
     end
 })
 
+-- emmylua_ls: use cargo binary (keeps version current; avoids mason/NFS reinstall fights)
+vim.lsp.config("emmylua_ls", {
+    cmd = { vim.fn.expand("~/.cargo/bin/emmylua_ls") },
+})
+vim.lsp.enable("emmylua_ls")
+
 -- LSP configurations for servers not managed by mason-lspconfig
 vim.lsp.config("jsonls", {
     settings = {
