@@ -47,7 +47,12 @@ return {
             -- Only send the request after x milliseconds of inactivity, use 0 to disable.
             debounce = debounce,
 
-            request_timeout = 1000,
+            -- Keep minuet in blink/cmp sources, but never auto-invoke.
+            -- Manual still works via make_blink_map / make_cmp_map.
+            blink = { enable_auto_complete = false },
+            cmp = { enable_auto_complete = false },
+
+            request_timeout = 2,
             n_completions = 3,
 
             -- the maximum total characters of the context before and after the cursor
