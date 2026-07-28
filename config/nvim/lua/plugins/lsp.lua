@@ -123,7 +123,7 @@ return {
                 },
             }
 
-            if config.proxy_ip then
+            if config.proxy_ip and config.proxy_port then
                 metals_config.settings.serverProperties = {
                     "-Dhttp.proxyHost=" .. config.proxy_ip,
                     "-Dhttp.proxyPort=" .. config.proxy_port,

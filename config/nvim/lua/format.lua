@@ -8,9 +8,10 @@ end
 local function full_buffer_range(bufnr)
     local last = vim.api.nvim_buf_line_count(bufnr)
     local last_line = vim.api.nvim_buf_get_lines(bufnr, last - 1, last, true)[1] or ""
+    -- Inclusive end (last character). make_given_range_params adds +1 when selection=inclusive.
     return {
         start = { 1, 0 },
-        ["end"] = { last, #last_line },
+        ["end"] = { last, math.max(#last_line - 1, 0) },
     }
 end
 
