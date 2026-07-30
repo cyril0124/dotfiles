@@ -1,6 +1,6 @@
 ---
 name: update-agents-md
-description: "Propose updates to AGENTS.md in the current workdir after user confirmation. Use when user asks to update AGENTS.md, modify project rules, add conventions, or mentions 'AGENTS.md', 'update agents', '修改规则', '更新规则'."
+description: "Manual only. Trigger on: update-agents-md, $update-agents-md."
 ---
 
 # Update AGENTS.md
