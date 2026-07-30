@@ -5,13 +5,15 @@ description: "Launch parallel subagents to review recent changes after code modi
 
 # Cross-Check
 
-Launch parallel subagents → independently review changes → triage findings → report to user → fix & re-verify.
+Orthogonal-lens review of recent changes → triage → report → user decides → fix & re-verify.
 
 ## TL;DR
 
 ```
-Collect diff + parse intent → Launch ≥3 subagents → Triage → Report to user → User decides → Fix & re-verify
+Collect diff + parse intent → Assign orthogonal lenses (budget N) → Parallel review → Triage → Report → User decides → Fix & re-verify
 ```
+
+`sub=N` is a **budget**, not a clone count. Never launch N identical reviewers.
 
 ## When to use
 
@@ -25,60 +27,99 @@ Collect diff + parse intent → Launch ≥3 subagents → Triage → Report to u
 
 ## Input resolution
 
-| Input | Scope | Focus |
-|-------|-------|-------|
-| No arguments | Agent's own edits this session | General review |
-| Commit range: `cross-check HEAD~3..HEAD` | `git diff <range>` | General review |
-| File paths: `cross-check src/foo.ts` | Uncommitted changes for those files | General review |
-| Arbitrary message: `cross-check 刚才改的认证逻辑` | Main agent parses which files/changes | Main agent parses review angle |
-| Message with angle: `cross-check 性能问题` | Main agent parses scope | Review focuses on performance |
-| Subagent count: `cross-check sub=5` | Same scope logic, count overridden | Uses N subagents instead of default |
+| Input | Scope | Focus / budget |
+|-------|-------|----------------|
+| No arguments | Agent's own edits this session | General; auto budget |
+| Commit range: `cross-check HEAD~3..HEAD` | `git diff <range>` | General; auto budget |
+| File paths: `cross-check src/foo.ts` | Uncommitted changes for those files | General; auto budget |
+| Arbitrary message: `cross-check 刚才改的认证逻辑` | Main agent parses files/changes | Main agent parses review angle |
+| Message with angle: `cross-check 性能问题` | Main agent parses scope | That angle becomes the Focus/Safety lens priority |
+| Subagent count: `cross-check sub=5` | Same scope logic | Budget N instead of auto |
 
 Default (no arguments): scope to **only changes agent made in this conversation** — exclude pre-existing dirty state. Use conversation history to determine actual scope.
 
 ## Dispatch strategy
 
-Choose the smallest dispatch shape that gives independent coverage without hiding context.
+### Budget
 
-| Diff shape | Strategy | Subagent gets |
-|-----------|----------|---------------|
-| One coherent concern | Each subagent sees full diff | Full diff |
-| Multiple independent concerns | Partition by domain | Each subagent gets its domain's diff + cross-domain interface summary |
+| Diff size | Default budget (no `sub=N`) |
+|-----------|-----------------------------|
+| Tiny: ~1 file and ≲50 changed lines, single concern | **0 subagents** — main agent reviews directly using this skill's user-facing report format (Step 3 / Step 5) |
+| Normal: one coherent concern | **3** — one agent per base lens |
+| Large / multi-domain | **max(3, domain count)** — one agent per domain first; leftover budget deepens |
 
-Default 3 subagents (overridden by `sub=N` in message). All use the same general code-review-capable role with independent views. If domains < count, assign extra subagents to largest domain or fall back to full-diff review.
+`sub=N` overrides the default budget. `sub=0` forces main-agent-only review.
 
-Partition by domain (large diffs):
+### Orthogonal lenses (never clone)
+
+Base lenses, in fill order:
+
+| # | Lens | Looks for |
+|---|------|-----------|
+| 1 | **Correctness** | Logic errors, edge cases, error paths, goal not met |
+| 2 | **Regression** | Callers, tests, interface compatibility, adjacent behavior broken |
+| 3 | **Focus/Safety** | User-specified angle if any; else security, data loss, destructive ops, secrets |
+
+Deepening lenses (only when budget > base lenses already assigned):
+
+| # | Lens | Looks for |
+|---|------|-----------|
+| 4 | **Goal-gap** | Why the change might fail the original goal despite looking correct |
+| 5 | **Hotpath** | Unnecessary work, repeated computation, large allocs on hot paths |
+| 6+ | Repeat deepen on **largest remaining risk surface** (biggest domain / hottest file), alternating Goal-gap and Hotpath-style probes — still a distinct prompt, never a clone of Correctness |
+
+### Assignment rules
+
+```
+budget N
+  → if multi-domain: assign 1 agent per domain (up to N)
+  → remaining slots: fill orthogonal lenses on full diff or on largest domain
+  → never assign two agents the same lens + same diff slice
+```
+
+| Shape | Strategy |
+|-------|----------|
+| Tiny + no `sub=N` | Main agent only. Skip Step 2. |
+| One coherent concern | N agents, lenses 1..N from the tables above, each gets **full diff** |
+| Multiple independent concerns | Partition by domain; 1 agent per domain; leftover budget deepens largest domain with next unused lens |
+| Trivially small domain | Merge into adjacent domain |
+
+Domain partition (large diffs):
 
 1. Group touched files by concern (logic, tests, config, UI, docs).
-2. One subagent per domain.
+2. One agent per domain (lens defaults to Correctness unless budget allows more).
 3. Trivially small domains merge into adjacent domain.
 
 ## Workflow
 
 ### Step 1 — Collect diff + parse intent
 
-- Determine scope and review focus from user input (see Input resolution).
-- Arbitrary messages: main agent interprets intent → (a) which files/changes to review, (b) what review angle. If scope unclear, ask user.
+- Determine scope, review focus, and budget (see Input resolution + Dispatch).
+- Arbitrary messages: main agent interprets intent → (a) which files/changes, (b) review angle. If scope unclear, ask user.
 - No diff → "No changes to review." → stop.
-- Apply dispatch strategy based on diff shape.
+- Tiny + budget 0 → main agent reviews with this skill's user-facing report format; go to Step 3 (no subagents). State `Subagents: 0` in the report.
 
-If user specifies a review focus, sort valid findings in that focus before general findings.
+If user specifies a review focus, put that angle in the Focus/Safety lens and sort valid findings in that focus before general findings.
 
 ### Step 2 — Launch subagents
 
-Use the runtime's subagent/delegation tool (`Agent`, `Task`, `task`, or equivalent). Select the most general code-review-capable agent type available (`general-purpose`, `general`, or equivalent). **Launch all in parallel** in one message. Default 3 subagents unless overridden by `sub=N`.
+Skip when budget is 0.
+
+Use the runtime's subagent/delegation tool (`Agent`, `Task`, `task`, or equivalent). Select the most general code-review-capable agent type available (`general-purpose`, `general`, or equivalent). **Launch all in parallel** in one message.
 
 Each subagent prompt MUST include:
 
-1. Diff (full or domain slice).
-2. Original task description (intended goal).
-3. Review focus (if specified).
-4. If multi-domain: brief note about other domains' key interfaces.
+1. Assigned **lens name** and that lens's checklist only (not the full multi-lens list).
+2. Diff (full or domain slice).
+3. Original task description (intended goal).
+4. User review focus, if any.
+5. If multi-domain: brief note about other domains' key interfaces.
 
 Subagent prompt template:
 
 ```
-You are an independent code reviewer with deep expertise in <review focus>. Find real bugs, logic errors, and missing edge cases — not style nits.
+You are an independent code reviewer. Lens: <Correctness|Regression|Focus/Safety|Goal-gap|Hotpath>.
+Find real issues in this lens only — not style nits, not other lenses.
 
 Explore the codebase with available read/search tools to verify claims before reporting. Do not guess.
 
@@ -86,74 +127,132 @@ Explore the codebase with available read/search tools to verify claims before re
 
 Original goal: <what the change intends to accomplish>
 
-Review focus: <general / performance / security / etc. — or "general" if none specified>
+User focus (if any): <angle or "none">
 
-<If multi-domain:> You are reviewing the <domain name> domain. Other changed domains: <list other domains and their key files/interfaces>.
+Lens: <lens name>
+Lens checklist:
+<only the bullets for this lens — see Lens checklists below>
+
+<If multi-domain:> Domain under review: <domain>. Other changed domains: <list + key interfaces>.
 
 Diff:
 <diff content>
 
-## Review checklist
-
-- Correctness: logic errors, off-by-one, wrong variable names?
-- Completeness: edge cases, error paths, missed callers?
-- Consistency: follows existing patterns in surrounding code?
-- Performance: unnecessary work, repeated computation, large allocations in hot paths?
-- Safety: security issues, leaked secrets, destructive ops?
-- Side effects: breaks other callers, tests, downstream?
-- Cross-domain (if applicable): interfaces between this domain and other changed domains still compatible?
-
-If user-specified focus exists, weight findings in that area more heavily.
-
 ## Output format
 
-One line per finding:
+One compact block per finding:
 
-1. `<file>:L<line>: 🔴 bug: <problem>. impact: <what breaks>. <fix>.`
-2. `<file>:L<line>: 🟡 risk: <problem>. impact: <what could go wrong>. <fix>.`
-3. `<file>:L<line>: 🔵 nit: <problem>. impact: <why it matters>. <fix>.`
-- `<file>:L<line>: ❓ q: <genuine question>.`
+### F-001 <Critical|Major|Minor>: <short title> (`path/to/file.ext:<line>`)
+Problem: <technical problem based on evidence>
+Plain: <plain-language consequence, no jargon>
+Evidence: <path:line + short original snippet>
+Fix: <smallest focused fix idea; unified diff if short and safe>
 
-**impact must be in plain language**: describe the consequence in terms any user would understand. No jargon. e.g. "can't log in" not "auth token mismatch", "blank page" not "React render tree error".
+Severity:
+- Critical: security risk, data loss, crash, broken core behavior, production-blocking.
+- Major: real bug, incorrect behavior, significant maintainability or performance issue.
+- Minor: small correctness edge case or low-risk maintainability — only if it matters; skip pure style.
 
-If no issues: output "PASS: safe to ship."
-
-If you explored to verify a concern and found no issue: state "Verified: no issue at <location>" — do not leave it ambiguous.
+Rules:
+- Assign sequential IDs per subagent: F-001, F-002, ...
+- Stay inside your lens. Do not pad with other-lens findings.
+- Every finding needs path:line evidence. No evidence → do not report.
+- Do not invent findings to fill the report.
+- If no issues in this lens: output `PASS: safe to ship for lens <name>.`
+- If you explored a concern and found no issue: `Verified: no issue at <location>`.
 ```
+
+#### Lens checklists
+
+**Correctness**
+- Logic errors, off-by-one, wrong variables/branches?
+- Edge cases and error paths covered?
+- Does the change actually accomplish the original goal?
+
+**Regression**
+- Other callers broken?
+- Tests outdated or missing for the new behavior?
+- Interfaces / contracts with adjacent code still compatible?
+- Cross-domain interfaces still line up (if multi-domain)?
+
+**Focus/Safety**
+- If user focus set: weight that angle first.
+- Else: secrets, injection, authz, data loss, destructive ops, unsafe defaults.
+
+**Goal-gap**
+- What would make this change fail its stated goal even if the diff looks locally correct?
+- Missing wiring, half-migrated call sites, feature flags, config, docs-only gaps?
+
+**Hotpath**
+- Unnecessary work, repeated computation, large allocations on hot paths?
+- N+1, unbounded loops, blocking calls in request path?
 
 ### Step 3 — Triage + Report to user
 
-Collect all subagent results. Merge findings, de-duplicate, verify each against code.
+Collect all reviewer results (subagents and/or main-agent direct review). Merge findings, de-duplicate, verify each against code.
 
 **Triage every finding**:
 
 | Finding | Action |
 |---------|--------|
-| Valid, should fix | Keep. |
+| Valid, should fix | Keep. Re-assign final severity (`Critical` / `Major` / `Minor`) if needed. |
 | Valid but out of scope | Note for user. Do NOT fix tangential things. |
 | Invalid / false positive | Discard (state why). |
 | Style preference | Discard, unless contradicts project convention. |
 
 No valid findings remain → skip to Step 5 (PASS). Report out-of-scope notes to user as informational.
 
-🔴 CHECKPOINT — STOP before edits. Present findings to user BEFORE applying any fix:
+🔴 CHECKPOINT — STOP before edits. Present findings to user BEFORE applying any fix.
 
-```markdown
+**User-facing report format** (IDs, sections, summary table). Wrap with a Cross-Check header and end with the fix decision:
+
+````md
 ## Cross-Check Result: FAIL
 
-### Changes Reviewed (N subagents)
-- <list of files changed>
+Subagents: <N> · Lenses: <list> · Round: <R>
 
-### Issues Found
-1. 🔴 L<line>: <description>.
-   impact: <what breaks>.
-   Suggested fix: <concrete suggestion>
-2. 🟡 L<line>: <description>.
-   impact: <what could go wrong>.
-   Suggested fix: <concrete suggestion>
+**Reviewed Content Summary**
+<what the changed code does, in a concise plain-language summary.>
+
+### R-001 <Critical|Major|Minor>: <short title> (`path/to/file.ext:<line>`)
+
+#### Problem
+<technical problem description based on the evidence.>
+
+#### Plain Explanation
+<same issue explained so a middle school student can understand it, using simple non-jargon language.>
+
+#### Fix
+<why this fix resolves the issue.>
+
+```diff
+--- a/path/to/file.ext
++++ b/path/to/file.ext
+@@ -<old_line>,<old_count> +<new_line>,<new_count> @@
+-<old code>
++<new code>
+```
+
+#### Evidence
+<file path and line number plus the relevant original snippet.>
+
+## Summary
+
+| ID | Severity | One-liner |
+|----|----------|-----------|
+| R-001 | Critical | <one-line problem> |
+| R-002 | Major | <one-line problem> |
 
 Apply fixes? (fix / no)
-```
+````
+
+Rules:
+- Assign sequential IDs: `R-001`, `R-002`, ... (zero-padded, report order).
+- Heading: `### R-00N <severity>: <title> (\`path:line\`)`.
+- Every kept issue needs Problem, Plain Explanation, Fix, Evidence.
+- Code fixes use unified diff with `@@` line numbers; if no safe fix, say why and omit the patch.
+- Summary table lists every reported issue in ID order; One-liner is problem only.
+- Discarded / out-of-scope items: one short bullet each under an optional `### Notes` section — not in the Summary table.
 
 Use the runtime's user-question tool (`ask_user_question`, `question`, or equivalent). If no structured question tool exists, ask in plain chat. Wait for an explicit user decision.
 
@@ -164,35 +263,39 @@ Use the runtime's user-question tool (`ask_user_question`, `question`, or equiva
 | fix | Apply fixes, then re-run from Step 1. |
 | no | Proceed to Step 5. |
 
-After fixes, always re-verify from Step 1 — fixes can introduce new problems.
+After fixes, always re-verify from Step 1 — fixes can introduce new problems. Re-verify may use a smaller budget (main-agent-only or lenses that owned the fixed issues) when the remaining diff is tiny.
 
 ### Step 5 — Final result
 
 **If PASS (no valid findings):**
 
-```markdown
+```md
 ## Cross-Check Result: PASS
 
-### Changes Reviewed (N subagents)
-- <list of files changed>
-
-### Result
-- No issues found
-- <one sentence verdict>
+No issues found.
+Reviewed Content Summary: <what the changed code does, in a concise plain-language summary.>
+Reviewed: <file list>
+Subagents: <N> · Lenses: <list> · Round: <R>
 ```
 
-**If issues were found and resolved/skipped:**
+**If issues were found and resolved/skipped (after re-verify or user said no):**
 
-```markdown
-## Cross-Check Complete
+```md
+## Cross-Check Result: COMPLETE
 
-### Changes Reviewed (N subagents)
-- <list of files changed>
+Reviewed Content Summary: <what the changed code does, in a concise plain-language summary.>
+Reviewed: <file list>
+Subagents: <N> · Lenses: <list> · Round: <R>
 
 ### Result
-- All issues resolved / N issues skipped by user
-- <one sentence verdict>
+- Fixed: <R-00x list or "none">
+- Skipped by user: <R-00x list or "none">
+- Remaining after max rounds: <R-00x list or "none">
+
+Verdict: <one sentence>
 ```
+
+If remaining issues still exist after max re-verify rounds, re-emit those issues in this skill's issue format (R-IDs, Problem / Plain Explanation / Fix / Evidence + Summary table) under the COMPLETE header before Verdict.
 
 No decision prompt in final result.
 
@@ -203,7 +306,7 @@ No decision prompt in final result.
 | Cannot isolate agent's own edits from pre-existing dirty state | Ask user to choose exact files/range before review; do not guess scope. |
 | `git diff` or range resolution fails | Report the failing command/error and stop; do not invent a diff. |
 | Requested file/path has no matching diff | Say "No changes to review for <path>." and stop without launching subagents. |
-| Subagent launch/result fails or times out | Mark review incomplete, report which reviewer failed, and ask user whether to retry or continue with partial results. |
+| Subagent launch/result fails or times out | Mark review incomplete, report which reviewer/lens failed, and ask user whether to retry or continue with partial results. |
 | Subagent output lacks file/line/evidence | Verify manually; discard if evidence cannot be found. |
 | Reviewers disagree on a finding | Re-check the referenced code and keep only the evidence-backed conclusion. |
 | Fix introduces new failures in re-verify | Report remaining issues after max rounds; do not loop silently. |
@@ -212,18 +315,21 @@ No decision prompt in final result.
 
 - Do not review unrelated dirty files unless user explicitly includes them.
 - Do not launch reviewers sequentially; parallel independence is part of the method.
+- Do not launch N clones of the same lens/checklist; `sub=N` is budget for orthogonal lenses.
 - Do not pass the main agent's suspected bug list to reviewers; it biases results.
+- Do not give every subagent the full multi-lens checklist; each gets only its lens.
 - Do not fix anything before the 🔴 CHECKPOINT user decision.
 - Do not keep style-only findings unless they violate an existing project convention.
 - Do not claim PASS if any reviewer failed and the user chose not to retry.
 
 ## Constraints
 
-- **Default 3 subagents**: Overridden by `sub=N` in user message. More for large diffs. Domains < count → assign extra to largest domain or fall back to full-diff review.
+- **Budget, not clones**: Default budget from diff size; override with `sub=N`. Assign distinct lenses (and domain slices). Never duplicate lens+slice.
+- **Tiny diffs**: Budget 0 → main agent reviews directly; still use the same user-facing report format.
 - **Parallel launch**: All subagents in one message, never sequential.
 - **No editing during review**: Collect diff, launch reviews, then act on findings.
 - **Report before fixing**: Always show findings to user first. User decides.
 - **Max 2 re-verify rounds**: Track rounds. After 2, report remaining issues. Do not loop.
-- **Explore, don't guess**: Subagents must use tools to verify claims.
-- **Independent review**: Subagents get diff + review criteria only — no bias from main agent.
-- **User-facing output**: Follow user's language preference.
+- **Explore, don't guess**: Reviewers must use tools to verify claims.
+- **Independent review**: Subagents get diff + their lens only — no bias from main agent.
+- **User-facing output**: Follow user's language preference. Final report uses this skill's R-IDs, Problem / Plain Explanation / Fix / Evidence, and Summary table, plus Cross-Check headers, lens list, and the fix decision.
