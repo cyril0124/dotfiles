@@ -44,11 +44,11 @@ Default (no arguments): scope to **only changes agent made in this conversation*
 
 | Diff size | Default budget (no `sub=N`) |
 |-----------|-----------------------------|
-| Tiny: ~1 file and ≲50 changed lines, single concern | **0 subagents** — main agent reviews directly using this skill's user-facing report format (Step 3 / Step 5) |
+| Tiny: ~1 file and ≲50 changed lines, single concern | **1** — one independent Correctness subagent (never self-review own edits by default) |
 | Normal: one coherent concern | **3** — one agent per base lens |
 | Large / multi-domain | **max(3, domain count)** — one agent per domain first; leftover budget deepens |
 
-`sub=N` overrides the default budget. `sub=0` forces main-agent-only review.
+`sub=N` overrides the default budget. `sub=0` forces main-agent-only review — only when the user explicitly sets it; report must state `Subagents: 0 (forced)`.
 
 ### Orthogonal lenses (never clone)
 
@@ -79,7 +79,8 @@ budget N
 
 | Shape | Strategy |
 |-------|----------|
-| Tiny + no `sub=N` | Main agent only. Skip Step 2. |
+| Tiny + no `sub=N` | 1 Correctness subagent on full diff. Never skip independence for own edits. |
+| Tiny + explicit `sub=0` | Main agent only. Skip Step 2. Report `Subagents: 0 (forced)`. |
 | One coherent concern | N agents, lenses 1..N from the tables above, each gets **full diff** |
 | Multiple independent concerns | Partition by domain; 1 agent per domain; leftover budget deepens largest domain with next unused lens |
 | Trivially small domain | Merge into adjacent domain |
@@ -97,13 +98,13 @@ Domain partition (large diffs):
 - Determine scope, review focus, and budget (see Input resolution + Dispatch).
 - Arbitrary messages: main agent interprets intent → (a) which files/changes, (b) review angle. If scope unclear, ask user.
 - No diff → "No changes to review." → stop.
-- Tiny + budget 0 → main agent reviews with this skill's user-facing report format; go to Step 3 (no subagents). State `Subagents: 0` in the report.
+- Explicit `sub=0` only → main agent reviews with this skill's user-facing report format; go to Step 3 (no subagents). State `Subagents: 0 (forced)` in the report. Default tiny diffs still launch 1 independent subagent.
 
 If user specifies a review focus, put that angle in the Focus/Safety lens and sort valid findings in that focus before general findings.
 
 ### Step 2 — Launch subagents
 
-Skip when budget is 0.
+Skip only when user explicitly set `sub=0`.
 
 Use the runtime's subagent/delegation tool (`Agent`, `Task`, `task`, or equivalent). Select the most general code-review-capable agent type available (`general-purpose`, `general`, or equivalent). **Launch all in parallel** in one message.
 
@@ -263,7 +264,7 @@ Use the runtime's user-question tool (`ask_user_question`, `question`, or equiva
 | fix | Apply fixes, then re-run from Step 1. |
 | no | Proceed to Step 5. |
 
-After fixes, always re-verify from Step 1 — fixes can introduce new problems. Re-verify may use a smaller budget (main-agent-only or lenses that owned the fixed issues) when the remaining diff is tiny.
+After fixes, always re-verify from Step 1 — fixes can introduce new problems. Re-verify may shrink budget (e.g. only the lens that owned the fixed issues), but still keep ≥1 independent subagent unless the user explicitly set `sub=0`.
 
 ### Step 5 — Final result
 
@@ -321,11 +322,12 @@ No decision prompt in final result.
 - Do not fix anything before the 🔴 CHECKPOINT user decision.
 - Do not keep style-only findings unless they violate an existing project convention.
 - Do not claim PASS if any reviewer failed and the user chose not to retry.
+- Do not self-review the current agent's own edits with budget 0 unless the user explicitly set `sub=0`.
 
 ## Constraints
 
 - **Budget, not clones**: Default budget from diff size; override with `sub=N`. Assign distinct lenses (and domain slices). Never duplicate lens+slice.
-- **Tiny diffs**: Budget 0 → main agent reviews directly; still use the same user-facing report format.
+- **Independence over thrift**: Cross-check may drop lenses; it must not drop independence. Default tiny = 1 independent subagent. Main-agent-only only on explicit `sub=0`, reported as `Subagents: 0 (forced)`.
 - **Parallel launch**: All subagents in one message, never sequential.
 - **No editing during review**: Collect diff, launch reviews, then act on findings.
 - **Report before fixing**: Always show findings to user first. User decides.
