@@ -57,6 +57,24 @@ For non-code targets, replace the diff block with a short rewrite or added text 
 <file path and line number plus the relevant original snippet; for pasted content, use a locatable section or quoted snippet.>
 ````
 
+After all issues, end with a summary table of every finding:
+
+```md
+## Summary
+
+| ID | Severity | One-liner |
+|----|----------|-----------|
+| R-001 | Critical | <one-line problem> |
+| R-002 | Major | <one-line problem> |
+| R-003 | Minor | <one-line problem> |
+```
+
+Rules for the summary table:
+- Include every issue from the report, in the same order as issue IDs.
+- `One-liner` is one short sentence of the problem only; no fix, no evidence, no path.
+- Table headers stay English even when the rest of the report is not.
+- If no issues are found, omit the summary table.
+
 If no issues are found:
 
 ```md
