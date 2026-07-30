@@ -64,13 +64,14 @@ Suspected behavior bug? Reproduce it before confirming when a focused, safe chec
 
 #### Documentation drift check
 
-1. **Collect candidates** — run `git ls-files '*.md'` to list all tracked markdown files.
+1. **Collect candidates** — run `git ls-files '*.md'` to list all tracked markdown files. Always include `./AGENTS.md` and `./CLAUDE.md` when they exist.
 2. **Exclude already-staged .md** — if a `.md` is part of the staged changes, treat it as "user already covered"; only verify its sync completeness, do not suggest additional edits beyond what was staged.
 3. **Semantic judgment** — for each candidate, determine whether it describes behavior, interfaces, CLI flags, configuration keys, commands, or workflows that the staged diff modifies. A mere lexical mention without semantic conflict (e.g., internal refactor that does not change public behavior) does **not** constitute drift.
-4. **Classify**:
+4. **Agent rule files** — if `./AGENTS.md` or `./CLAUDE.md` exists, always judge whether the staged diff adds or changes agent conventions, workflows, constraints, or commands those files should document. Stale or missing guidance is documentation drift.
+5. **Classify**:
    - High confidence the doc is stale → **Related** (stop commit, provide diff fix).
    - Uncertain whether the doc needs updating → **Unclear** (stop commit, state location + one-sentence reason, do not force a diff).
-5. **Failure report label** — prefix the Problem section with `Documentation drift: <file path>` so the user can immediately distinguish doc issues from code bugs.
+6. **Failure report label** — prefix the Problem section with `Documentation drift: <file path>` so the user can immediately distinguish doc issues from code bugs.
 
 ### Step 2.5 — Parallel subagent review (when warranted)
 
@@ -138,7 +139,7 @@ Commit stopped.
 
 ## Review Checklist
 - [ ] Staged diff reviewed line by line
-- [ ] Current-directory AGENTS.md/CLAUDE.md constraints checked
+- [ ] Current-directory AGENTS.md/CLAUDE.md constraints and update need checked
 - [ ] Correctness/regression risks checked
 - [ ] Security/privacy leaks checked
 - [ ] Related documentation drift checked
@@ -188,7 +189,7 @@ Commit created.
 
 ## Review Checklist
 - [ ] Staged diff reviewed line by line
-- [ ] Current-directory AGENTS.md/CLAUDE.md constraints checked
+- [ ] Current-directory AGENTS.md/CLAUDE.md constraints and update need checked
 - [ ] Correctness/regression risks checked
 - [ ] Security/privacy leaks checked
 - [ ] Related documentation drift checked
