@@ -244,7 +244,7 @@ Subagents: <N> · Lenses: <list> · Round: <R>
 | R-001 | Critical | <one-line problem> |
 | R-002 | Major | <one-line problem> |
 
-Apply fixes? (fix / no)
+Confirm: apply fixes? (fix / no)
 ````
 
 Rules:
@@ -254,8 +254,8 @@ Rules:
 - Code fixes use unified diff with `@@` line numbers; if no safe fix, say why and omit the patch.
 - Summary table lists every reported issue in ID order; One-liner is problem only.
 - Discarded / out-of-scope items: one short bullet each under an optional `### Notes` section — not in the Summary table.
-
-Use the runtime's user-question tool (`ask_user_question`, `question`, or equivalent). If no structured question tool exists, ask in plain chat. Wait for an explicit user decision.
+- End FAIL reports with the `Confirm:` line above. Do **not** call structured question tools (`ask_user_question`, `question`, or equivalent).
+- Wait for an explicit user reply in chat (`fix` or `no`). Do not edit until then.
 
 ### Step 4 — Fix (or not)
 
