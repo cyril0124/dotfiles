@@ -40,7 +40,13 @@
 
 - Follow SOLID, DRY, KISS, separation of concerns, and YAGNI.
 - Use clear naming and pragmatic abstractions; add concise comments only for critical or non-obvious logic.
-- Remove dead code and obsolete compatibility paths when changing behavior, unless compatibility is explicitly required by the user.
+- No backward compatibility: delete obsolete code outright; no compat layers, migrations, or fallbacks for old behavior.
+- Choose the simplest implementation that meets current needs. No speculative abstractions or extra config layers.
+- Grow in thin vertical slices: get a minimal end-to-end path running first, then extend. Never tear down a working path for unfinished complexity.
+- Prefer mature, maintained libraries over custom rewrites unless there is a clear reason.
+- Check what existing project dependencies already provide before adding a package or writing new code.
+- Make architecture decisions for the long term. Reject "temporary for now, replace later" shortcuts.
+- Before inventing a solution, study how mature products solve the same problem and reuse proven patterns.
 - Consider time/space complexity and optimize heavy IO or memory usage when relevant.
 - Handle edge cases explicitly.
 - Keep changes small, incremental, and reversible. Prefer reusing existing abstractions, avoid duplication, and avoid unnecessary large refactors or whole-file rewrites.
