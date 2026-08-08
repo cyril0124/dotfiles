@@ -1,6 +1,6 @@
 ---
 name: simple-plan
-description: Write complete, non-regressive implementation plans before coding. Use when the user asks for a plan, implementation steps, delivery plan, plan-before-coding, or revise/run/run-verify controls. Produces full-goal coverage, preserved adjacent behavior, scoped assumptions, dependency-ordered steps, checklist, and a confirmation line.
+description: Write complete, non-regressive implementation plans before coding. Use when the user asks for a plan, implementation steps, delivery plan, plan-before-coding, or revise/ask/run/run-verify controls. Produces full-goal coverage, preserved adjacent behavior, scoped assumptions, dependency-ordered steps, checklist, and a confirmation line.
 ---
 
 # Simple Plan
@@ -30,7 +30,7 @@ If completeness and leanness conflict, keep completeness. Prefer a longer plan o
 7. Explain the approach, show a concise ASCII visual, add a one-sentence plain-language summary, then decompose into dependency-ordered steps. Each step needs an inspected path plus separate today / change / verify lines.
 8. List only visible, relevant skills from the current session's available skills list.
 9. Run a completeness self-check before printing: every requested outcome is in steps/checklist; no required work is hidden in `Out`; must-preserve items are explicit.
-10. End with the exact confirmation line unless the latest request already selects `revise`, `run`, `run-verify`, or asks for no confirmation.
+10. End with the exact confirmation line unless the latest request already selects `revise`, `run`, `run-verify`, or asks for no confirmation. `ask` answers questions only and must still end with the confirmation line.
 
 ## Output Format
 
@@ -72,7 +72,7 @@ In one sentence: <State the core solution in short, plain language.>
    - change: <what this step does>
    - verify: <check>
 
-Confirm: proceed? (revise / run / run-verify)
+Confirm: proceed? (revise / ask / run / run-verify)
 ```
 
 ## Output Rules
@@ -91,16 +91,25 @@ Confirm: proceed? (revise / run / run-verify)
 - When a hot path is touched, checklist must include at least one concrete performance check (complexity class, benchmark, profiling note, or measured budget) — not a vague "should stay fast".
 - Omit discussion history, rejected alternatives, product roadmaps, and speculative future work that is not required by the goal.
 - Do not write code, edit files, or run implementation commands while producing the initial plan.
-- End with `Confirm: proceed? (revise / run / run-verify)` unless the latest request selected an action or asked for no confirmation.
+- End with `Confirm: proceed? (revise / ask / run / run-verify)` unless the latest request selected `revise`, `run`, `run-verify`, or asked for no confirmation. After `ask`, always reprint the confirmation line.
 
 ## CHECKPOINT
 
 STOP before implementation after printing the plan. Continue only when the latest request contains:
 
 - `revise`: incorporate changes and reprint the complete plan.
+- `ask`: answer the user's question(s) about the latest plan or related local context; do not implement, edit files, or run implementation commands. End with the confirmation line.
 - `run`: implement the latest complete plan.
 - `run-verify`: implement, then verify with an independent subagent.
 - No-confirmation wording: omit the confirmation line; implement only if the request also authorizes implementation.
+
+## Ask Option
+
+1. Treat `ask` as Q&A only. Do not enter `run` or `run-verify`.
+2. Answer from the latest complete plan and available local context. Inspect code/files when needed to answer accurately.
+3. Keep the answer scoped to the question; do not rewrite the whole plan unless the user also says `revise`.
+4. If the answer reveals the plan should change, say so briefly and suggest `revise`; do not silently rewrite and proceed.
+5. Always end with `Confirm: proceed? (revise / ask / run / run-verify)`.
 
 ## Run Option
 
@@ -123,7 +132,8 @@ STOP before implementation after printing the plan. Continue only when the lates
 
 | Trigger | Action |
 |---|---|
-| No latest complete plan exists for `run` or `run-verify` | Print a plan first and stop at the checkpoint. |
+| No latest complete plan exists for `ask`, `run`, or `run-verify` | Print a plan first and stop at the checkpoint. |
+| `ask` is selected | Answer only; do not implement; end with the confirmation line. |
 | Required context is missing | List the missing fact under `Assumptions` or `Dependencies / Risks`; do not fabricate files, APIs, or commands. |
 | Blocking decision fork remains after local inspection | Ask the user (structured options if available, else plain text); do not assume a branch and print a plan on the wrong path. |
 | Requested goal is large | Split into ordered phases that still add up to full delivery; do not ship a permanently reduced goal. |
@@ -149,6 +159,7 @@ Do not:
 - Treat assumptions as facts.
 - Claim verification passed without a real check or verifier result.
 - Continue implementing after the plan unless the latest request authorizes it.
+- Treat `ask` as authorization to implement, edit files, or skip the confirmation line.
 
 ## Boundary
 
