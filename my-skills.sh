@@ -36,6 +36,7 @@ LOCAL_SKILLS=(
   "lesson-learned"
   "show-mermaid"
   "show-mermaid-ascii"
+  "clone-pr"
 )
 
 REMOTE_SKILLS=(
