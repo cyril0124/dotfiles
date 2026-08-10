@@ -208,13 +208,14 @@ Commit created.
 Append this prompt to any stopped result that includes a suggested fix:
 
 ```text
-Confirm: next action? (fix / fr (fix-recommit))
+Confirm: next action? (fix / fr (fix-recommit) / skip)
 ```
 
 | Option | Meaning |
 |---|---|
 | `fix` | Leave commit-stage review and apply the suggested fix only. Do not stage or commit. |
 | `fr` | Fix-recommit: run `fix`, stage only the files changed by that fix, then restart the full commit-stage workflow from Step 1. |
+| `skip` | Ignore only the currently reported finding(s). Mark them as acknowledged for this run, then continue the remaining commit-stage workflow. Do not edit files. Later gates or later findings still stop as usual; `skip` is not a blanket pass. |
 
 Do not append follow-up options when there is nothing staged, when the final boundary check changed, or when no reliable fix can be proposed.
 
