@@ -8,8 +8,18 @@ split_vertical = "prefix+_"
 copy_mode = ["prefix+enter", "prefix+["]
 goto = "prefix+s"
 settings = "prefix+shift+s"
+detach = "prefix+d"
+next_workspace = "prefix+tab"
+previous_workspace = "prefix+shift+tab"
+cycle_pane_next = ""
+cycle_pane_previous = ""
+# comma = tmux rename-window; Shift+, often arrives as '<' from terminals
+rename_tab = "prefix+comma"
+rename_workspace = ["prefix+shift+comma", "prefix+<"]
 
 [ui]
 agent_panel_sort = "spaces"
 sidebar_start_collapsed = true
 sidebar_collapsed_mode = "hidden"
+# herdr-automatic-rename owns new-tab names; skip herdr's prompt
+prompt_new_tab_name = false

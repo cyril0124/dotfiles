@@ -216,6 +216,35 @@ install_dotfiles () {
 
         link_file "$src" "$dst"
     done
+
+    install_herdr_plugins
+}
+
+install_herdr_plugins () {
+    local list="$DOTFILES_ROOT/config/herdr/plugins.txt"
+    local plugin
+
+    [ -f "$list" ] || return 0
+
+    if ! command -v herdr >/dev/null 2>&1; then
+        info 'herdr not found; skip plugin install'
+        return 0
+    fi
+
+    info 'installing herdr plugins from config/herdr/plugins.txt'
+
+    while IFS= read -r plugin || [ -n "$plugin" ]; do
+        plugin="${plugin%%#*}"
+        plugin="${plugin#"${plugin%%[![:space:]]*}"}"
+        plugin="${plugin%"${plugin##*[![:space:]]}"}"
+        [ -n "$plugin" ] || continue
+
+        if herdr plugin install "$plugin" --yes; then
+            success "herdr plugin $plugin"
+        else
+            fail "herdr plugin install failed: $plugin"
+        fi
+    done < "$list"
 }
 
 backup_and_link_file() {

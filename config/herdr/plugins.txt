@@ -1,0 +1,3 @@
+# Herdr plugins installed by bootstrap (owner/repo[/subdir]).
+# One plugin per line. Lines starting with # are ignored.
+qu8n/herdr-automatic-rename

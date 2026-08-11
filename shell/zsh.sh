@@ -113,6 +113,13 @@ export SAVEHIST=1000000
 
 alias sz='source ~/.zshrc'
 
+# herdr-automatic-rename: rename tabs as soon as a command starts
+for _herdr_rename_hook in "$HOME"/.config/herdr/plugins/github/herdr-automatic-rename-*/shell/hook.zsh(N); do
+    source "$_herdr_rename_hook"
+    break
+done
+unset _herdr_rename_hook
+
 precmd() {
     echo -n "\x1b]1337;CurrentDir=$(pwd)\x07"
 }

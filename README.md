@@ -16,6 +16,7 @@ cd ~/dotfiles
 
 The bootstrap script will:
 - Link config files from `config/` to `~/.config/`
+- Install Herdr plugins listed in `config/herdr/plugins.txt` when `herdr` is available
 - Back up and link `~/.bashrc` and `~/.zshrc`
 - Install and configure pixi (if needed)
 - Install tmux configuration
@@ -63,7 +64,7 @@ dotfiles/
 ├── config/          # Application configs
 │   ├── nvim/        # Neovim configuration
 │   ├── wezterm/     # WezTerm terminal config
-│   ├── herdr/       # Herdr config (file-linked; runtime data stays in ~/.config/herdr)
+│   ├── herdr/       # Herdr config + plugins.txt (file-linked; runtime data stays in ~/.config/herdr)
 ├── shell/           # Shared shell logic and local overlay templates
 ├── my-skills.sh     # Single entrypoint for skill installation
 ├── tmux/            # Tmux configuration (gpakosz/.tmux)
