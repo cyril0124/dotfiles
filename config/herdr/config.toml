@@ -1,0 +1,15 @@
+[terminal]
+default_shell = "zsh"
+
+# Match oh-my-tmux: splits + copy-mode
+[keys]
+split_horizontal = "prefix+minus"
+split_vertical = "prefix+_"
+copy_mode = ["prefix+enter", "prefix+["]
+goto = "prefix+s"
+settings = "prefix+shift+s"
+
+[ui]
+agent_panel_sort = "spaces"
+sidebar_start_collapsed = true
+sidebar_collapsed_mode = "hidden"

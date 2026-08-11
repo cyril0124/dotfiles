@@ -33,7 +33,7 @@ You can also install only specific components:
 ```
 
 Available components:
-- `dotfiles` - Application configs (nvim, wezterm)
+- `dotfiles` - Application configs (nvim, wezterm, herdr)
 - `shell` - Bash and Zsh rc files with local overlay support
 - `pixi` - Pixi package manager and global packages
 - `tmux_conf` - Tmux configuration
@@ -63,6 +63,7 @@ dotfiles/
 ├── config/          # Application configs
 │   ├── nvim/        # Neovim configuration
 │   ├── wezterm/     # WezTerm terminal config
+│   ├── herdr/       # Herdr config (file-linked; runtime data stays in ~/.config/herdr)
 ├── shell/           # Shared shell logic and local overlay templates
 ├── my-skills.sh     # Single entrypoint for skill installation
 ├── tmux/            # Tmux configuration (gpakosz/.tmux)

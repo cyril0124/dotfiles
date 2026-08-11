@@ -200,7 +200,20 @@ install_dotfiles () {
 
     for src in $(find -H "$DOTFILES_ROOT/config" -mindepth 1 -maxdepth 1 -type d -not -path '*.git*')
     do
-        dst="$HOME/.config/$(basename "${src%.*}")"
+        local name dst
+        name=$(basename "${src%.*}")
+        dst="$HOME/.config/$name"
+
+        # herdr keeps sockets/logs/session under ~/.config/herdr; link files only
+        if [ "$name" = "herdr" ]; then
+            mkdir -p "$dst"
+            for item in "$src"/*; do
+                [ -e "$item" ] || continue
+                link_file "$item" "$dst/$(basename "$item")"
+            done
+            continue
+        fi
+
         link_file "$src" "$dst"
     done
 }
