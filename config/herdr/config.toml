@@ -17,6 +17,30 @@ cycle_pane_previous = ""
 rename_tab = "prefix+comma"
 rename_workspace = ["prefix+shift+comma", "prefix+<"]
 
+[[keys.command]]
+key = "prefix+t"
+type = "popup"
+command = "exec \"${SHELL:-sh}\""
+description = "open scratch terminal"
+width = "80%"
+height = "80%"
+
+[[keys.command]]
+key = "prefix+f"
+type = "popup"
+command = "if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then printf '%s\n' 'Not a git repository.' 'Press enter to close.'; read -r _; elif git diff --quiet; then printf '%s\n' 'No unstaged changes.' 'Press enter to close.'; read -r _; else git diff | diffnav; fi"
+description = "git diff | diffnav"
+width = "90%"
+height = "90%"
+
+[[keys.command]]
+key = "prefix+shift+f"
+type = "popup"
+command = "if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then printf '%s\n' 'Not a git repository.' 'Press enter to close.'; read -r _; elif git diff --staged --quiet; then printf '%s\n' 'No staged changes.' 'Press enter to close.'; read -r _; else git diff --staged | diffnav; fi"
+description = "git diff --staged | diffnav"
+width = "90%"
+height = "90%"
+
 [ui]
 agent_panel_sort = "spaces"
 sidebar_start_collapsed = true
