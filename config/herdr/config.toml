@@ -23,3 +23,11 @@ sidebar_start_collapsed = true
 sidebar_collapsed_mode = "hidden"
 # herdr-automatic-rename owns new-tab names; skip herdr's prompt
 prompt_new_tab_name = false
+
+# host-metrics: whole-host load + memory on every space card
+[ui.sidebar.spaces]
+rows = [
+  ["state_icon", "workspace"],
+  # ["branch", "git_status"],
+  ["$host"],
+]

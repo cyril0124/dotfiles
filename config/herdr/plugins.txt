@@ -1,3 +1,6 @@
-# Herdr plugins installed by bootstrap (owner/repo[/subdir]).
-# One plugin per line. Lines starting with # are ignored.
+# Herdr plugins installed by bootstrap (one entry per line).
+# - GitHub: owner/repo[/subdir]  →  herdr plugin install --yes
+# - Local:  link:relative/path   →  herdr plugin link $DOTFILES_ROOT/relative/path
+# Lines starting with # are ignored.
 qu8n/herdr-automatic-rename
+link:config/herdr/host-metrics

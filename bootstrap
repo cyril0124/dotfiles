@@ -222,7 +222,7 @@ install_dotfiles () {
 
 install_herdr_plugins () {
     local list="$DOTFILES_ROOT/config/herdr/plugins.txt"
-    local plugin
+    local plugin rel path
 
     [ -f "$list" ] || return 0
 
@@ -239,11 +239,27 @@ install_herdr_plugins () {
         plugin="${plugin%"${plugin##*[![:space:]]}"}"
         [ -n "$plugin" ] || continue
 
-        if herdr plugin install "$plugin" --yes; then
-            success "herdr plugin $plugin"
-        else
-            fail "herdr plugin install failed: $plugin"
-        fi
+        case "$plugin" in
+            link:*)
+                rel="${plugin#link:}"
+                path="$DOTFILES_ROOT/$rel"
+                if [ ! -e "$path" ]; then
+                    fail "herdr local plugin path missing: $path"
+                fi
+                if herdr plugin link "$path" --enabled; then
+                    success "herdr plugin link $rel"
+                else
+                    fail "herdr plugin link failed: $rel"
+                fi
+                ;;
+            *)
+                if herdr plugin install "$plugin" --yes; then
+                    success "herdr plugin $plugin"
+                else
+                    fail "herdr plugin install failed: $plugin"
+                fi
+                ;;
+        esac
     done < "$list"
 }
 

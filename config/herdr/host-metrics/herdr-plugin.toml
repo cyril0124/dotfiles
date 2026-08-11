@@ -1,0 +1,15 @@
+id = "host-metrics"
+name = "Host Metrics"
+version = "0.1.0"
+min_herdr_version = "0.7.5"
+description = "Whole-host load and memory in the Herdr sidebar (Linux /proc)."
+platforms = ["linux"]
+
+# Detach a single long-running poller. Safe to re-run: poll.sh uses a pidfile.
+[[startup]]
+command = ["bash", "poll.sh", "--spawn"]
+
+# Install/link does not always run startup; refresh when the user focuses a space.
+[[events]]
+on = "workspace.focused"
+command = ["bash", "poll.sh", "--once"]
