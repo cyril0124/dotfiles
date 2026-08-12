@@ -5,12 +5,17 @@ default_shell = "zsh"
 [keys]
 split_horizontal = "prefix+minus"
 split_vertical = "prefix+_"
-copy_mode = ["prefix+enter", "prefix+["]
+# prefix+[ is previous_tab; copy-mode keeps enter only
+copy_mode = "prefix+enter"
 goto = "prefix+s"
 settings = "prefix+shift+s"
 detach = "prefix+d"
-next_workspace = "prefix+tab"
-previous_workspace = "prefix+shift+tab"
+previous_tab = "prefix+["
+next_tab = "prefix+]"
+previous_workspace = "prefix+{"
+next_workspace = "prefix+}"
+next_agent = "prefix+tab"
+previous_agent = "prefix+shift+tab"
 cycle_pane_next = ""
 cycle_pane_previous = ""
 # comma = tmux rename-window; Shift+, often arrives as '<' from terminals
