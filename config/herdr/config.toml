@@ -24,33 +24,43 @@ focus_pane_left = ""
 focus_pane_down = ""
 focus_pane_up = ""
 focus_pane_right = ""
+# confirm before close; see pane-close/ (local.pane-close)
+close_pane = ""
 # comma = tmux rename-window; Shift+, often arrives as '<' from terminals
 rename_tab = "prefix+comma"
 rename_workspace = ["prefix+shift+comma", "prefix+<"]
 
+# Spatial focus with wrap. Script lives next to this config (via symlink or copy).
+# Resolve path from HERDR_CONFIG_PATH / XDG config, never a hard-coded dotfiles root.
 [[keys.command]]
 key = "prefix+h"
 type = "shell"
-command = "herdr pane zoom --off >/dev/null; herdr pane focus --direction left >/dev/null"
-description = "focus left (unzoom first)"
+command = "python3 \"$(dirname \"$(readlink -f \"${HERDR_CONFIG_PATH:-${XDG_CONFIG_HOME:-$HOME/.config}/herdr/config.toml}\")\")/pane-focus-wrap.py\" left"
+description = "focus left (wrap)"
 
 [[keys.command]]
 key = "prefix+j"
 type = "shell"
-command = "herdr pane zoom --off >/dev/null; herdr pane focus --direction down >/dev/null"
-description = "focus down (unzoom first)"
+command = "python3 \"$(dirname \"$(readlink -f \"${HERDR_CONFIG_PATH:-${XDG_CONFIG_HOME:-$HOME/.config}/herdr/config.toml}\")\")/pane-focus-wrap.py\" down"
+description = "focus down (wrap)"
 
 [[keys.command]]
 key = "prefix+k"
 type = "shell"
-command = "herdr pane zoom --off >/dev/null; herdr pane focus --direction up >/dev/null"
-description = "focus up (unzoom first)"
+command = "python3 \"$(dirname \"$(readlink -f \"${HERDR_CONFIG_PATH:-${XDG_CONFIG_HOME:-$HOME/.config}/herdr/config.toml}\")\")/pane-focus-wrap.py\" up"
+description = "focus up (wrap)"
 
 [[keys.command]]
 key = "prefix+l"
 type = "shell"
-command = "herdr pane zoom --off >/dev/null; herdr pane focus --direction right >/dev/null"
-description = "focus right (unzoom first)"
+command = "python3 \"$(dirname \"$(readlink -f \"${HERDR_CONFIG_PATH:-${XDG_CONFIG_HOME:-$HOME/.config}/herdr/config.toml}\")\")/pane-focus-wrap.py\" right"
+description = "focus right (wrap)"
+
+[[keys.command]]
+key = "prefix+x"
+type = "plugin_action"
+command = "local.pane-close.open"
+description = "close pane (confirm y)"
 
 [[keys.command]]
 key = "prefix+s"

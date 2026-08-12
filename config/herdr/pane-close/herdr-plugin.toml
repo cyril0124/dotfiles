@@ -1,0 +1,20 @@
+id = "local.pane-close"
+name = "Pane Close Confirm"
+version = "0.1.0"
+min_herdr_version = "0.8.0"
+description = "Confirm before closing a pane."
+platforms = ["linux", "macos"]
+
+[[panes]]
+id = "confirm"
+title = "close"
+placement = "popup"
+width = 34
+height = 9
+command = ["python3", "confirm.py"]
+
+[[actions]]
+id = "open"
+title = "Close pane with confirm"
+contexts = ["pane"]
+command = ["python3", "open.py"]

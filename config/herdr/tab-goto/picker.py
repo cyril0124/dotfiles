@@ -261,6 +261,11 @@ def pick_index(rows: list[dict[str, str]], start: int) -> int | None:
     def _ui(stdscr: curses.window) -> int | None:
         curses.curs_set(0)
         _init_colors()
+        try:
+            curses.mousemask(curses.ALL_MOUSE_EVENTS | curses.REPORT_MOUSE_POSITION)
+            curses.mouseinterval(0)
+        except curses.error:
+            pass
 
         # Unicode tree (width-1 box marks). Locale is set in main().
         branch, branch_last = "├─ ", "└─ "
@@ -322,7 +327,7 @@ def pick_index(rows: list[dict[str, str]], start: int) -> int | None:
                 continue
 
             inner = max(0, width - 1)
-            help_l = "j/k · h/l fold · enter · f · esc"
+            help_l = "j/k · click · h/l fold · enter · f · esc"
             _put(stdscr, 0, 1, _fit(help_l, max(0, inner - 1)), curses.A_DIM)
             if filter_on:
                 flag = "FILTER"
@@ -464,6 +469,45 @@ def pick_index(rows: list[dict[str, str]], start: int) -> int | None:
                 if not entries:
                     continue
                 ent = entries[cursor]
+                if ent["kind"] == "tab":
+                    return int(ent["idx"])
+                wid = str(ent.get("workspace_id") or "")
+                if not wid:
+                    continue
+                if ent.get("expanded"):
+                    expanded.discard(wid)
+                else:
+                    expanded.add(wid)
+            elif ch == curses.KEY_MOUSE:
+                try:
+                    _id, mx, my, _z, bstate = curses.getmouse()
+                except curses.error:
+                    continue
+                clicked = bstate & (
+                    getattr(curses, "BUTTON1_CLICKED", 0)
+                    | getattr(curses, "BUTTON1_PRESSED", 0)
+                    | getattr(curses, "BUTTON1_RELEASED", 0)
+                )
+                if not clicked and bstate == 0:
+                    clicked = True
+                if not clicked or not entries:
+                    continue
+                # Map screen row → visible entry (same scroll math as draw).
+                list_top = 2
+                sep_bottom = height - 2
+                view_h = max(1, sep_bottom - list_top)
+                top = 0
+                if cursor >= top + view_h:
+                    top = cursor - view_h + 1
+                if cursor < top:
+                    top = cursor
+                if my < list_top or my >= list_top + view_h:
+                    continue
+                e_i = top + (my - list_top)
+                if e_i < 0 or e_i >= len(entries):
+                    continue
+                ent = entries[e_i]
+                cursor = e_i
                 if ent["kind"] == "tab":
                     return int(ent["idx"])
                 wid = str(ent.get("workspace_id") or "")
