@@ -1,6 +1,6 @@
 ---
 name: commit-stage
-description: "Validate staged git changes and commit them safely after staged-scope, security, correctness, and documentation-drift review. Trigger on: 'commit-stage', 'commit staged', 'review and commit', '提交暂存区', '检查并提交'. Do not use for general git operations or review-only requests without staged-change commit intent."
+description: "Validate staged git changes and commit them safely after staged-scope, security, correctness, readability/maintainability, and documentation-drift review. Trigger on: 'commit-stage', 'commit staged', 'review and commit', '提交暂存区', '检查并提交'. Do not use for general git operations or review-only requests without staged-change commit intent."
 ---
 
 # Commit-Stage
@@ -10,7 +10,7 @@ Validate staged git changes and commit only when review passes. During initial r
 ## TL;DR
 
 ```
-git status --short + git diff --cached → staged-scope gate → security/correctness/doc drift review → final staged-boundary check → commit or report failure
+git status --short + git diff --cached → staged-scope gate → security/correctness/readability-maintainability/doc drift review → final staged-boundary check → commit or report failure
 ```
 
 ## When to use
@@ -47,7 +47,8 @@ Review every staged line. Do not assume correctness. Apply these gates in order:
 2. **Project constraints gate** — when `./AGENTS.md` or `./CLAUDE.md` exists, verify every staged change complies with all applicable instructions in those files.
 3. **Security/privacy gate** — stop immediately for staged secrets, credentials, `.env` values, private keys, tokens, personal data, internal hosts/IPs, user absolute paths, machine-local cache/build paths, or staged logs/caches/build outputs.
 4. **Correctness gate** — inspect behavior, tests, interfaces, and regressions line by line.
-5. **Documentation drift gate** — compare staged behavior/interface/command changes against tracked markdown.
+5. **Readability/maintainability gate** — stop only for material maintainability damage in the staged diff (see below). Pure style preference is not a stop.
+6. **Documentation drift gate** — compare staged behavior/interface/command changes against tracked markdown.
 
 Look for:
 
@@ -55,9 +56,37 @@ Look for:
 - Wrong variable names, broken assumptions, race conditions
 - API misuse, regressions, behavior-breaking changes
 - Security/privacy leaks from the security/privacy gate
-- Missing tests, incomplete refactors, dead code
-- Commented-out debug, formatting issues
+- Missing tests for non-trivial behavior changes
+- **Material maintainability damage**: misleading names, deep nesting / oversized new logic, dead code, incomplete refactors, non-obvious critical logic with no explanation (see below)
+- Commented-out debug left in the staged diff
 - **Documentation drift**: repository `.md` files that describe changed behavior/interfaces/commands but were not updated in this commit (see below)
+
+#### Readability / maintainability check
+
+Correctness asks "is the behavior right?". This gate asks "will a later reader struggle to keep it right?". Scope is staged lines only; judge against surrounding code as read-only context.
+
+**Stop (Related or Unclear) when the staged diff introduces material damage:**
+
+- **Misleading names** — identifiers whose names contradict role, type, or side effects (not mere taste).
+- **Hard-to-follow structure** — staged addition of deep nesting, very long functions/blocks, or tangled control flow that a later reader cannot scan without re-deriving intent.
+- **Dead or leftover code** — unreachable code, unused imports/vars introduced by the diff, or commented-out debug/experiments left staged.
+- **Incomplete refactor** — rename/move/extract half-done: old and new paths both present, callers not updated, or temporary shims that should not ship.
+- **Opaque critical logic** — non-obvious algorithm, invariant, or protocol handling with no nearby comment or clear structure that explains *why*.
+
+**Do not stop for pure style preference:**
+
+- Brace/indent taste, import order, line-wrapping, quote style, trailing commas
+- Naming that is merely different from reviewer taste but still accurate
+- Missing comments on obvious code
+- "I would have written it differently" without a concrete maintainability failure
+
+Whitespace errors remain under the final `git diff --cached --check` boundary, not this gate.
+
+Classify:
+
+- Clear material damage → **Related** (stop, provide complete fix diff).
+- Suspect material damage but evidence incomplete → **Unclear** (stop, state location + one-sentence reason).
+- Style-only preference → ignore for commit decision (do not report as Related).
 
 Need context? Inspect nearby code/files as read-only context. Do not guess.
 Suspected behavior bug? Reproduce it before confirming when a focused, safe check exists; otherwise classify as **Unclear** and stop.
@@ -142,6 +171,7 @@ Commit stopped.
 - [ ] Current-directory AGENTS.md/CLAUDE.md constraints and update need checked
 - [ ] Correctness/regression risks checked
 - [ ] Security/privacy leaks checked
+- [ ] Material readability/maintainability risks checked
 - [ ] Related documentation drift checked
 - [ ] Commit scope boundary checked
 
@@ -192,6 +222,7 @@ Commit created.
 - [ ] Current-directory AGENTS.md/CLAUDE.md constraints and update need checked
 - [ ] Correctness/regression risks checked
 - [ ] Security/privacy leaks checked
+- [ ] Material readability/maintainability risks checked
 - [ ] Related documentation drift checked
 - [ ] Commit scope boundary checked
 
@@ -234,6 +265,7 @@ Do not append follow-up options when there is nothing staged, when the final bou
 |---|---|
 | `git diff --cached` is empty | Stop with `Nothing staged for commit.` |
 | Staged secret/privacy leak is found | Stop as **Related**, explain the leak type, and provide a removal diff |
+| Staged material maintainability damage is found | Stop as **Related** or **Unclear** under the readability/maintainability rules |
 | Staged behavior changes but docs may be stale | Stop as **Related** or **Unclear** under the documentation drift rules |
 | Reproduction/check command is unsafe, too broad, or unavailable | Stop as **Unclear**; do not commit on assumption |
 | Final staged diff differs from reviewed diff | Stop and ask the user to rerun commit-stage after restaging |
@@ -247,3 +279,4 @@ Do not append follow-up options when there is nothing staged, when the final bou
 - Do not treat subagent findings as final without main-agent reclassification.
 - Do not ignore unstaged files by pretending they were reviewed; state that they are out of commit scope.
 - Do not use vague approvals like "looks fine" without checklist evidence.
+- Do not stop the commit for pure style preference; only material maintainability damage blocks.
