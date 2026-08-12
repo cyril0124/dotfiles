@@ -72,8 +72,9 @@ def popup_size(bin_path: str) -> tuple[int, int]:
     term = shutil.get_terminal_size(fallback=(100, 30))
     n = max(1, len(tabs))
     # chrome ≈ help + seps + footer + border
-    height = max(10, min(n + 6, max(10, int(term.lines * 0.85))))
-    width = max(40, min(max_line + 8, max(40, int(term.columns * 0.92))))
+    height = max(10, min(n + 8, max(10, int(term.lines * 0.85))))
+    # Tree needs room for branch + long tab names + status column.
+    width = max(48, min(max(max_line + 14, 48), max(48, int(term.columns * 0.92))))
     return width, height
 
 
