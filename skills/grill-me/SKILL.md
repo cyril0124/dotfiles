@@ -31,7 +31,7 @@ When all branches are resolved and no further questions remain, produce a final 
 2. <Concrete implementation step>
 3. <Concrete implementation step>
 
-Confirm: proceed with implementation? (yes / yes-verify / no / revise / save / show / to-add)
+Confirm: proceed with implementation? (run / run-verify / no / revise / save / show / to-add)
 ```
 
 Rules for `### Suggested Skills`:
@@ -45,11 +45,11 @@ Rules for `### Implementation Steps`:
 - Keep each step concrete enough that another agent can execute it directly.
 - Preserve the current design decisions and scope; do not reopen resolved questions.
 
-Do not implement until user says "yes" or "yes-verify".
+Do not implement until user says "run" or "run-verify".
 
-### Yes-verify option
+### Run-verify option
 
-On **yes-verify**, do same as **yes**, then launch independent subagent to verify before completion report.
+On **run-verify**, do same as **run**, then launch independent subagent to verify before completion report.
 
 Subagent verify rules:
 - Use general-purpose subagent unless specific verify/review subagent clearly fits.
@@ -186,8 +186,8 @@ docs/architecture/<topic-slug>/
    - If enriching an existing large ADD, avoid rewriting the whole document. Patch only the relevant section, or create a focused companion page and link it from the main ADD.
    - Do not duplicate the same content in both the index and detail pages; the index summarizes, detail pages explain.
 6. After writing, tell the user whether the ADD was created, enriched, or split, and show the file path(s).
-7. Implementation is **not** started — "yes" to proceed, "revise" to revisit.
-8. Re-prompt: `Confirm: proceed with implementation? (yes / yes-verify / no / revise / save / show / to-add)`
+7. Implementation is **not** started — "run" to proceed, "revise" to revisit.
+8. Re-prompt: `Confirm: proceed with implementation? (run / run-verify / no / revise / save / show / to-add)`
 
 ### Save option
 
@@ -196,8 +196,8 @@ On **save**, write summary to file:
 1. Filename: `plan-<topic-slug>.md` (topic lowercased, spaces→`-`, strip non-alnum/dash).
 2. If exists, try `plan-<topic-slug>-1.md`, then `-2.md`, etc.
 3. Write full Design Summary (Decisions Made + Scope + Suggested Skills + Implementation Steps). Do not include the "Confirm" prompt line in the file.
-4. Tell user filename; implementation **not** started — "yes" or "yes-verify" to proceed, "revise" to revisit.
-5. Re-prompt: `Confirm: proceed with implementation? (yes / yes-verify / no / revise / save / show / to-add)`
+4. Tell user filename; implementation **not** started — "run" or "run-verify" to proceed, "revise" to revisit.
+5. Re-prompt: `Confirm: proceed with implementation? (run / run-verify / no / revise / save / show / to-add)`
 
 ### Show option
 
@@ -205,4 +205,4 @@ On **show**, render design as ASCII architecture diagram:
 
 1. Use box-drawing chars (`─`, `│`, `┌`, `┐`, `└`, `┘`, `├`, `┤`, `┬`, `┴`, `┼`) for components, data flow, relationships, layers.
 2. Bird's-eye view of final design, not discussion process.
-3. Re-prompt: `Confirm: proceed with implementation? (yes / yes-verify / no / revise / save / show / to-add)`
+3. Re-prompt: `Confirm: proceed with implementation? (run / run-verify / no / revise / save / show / to-add)`
