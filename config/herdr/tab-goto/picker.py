@@ -195,10 +195,24 @@ def _is_interesting_status(status: str) -> bool:
     return key not in ("idle", "unknown")
 
 
-def _filtered_tab_indices(rows: list[dict[str, str]], filter_on: bool) -> list[int]:
-    if not filter_on:
-        return list(range(len(rows)))
-    return [i for i, row in enumerate(rows) if _is_interesting_status(row.get("status", ""))]
+def _filtered_tab_indices(
+    rows: list[dict[str, str]],
+    filter_on: bool,
+    query: str = "",
+) -> list[int]:
+    indices = list(range(len(rows)))
+    if filter_on:
+        indices = [i for i in indices if _is_interesting_status(rows[i].get("status", ""))]
+    q = (query or "").strip().lower()
+    if not q:
+        return indices
+    out: list[int] = []
+    for i in indices:
+        row = rows[i]
+        hay = f"{row.get('tab', '')} {row.get('workspace', '')} {row.get('status', '')}".lower()
+        if q in hay:
+            out.append(i)
+    return out
 
 
 def _workspace_order(rows: list[dict[str, str]], tab_indices: list[int]) -> list[str]:
@@ -274,9 +288,11 @@ def pick_index(rows: list[dict[str, str]], start: int) -> int | None:
         sep_char = "─"
 
         filter_on = False
+        query = ""
+        query_mode = False
         start_idx = max(0, min(start, len(rows) - 1))
         current_wid = rows[start_idx].get("workspace_id") or "?"
-        # Default: expand every workspace; h/l still folds any node.
+        # Default: expand every workspace; h/l (or arrows in / mode) still folds.
         expanded = {
             (r.get("workspace_id") or "?")
             for r in rows
@@ -285,7 +301,7 @@ def pick_index(rows: list[dict[str, str]], start: int) -> int | None:
 
         def rebuild() -> list[dict[str, Any]]:
             nonlocal cursor
-            tabs = _filtered_tab_indices(rows, filter_on)
+            tabs = _filtered_tab_indices(rows, filter_on, query)
             entries = _build_entries(rows, tabs, current_wid, expanded)
             if not entries:
                 cursor = 0
@@ -297,7 +313,7 @@ def pick_index(rows: list[dict[str, str]], start: int) -> int | None:
             nonlocal cursor
             entries2 = _build_entries(
                 rows,
-                _filtered_tab_indices(rows, filter_on),
+                _filtered_tab_indices(rows, filter_on, query),
                 current_wid,
                 expanded,
             )
@@ -327,10 +343,19 @@ def pick_index(rows: list[dict[str, str]], start: int) -> int | None:
                 continue
 
             inner = max(0, width - 1)
-            help_l = "j/k · click · h/l fold · enter · f · esc"
+            if query_mode:
+                caret = "█"
+                help_l = f"/{query}{caret}  arrows move  esc done  ^u clear"
+            else:
+                help_l = "j/k · / filter · click · h/l fold · enter · f · esc"
             _put(stdscr, 0, 1, _fit(help_l, max(0, inner - 1)), curses.A_DIM)
+            flags: list[str] = []
             if filter_on:
-                flag = "FILTER"
+                flags.append("F")
+            if query:
+                flags.append("/")
+            if flags:
+                flag = "".join(flags)
                 _put(stdscr, 0, max(0, inner - len(flag) - 1), flag, curses.A_BOLD)
 
             w_tab, w_st = _tree_tab_width(rows, inner)
@@ -343,7 +368,12 @@ def pick_index(rows: list[dict[str, str]], start: int) -> int | None:
             view_h = max(1, sep_bottom - list_top)
 
             if not entries:
-                _put(stdscr, list_top, 1, _fit("no matches — press f", max(0, inner - 1)), curses.A_DIM)
+                empty_msg = "no matches"
+                if query:
+                    empty_msg += " — edit / or ^u clear"
+                elif filter_on:
+                    empty_msg += " — press f"
+                _put(stdscr, list_top, 1, _fit(empty_msg, max(0, inner - 1)), curses.A_DIM)
             else:
                 top = 0
                 if cursor >= top + view_h:
@@ -433,56 +463,73 @@ def pick_index(rows: list[dict[str, str]], start: int) -> int | None:
             if entries:
                 footer = f"{cursor + 1}/{len(entries)}"
                 if filter_on:
-                    footer += " filter"
+                    footer += " F"
+                if query:
+                    footer += f" /{query}"
                 ent = entries[cursor]
                 if ent["kind"] == "ws":
-                    footer += " h fold" if ent["expanded"] else " l open"
+                    if query_mode:
+                        footer += " ← fold" if ent["expanded"] else " → open"
+                    else:
+                        footer += " h fold" if ent["expanded"] else " l open"
             else:
                 footer = "0/0"
+                if query:
+                    footer += f" /{query}"
             _put(stdscr, footer_row, 0, _fit(footer, inner), curses.A_DIM)
 
             stdscr.refresh()
 
             ch = stdscr.getch()
-            if ch in (ord("j"), curses.KEY_DOWN):
+
+            def move_down() -> None:
+                nonlocal cursor
                 if entries:
                     cursor = (cursor + 1) % len(entries)
-            elif ch in (ord("k"), curses.KEY_UP):
+
+            def move_up() -> None:
+                nonlocal cursor
                 if entries:
                     cursor = (cursor - 1) % len(entries)
-            elif ch in (ord("l"), curses.KEY_RIGHT):
-                if entries:
-                    ent = entries[cursor]
-                    wid = str(ent.get("workspace_id") or "")
-                    if wid:
-                        expanded.add(wid)
-            elif ch in (ord("h"), curses.KEY_LEFT):
-                if entries:
-                    ent = entries[cursor]
-                    wid = str(ent.get("workspace_id") or "")
-                    if wid:
-                        expanded.discard(wid)
-                        snap_to_ws(wid)
-            elif ch in (ord("f"), ord("F")):
-                filter_on = not filter_on
-            elif ch in (curses.KEY_ENTER, 10, 13):
+
+            def fold_right() -> None:
                 if not entries:
-                    continue
+                    return
+                ent = entries[cursor]
+                wid = str(ent.get("workspace_id") or "")
+                if wid:
+                    expanded.add(wid)
+
+            def fold_left() -> None:
+                if not entries:
+                    return
+                ent = entries[cursor]
+                wid = str(ent.get("workspace_id") or "")
+                if wid:
+                    expanded.discard(wid)
+                    snap_to_ws(wid)
+
+            def activate() -> int | None:
+                if not entries:
+                    return None
                 ent = entries[cursor]
                 if ent["kind"] == "tab":
                     return int(ent["idx"])
                 wid = str(ent.get("workspace_id") or "")
                 if not wid:
-                    continue
+                    return None
                 if ent.get("expanded"):
                     expanded.discard(wid)
                 else:
                     expanded.add(wid)
-            elif ch == curses.KEY_MOUSE:
+                return None
+
+            def handle_mouse() -> int | None:
+                nonlocal cursor
                 try:
                     _id, mx, my, _z, bstate = curses.getmouse()
                 except curses.error:
-                    continue
+                    return None
                 clicked = bstate & (
                     getattr(curses, "BUTTON1_CLICKED", 0)
                     | getattr(curses, "BUTTON1_PRESSED", 0)
@@ -491,33 +538,88 @@ def pick_index(rows: list[dict[str, str]], start: int) -> int | None:
                 if not clicked and bstate == 0:
                     clicked = True
                 if not clicked or not entries:
-                    continue
-                # Map screen row → visible entry (same scroll math as draw).
-                list_top = 2
-                sep_bottom = height - 2
-                view_h = max(1, sep_bottom - list_top)
-                top = 0
-                if cursor >= top + view_h:
-                    top = cursor - view_h + 1
-                if cursor < top:
-                    top = cursor
-                if my < list_top or my >= list_top + view_h:
-                    continue
-                e_i = top + (my - list_top)
+                    return None
+                list_top_m = 2
+                sep_bottom_m = height - 2
+                view_h_m = max(1, sep_bottom_m - list_top_m)
+                top_m = 0
+                if cursor >= top_m + view_h_m:
+                    top_m = cursor - view_h_m + 1
+                if cursor < top_m:
+                    top_m = cursor
+                if my < list_top_m or my >= list_top_m + view_h_m:
+                    return None
+                e_i = top_m + (my - list_top_m)
                 if e_i < 0 or e_i >= len(entries):
-                    continue
+                    return None
                 ent = entries[e_i]
                 cursor = e_i
                 if ent["kind"] == "tab":
                     return int(ent["idx"])
                 wid = str(ent.get("workspace_id") or "")
                 if not wid:
-                    continue
+                    return None
                 if ent.get("expanded"):
                     expanded.discard(wid)
                 else:
                     expanded.add(wid)
-            elif ch in (27, ord("q")):
+                return None
+
+            if query_mode:
+                if ch == 27:  # esc → leave input mode (keep query)
+                    query_mode = False
+                elif ch == 21:  # ctrl-u clear query
+                    query = ""
+                elif ch in (curses.KEY_BACKSPACE, 127, 8):
+                    query = query[:-1]
+                elif ch == curses.KEY_UP:
+                    move_up()
+                elif ch == curses.KEY_DOWN:
+                    move_down()
+                elif ch == curses.KEY_LEFT:
+                    fold_left()
+                elif ch == curses.KEY_RIGHT:
+                    fold_right()
+                elif ch in (curses.KEY_ENTER, 10, 13):
+                    picked = activate()
+                    if picked is not None:
+                        return picked
+                elif ch == curses.KEY_MOUSE:
+                    picked = handle_mouse()
+                    if picked is not None:
+                        return picked
+                elif 32 <= ch <= 126:
+                    query += chr(ch)
+                # ignore other keys in query mode (including q/f as letters only if printable)
+                continue
+
+            # normal mode
+            if ch in (ord("j"), curses.KEY_DOWN):
+                move_down()
+            elif ch in (ord("k"), curses.KEY_UP):
+                move_up()
+            elif ch in (ord("l"), curses.KEY_RIGHT):
+                fold_right()
+            elif ch in (ord("h"), curses.KEY_LEFT):
+                fold_left()
+            elif ch in (ord("f"), ord("F")):
+                filter_on = not filter_on
+            elif ch in (ord("/"),):
+                query_mode = True
+            elif ch in (curses.KEY_ENTER, 10, 13):
+                picked = activate()
+                if picked is not None:
+                    return picked
+            elif ch == curses.KEY_MOUSE:
+                picked = handle_mouse()
+                if picked is not None:
+                    return picked
+            elif ch == 27:  # esc: clear query if any, else quit
+                if query:
+                    query = ""
+                else:
+                    return None
+            elif ch in (ord("q"),):
                 return None
 
     return curses.wrapper(_ui)
