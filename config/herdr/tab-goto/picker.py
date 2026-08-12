@@ -271,8 +271,11 @@ def pick_index(rows: list[dict[str, str]], start: int) -> int | None:
         filter_on = False
         start_idx = max(0, min(start, len(rows) - 1))
         current_wid = rows[start_idx].get("workspace_id") or "?"
-        # Default: only the current workspace expanded; all foldable via h/l.
-        expanded: set[str] = {current_wid}
+        # Default: expand every workspace; h/l still folds any node.
+        expanded = {
+            (r.get("workspace_id") or "?")
+            for r in rows
+        }
         cursor = 0  # index into entries
 
         def rebuild() -> list[dict[str, Any]]:
