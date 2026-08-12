@@ -7,7 +7,8 @@ split_horizontal = "prefix+minus"
 split_vertical = "prefix+_"
 # prefix+[ is previous_tab; copy-mode keeps enter only
 copy_mode = "prefix+enter"
-goto = "prefix+s"
+# Built-in goto lists panes; tab-only picker is prefix+s via local.tab-goto
+goto = ""
 settings = "prefix+shift+s"
 detach = "prefix+d"
 previous_tab = "prefix+["
@@ -21,6 +22,12 @@ cycle_pane_previous = ""
 # comma = tmux rename-window; Shift+, often arrives as '<' from terminals
 rename_tab = "prefix+comma"
 rename_workspace = ["prefix+shift+comma", "prefix+<"]
+
+[[keys.command]]
+key = "prefix+s"
+type = "plugin_action"
+command = "local.tab-goto.open"
+description = "tab goto (tabs only, j/k)"
 
 [[keys.command]]
 key = "prefix+t"

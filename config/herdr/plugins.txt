@@ -4,3 +4,4 @@
 # Lines starting with # are ignored.
 qu8n/herdr-automatic-rename
 link:config/herdr/host-metrics
+link:config/herdr/tab-goto

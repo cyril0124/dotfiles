@@ -1,0 +1,19 @@
+id = "local.tab-goto"
+name = "Tab Goto"
+version = "0.2.1"
+min_herdr_version = "0.8.0"
+description = "Session tab picker (tabs only) via stdlib curses j/k."
+platforms = ["linux", "macos"]
+
+[[panes]]
+id = "picker"
+title = "goto"
+placement = "popup"
+# Size is computed dynamically in open.py (content + terminal bounds).
+command = ["python3", "picker.py"]
+
+[[actions]]
+id = "open"
+title = "Open tab picker"
+contexts = ["pane", "workspace"]
+command = ["python3", "open.py"]
