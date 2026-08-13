@@ -7,9 +7,12 @@ import curses
 import json
 import locale
 import os
+import re
 import subprocess
 import sys
 from typing import Any
+
+_TAB_NUM_PREFIX = re.compile(r"^\d+\s+")
 
 
 # Display badge + color pair id (base / selected-on-highlight)
@@ -95,6 +98,35 @@ def initial_index(rows: list[dict[str, str]]) -> int:
     return 0
 
 
+def _state_dir() -> str:
+    env = os.environ.get("HERDR_PLUGIN_STATE_DIR") or ""
+    if env:
+        return env
+    return os.path.join(os.path.dirname(os.path.abspath(__file__)), ".state")
+
+
+def _last_tab_path() -> str:
+    return os.path.join(_state_dir(), "last-tab")
+
+
+def read_last_tab() -> str | None:
+    path = _last_tab_path()
+    try:
+        text = open(path, encoding="utf-8").read().strip()
+    except OSError:
+        return None
+    return text or None
+
+
+def write_last_tab(tab_id: str) -> None:
+    path = _last_tab_path()
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    tmp = path + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as fh:
+        fh.write(tab_id + "\n")
+    os.replace(tmp, path)
+
+
 def pause(msg: str) -> None:
     sys.stdout.write(f"{msg}\nPress enter to close.\n")
     sys.stdout.flush()
@@ -125,10 +157,10 @@ def _status_badge(status: str) -> str:
 def _tree_tab_width(rows: list[dict[str, str]], inner: int) -> tuple[int, int]:
     """Return (tab_name_width, status_width) for tree leaves.
 
-    Layout: pad(1)+branch(3)+cur(2)+name+gap(2)+status(7) ≈ 15 fixed.
+    Layout: pad(1)+branch(3)+num(2)+cur(2)+last(2)+name+gap(2)+status(7) ≈ 19 fixed.
     """
     w_st = 7
-    w_tab = max(12, inner - 15)
+    w_tab = max(12, inner - 19)
     return w_tab, w_st
 
 
@@ -176,6 +208,7 @@ def _init_colors() -> None:
     # tree chrome (branches / fold icons) — always quieter than labels
     curses.init_pair(5, curses.COLOR_WHITE, -1)
     curses.init_pair(6, curses.COLOR_BLACK, curses.COLOR_CYAN)  # tree on selected row
+    curses.init_pair(7, curses.COLOR_YELLOW, -1)  # last-tab mark
 
 
 def _status_pair(status: str, selected: bool) -> int:
@@ -271,7 +304,11 @@ def _build_entries(
     return entries
 
 
-def pick_index(rows: list[dict[str, str]], start: int) -> int | None:
+def pick_index(
+    rows: list[dict[str, str]],
+    start: int,
+    last_id: str | None = None,
+) -> int | None:
     def _ui(stdscr: curses.window) -> int | None:
         curses.curs_set(0)
         _init_colors()
@@ -285,6 +322,7 @@ def pick_index(rows: list[dict[str, str]], start: int) -> int | None:
         branch, branch_last = "├─ ", "└─ "
         open_icon, shut_icon = "▾ ", "▸ "
         cur_mark = "●"
+        last_mark = "○"
         sep_char = "─"
 
         filter_on = False
@@ -347,7 +385,7 @@ def pick_index(rows: list[dict[str, str]], start: int) -> int | None:
                 caret = "█"
                 help_l = f"/{query}{caret}  arrows move  esc done  ^u clear"
             else:
-                help_l = "j/k · / filter · click · h/l fold · enter · f · esc"
+                help_l = "j/k · 1-9 · n last · / filter · click · h/l fold · enter · f · esc"
             _put(stdscr, 0, 1, _fit(help_l, max(0, inner - 1)), curses.A_DIM)
             flags: list[str] = []
             if filter_on:
@@ -366,6 +404,14 @@ def pick_index(rows: list[dict[str, str]], start: int) -> int | None:
             footer_row = height - 1
             sep_bottom = height - 2
             view_h = max(1, sep_bottom - list_top)
+
+            tab_ord: dict[int, int] = {}
+            n_vis = 0
+            for e_i, ent in enumerate(entries):
+                if ent.get("kind") == "tab":
+                    n_vis += 1
+                    if n_vis <= 9:
+                        tab_ord[e_i] = n_vis
 
             if not entries:
                 empty_msg = "no matches"
@@ -429,13 +475,18 @@ def pick_index(rows: list[dict[str, str]], start: int) -> int | None:
                     item_i = int(ent["idx"])
                     row = rows[item_i]
                     is_current = row.get("focused") == "1"
+                    is_last = bool(last_id) and row.get("tab_id") == last_id and not is_current
                     twig = branch_last if ent.get("is_last") else branch
-                    name = row["tab"]
+                    # Drop herdr's own "1 foo" numbering; 1-9 jump keys are the only numbers shown.
+                    name = _TAB_NUM_PREFIX.sub("", row["tab"]) or row["tab"]
                     badge = _status_badge(row["status"])
-                    # cols: 1 branch(3) | 4 cur(2) | 6 name | gap | status
-                    name_w = max(8, min(w_tab, inner - 6 - 2 - w_st))
-                    badge_at = 6 + name_w + 2
+                    # cols: 1 branch(3) | 4 num(2) | 6 cur(2) | 8 last(2) | 10 name
+                    name_w = max(8, min(w_tab, inner - 10 - 2 - w_st))
+                    badge_at = 10 + name_w + 2
                     _put(stdscr, y, 1, twig, tree)
+                    num = tab_ord.get(e_i)
+                    num_cell = f"{num} " if num else "  "
+                    _put(stdscr, y, 4, num_cell, tree if not selected else base)
                     cur_cell = f"{cur_mark} " if is_current else "  "
                     if is_current and curses.has_colors():
                         cur_attr = (
@@ -447,8 +498,20 @@ def pick_index(rows: list[dict[str, str]], start: int) -> int | None:
                         cur_attr = base
                     else:
                         cur_attr = tree
-                    _put(stdscr, y, 4, cur_cell, cur_attr)
-                    _put(stdscr, y, 6, _fit(name, name_w), base)
+                    last_cell = f"{last_mark} " if is_last else "  "
+                    if is_last and curses.has_colors():
+                        last_attr = (
+                            (curses.color_pair(1) | curses.A_BOLD)
+                            if selected
+                            else (curses.color_pair(7) | curses.A_BOLD)
+                        )
+                    elif is_last:
+                        last_attr = base
+                    else:
+                        last_attr = tree
+                    _put(stdscr, y, 6, cur_cell, cur_attr)
+                    _put(stdscr, y, 8, last_cell, last_attr)
+                    _put(stdscr, y, 10, _fit(name, name_w), base)
                     if badge_at < inner:
                         _put(
                             stdscr,
@@ -606,6 +669,21 @@ def pick_index(rows: list[dict[str, str]], start: int) -> int | None:
                 filter_on = not filter_on
             elif ch in (ord("/"),):
                 query_mode = True
+            elif ch in (ord("n"),):
+                if last_id:
+                    for i, row in enumerate(rows):
+                        if row.get("tab_id") == last_id:
+                            return i
+            elif ord("1") <= ch <= ord("9"):
+                # 1-9: immediately focus the Nth visible tab (ignore if fewer).
+                want = ch - ord("0")
+                seen = 0
+                for ent in entries:
+                    if ent.get("kind") != "tab":
+                        continue
+                    seen += 1
+                    if seen == want:
+                        return int(ent["idx"])
             elif ch in (curses.KEY_ENTER, 10, 13):
                 picked = activate()
                 if picked is not None:
@@ -660,8 +738,10 @@ def main() -> int:
         return 0
 
     start = initial_index(rows)
+    here_id = rows[start]["tab_id"]
+    last_id = read_last_tab()
     try:
-        chosen = pick_index(rows, start)
+        chosen = pick_index(rows, start, last_id=last_id)
     except curses.error as exc:
         pause(f"curses UI failed: {exc}")
         return 1
@@ -670,6 +750,8 @@ def main() -> int:
         return 0
 
     tab_id = rows[chosen]["tab_id"]
+    if tab_id != here_id:
+        write_last_tab(here_id)
     try:
         focus_tab(bin_path, tab_id)
     except Exception as exc:
