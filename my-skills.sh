@@ -37,6 +37,7 @@ LOCAL_SKILLS=(
   "show-mermaid"
   "show-mermaid-ascii"
   "clone-pr"
+  "find-simplifications"
 )
 
 REMOTE_SKILLS=(
