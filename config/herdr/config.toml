@@ -31,10 +31,17 @@ close_pane = ""
 rename_tab = "prefix+comma"
 rename_workspace = ["prefix+shift+comma", "prefix+<"]
 
-# Spatial focus with wrap. Script lives next to this config (via symlink or copy).
+# Spatial focus with wrap. Vim keys and arrow keys share the same commands.
+# Script lives next to this config (via symlink or copy).
 # Resolve path from HERDR_CONFIG_PATH / XDG config, never a hard-coded dotfiles root.
 [[keys.command]]
 key = "prefix+h"
+type = "shell"
+command = "python3 \"$(dirname \"$(readlink -f \"${HERDR_CONFIG_PATH:-${XDG_CONFIG_HOME:-$HOME/.config}/herdr/config.toml}\")\")/pane-focus-wrap.py\" left"
+description = "focus left (wrap)"
+
+[[keys.command]]
+key = "prefix+left"
 type = "shell"
 command = "python3 \"$(dirname \"$(readlink -f \"${HERDR_CONFIG_PATH:-${XDG_CONFIG_HOME:-$HOME/.config}/herdr/config.toml}\")\")/pane-focus-wrap.py\" left"
 description = "focus left (wrap)"
@@ -46,13 +53,31 @@ command = "python3 \"$(dirname \"$(readlink -f \"${HERDR_CONFIG_PATH:-${XDG_CONF
 description = "focus down (wrap)"
 
 [[keys.command]]
+key = "prefix+down"
+type = "shell"
+command = "python3 \"$(dirname \"$(readlink -f \"${HERDR_CONFIG_PATH:-${XDG_CONFIG_HOME:-$HOME/.config}/herdr/config.toml}\")\")/pane-focus-wrap.py\" down"
+description = "focus down (wrap)"
+
+[[keys.command]]
 key = "prefix+k"
 type = "shell"
 command = "python3 \"$(dirname \"$(readlink -f \"${HERDR_CONFIG_PATH:-${XDG_CONFIG_HOME:-$HOME/.config}/herdr/config.toml}\")\")/pane-focus-wrap.py\" up"
 description = "focus up (wrap)"
 
 [[keys.command]]
+key = "prefix+up"
+type = "shell"
+command = "python3 \"$(dirname \"$(readlink -f \"${HERDR_CONFIG_PATH:-${XDG_CONFIG_HOME:-$HOME/.config}/herdr/config.toml}\")\")/pane-focus-wrap.py\" up"
+description = "focus up (wrap)"
+
+[[keys.command]]
 key = "prefix+l"
+type = "shell"
+command = "python3 \"$(dirname \"$(readlink -f \"${HERDR_CONFIG_PATH:-${XDG_CONFIG_HOME:-$HOME/.config}/herdr/config.toml}\")\")/pane-focus-wrap.py\" right"
+description = "focus right (wrap)"
+
+[[keys.command]]
+key = "prefix+right"
 type = "shell"
 command = "python3 \"$(dirname \"$(readlink -f \"${HERDR_CONFIG_PATH:-${XDG_CONFIG_HOME:-$HOME/.config}/herdr/config.toml}\")\")/pane-focus-wrap.py\" right"
 description = "focus right (wrap)"
