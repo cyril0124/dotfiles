@@ -54,6 +54,9 @@ REMOTE_SKILLS=(
   "mattpocock/skills|writing-great-skills@writing-great-skills"
   "mattpocock/skills|tdd@tdd"
   "mattpocock/skills|teach@teach"
+  "bahayonghang/drawio-skills|drawio@drawio"
+  "https://github.com/smallnest/goal-workflow|smell@smell"
+  "https://github.com/herdrdev/herdr|herdr@herdr"
 )
 
 info() {

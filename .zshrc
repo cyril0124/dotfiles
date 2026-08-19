@@ -20,3 +20,6 @@ if command_exists starship; then
 fi
 
 unset DOTFILES_ZSHRC_PATH
+
+# bun completions
+[ -s "/nfs/home/zhengchuyu/.bun/_bun" ] && source "/nfs/home/zhengchuyu/.bun/_bun"

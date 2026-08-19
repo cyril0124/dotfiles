@@ -125,3 +125,23 @@ channels = ["conda-forge"]
 dependencies = { btop = "*" }
 exposed = { btop = "btop" }
 
+[envs.pre-commit]
+channels = ["conda-forge"]
+dependencies = { pre-commit = "*" }
+exposed = { pre-commit = "pre-commit" }
+
+[envs.typst]
+channels = ["conda-forge"]
+dependencies = { typst = "*" }
+exposed = { typst = "typst" }
+
+[envs.fastfetch]
+channels = ["conda-forge"]
+dependencies = { fastfetch = "*" }
+exposed = { fastfetch = "fastfetch", flashfetch = "flashfetch" }
+
+[envs.clang-format]
+channels = ["conda-forge"]
+dependencies = { clang-format = "18.*" }
+exposed = { clang-format = "clang-format" }
+

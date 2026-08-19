@@ -177,7 +177,7 @@
             "store": false
           },
           "limit": {
-            "context": 400000,
+            "context": 256000,
             "output": 0
           },
           "modalities": {
@@ -234,6 +234,125 @@
       }
     },
 
+    "nowcoding": {
+      "npm": "@ai-sdk/openai",
+      "name": "nowcoding",
+      "options": {
+        "setCacheKey": true,
+        "baseURL": "https://nowcoding.ai/v1",
+        "apiKey": "sk-cViI9Zvxv1x2IqvFD6W10DYxBjvsrywvsae4khg332m2kkWA"
+      },
+      "models": {
+        "gpt-5.5": {
+          "name": "GPT-5.5",
+          "attachment": true,
+          "reasoning": true,
+          "interleaved": { "field": "reasoning_content" },
+          "options": {
+            "reasoningSummary": "detailed",
+            "store": false
+          },
+          "limit": {
+            "context": 256000,
+            "output": 0
+          },
+          "modalities": {
+            "input": ["text", "image"],
+            "output": ["text"]
+          },
+          "variants": {
+            "low": {
+              "reasoningEffort": "low"
+            },
+            "medium": {
+              "reasoningEffort": "medium"
+            },
+            "high": {
+              "reasoningEffort": "high"
+            },
+            "xhigh": {
+              "reasoningEffort": "xhigh"
+            }
+          }
+        },
+        "gpt-5.4": {
+          "name": "GPT-5.4",
+          "attachment": true,
+          "reasoning": true,
+          "interleaved": { "field": "reasoning_content" },
+          "options": {
+            "reasoningSummary": "detailed",
+            "store": false
+          },
+          "limit": {
+            "context": 400000,
+            "output": 0
+          },
+          "modalities": {
+            "input": ["text", "image"],
+            "output": ["text"]
+          },
+          "variants": {
+            "low": {
+              "reasoningEffort": "low"
+            },
+            "medium": {
+              "reasoningEffort": "medium"
+            },
+            "high": {
+              "reasoningEffort": "high"
+            },
+            "xhigh": {
+              "reasoningEffort": "xhigh"
+            }
+          }
+        }
+      }
+    },
+
+    "anyrouter": {
+      "npm": "@ai-sdk/openai",
+      "name": "anyrouter",
+      "options": {
+        "setCacheKey": true,
+        "baseURL": "https://anyrouter.top/v1",
+        "apiKey": "sk-5E7Xv8r02QLcCgwLwfIf4DdLpz4VqoAoepisUGymebGZz9P5"
+      },
+      "models": {
+        "gpt-5.5": {
+          "name": "GPT-5.5",
+          "attachment": true,
+          "reasoning": true,
+          "interleaved": { "field": "reasoning_content" },
+          "options": {
+            "reasoningSummary": "detailed",
+            "store": false
+          },
+          "limit": {
+            "context": 400000,
+            "output": 0
+          },
+          "modalities": {
+            "input": ["text", "image"],
+            "output": ["text"]
+          },
+          "variants": {
+            "low": {
+              "reasoningEffort": "low"
+            },
+            "medium": {
+              "reasoningEffort": "medium"
+            },
+            "high": {
+              "reasoningEffort": "high"
+            },
+            "xhigh": {
+              "reasoningEffort": "xhigh"
+            }
+          }
+        }
+      }
+    },
     "jw-proxy-claude": {
       "npm": "@ai-sdk/anthropic",
       "name": "jw-proxy-claude",

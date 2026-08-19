@@ -1,38 +1,52 @@
 ---
 name: generic-writing
-description: "Write in a reusable, context-light way. Use when the user asks for a general solution, abstract wording, reusable guidance, or requests writing that is less coupled to the current task."
+description: "Write reusable, context-light guidance. Use for general wording, abstract guidance, reusable templates, portable explanations, or content not tied to the current repo/task. Do not use for exact local commands, file edits, live debugging, or project-specific decisions."
 ---
 # Generic Writing
-Use this skill when user wants wording that stays portable instead of being tied to current task, repo, file, or framework.
+Turn local or overly concrete wording into portable guidance without losing intent.
+
+## Contract
+- Input: request, concrete context, target audience.
+- Output: reusable answer, template, or wording.
+- Preserve: intent, constraints, audience, risks.
+- Remove: repo names, file paths, one-off commands, local identifiers.
+- Resources: no external files or scripts required.
 
 ## Workflow
-1. **Identify intent** — Default to generic when unclear.
-2. **Abstract the context** — Replace concrete names with "this kind of component" / "a typical setup".
-3. **Choose presentation** — Answer directly without headings unless asked.
-4. **Strip local specifics** — Remove filenames, variable names, one-off configs.
-5. **Final check** — Could this answer apply to another project?
+1. **Classify scope** — `generic`, `specific`, or `mixed`.
+2. **Extract invariant** — Convert facts into category-level concepts.
+3. **Choose form** — Use the lightest format: paragraph, short bullets, or template.
+4. **Rewrite** — Replace local nouns with role nouns: "the service", "the configuration", "the caller".
+5. **Final gate** — Pass only if another similar project can reuse the answer unchanged.
 
-## Principles
-1. Start from principle, not current implementation.
-2. Avoid current file names, tool names, repo details, and one-off workarounds.
-3. Do not force extra structure. Answer directly unless user asks for sections.
-4. Keep wording reusable. Prefer "this kind of system" over concrete local names.
-5. Keep examples short and clearly just examples, not universal rules.
+## 🔴 CHECKPOINT
+Stop and switch out of this skill when:
+- Exact commands, filenames, code changes, or live debugging are requested.
+- Generalizing would remove safety, numeric, legal, or compliance constraints.
+- Intent is unclear between reusable wording and project-specific action.
+Action: answer the specific request, or ask one focused clarification if a generic answer would mislead.
 
-## Edge Cases
-| Situation | Response |
-| User asks concrete details | Provide but frame as illustrative example |
-| Specific tool needed | Use general category first: "container tooling (e.g. Docker)" |
-| Project-specific question | Start with principles, note "adapt to your setup" |
-| Mixed generic/specific request | Answer generic with principles; flag specifics as one-off |
-| User shows their code | Reference as "your code" / "this case", not general advice |
+## Failure Modes
+| Trigger | Fix | If Still Failing |
+|---|---|---|
+| Local names remain | Replace with category terms | Mark concrete detail as `Example` |
+| One case sounds universal | Add scope: "For this class..." | Remove the claim |
+| Wording becomes vague | Add a short pattern | Restore one minimal example |
+| User needs local action | Do not generalize | Use project-specific workflow |
+| Output gets format-heavy | Collapse to prose | Keep one short example |
+
+## Output Rules
+- Start with reusable principle or wording.
+- Use headings only when asked or when parts are independent.
+- Label concrete details as examples, not rules.
+- Prefer categories over brands: "package manager" before "npm".
 
 ## Examples
-> "In our `UserController`, call `findByEmail()`" → "In a typical controller layer, look up by unique identifier"
-> "Add `MAX_FILE_SIZE = 10485760` to `config/upload.ts`" → "Set max file size in upload configuration"
-> "Run `npm run build && docker compose up -d`" → "Build and start services using project tooling"
+| Local | Reusable |
+|---|---|
+| "In `UserController`, call `findByEmail()`" | "In the request handler, look up the account by a unique identifier." |
+| "Add `MAX_FILE_SIZE` to `config/upload.ts`" | "Define the upload size limit in the upload configuration." |
+| "Run `npm run build && docker compose up`" | "Build the project, then start services with project tooling." |
 
-## Avoid
-- Mixing general advice with current-task details in same sentence.
-- Treating one local fix as best practice everywhere.
-- Adding headings or format rules that user did not ask for.
+## Anti-Patterns
+Do not present a local workaround as general best practice, mix repo-specific and reusable wording in one sentence, strip correctness/safety constraints, add unasked structure, hide uncertainty behind "best practice", or force this skill onto exact local execution.
