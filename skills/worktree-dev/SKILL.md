@@ -1,6 +1,6 @@
 ---
 name: worktree-dev
-description: Parallel development with git worktrees inside the repo at `.worktrees/<branch>`, each tracked by an untracked WORKTREE-README.md stating its purpose, with a dedup check before creation and read-before-cleanup. Use when user mentions "worktree", "parallel development", "parallel branch", wants isolated branch work without stashing, or asks to create, merge back, or clean up worktrees.
+description: Parallel development with git worktrees inside the repo at `.worktrees/<branch>`, each tracked by an untracked WORKTREE-README.md stating its purpose, with a dedup check before creation, no commits without an explicit user request, and read-before-cleanup. Use when user mentions "worktree", "parallel development", "parallel branch", wants isolated branch work without stashing, or asks to create, merge back, or clean up worktrees.
 ---
 
 # Worktree Development
@@ -19,8 +19,9 @@ while IFS= read -r line; do case "$line" in worktree\ *) f="${line#worktree }/WO
 git worktree add .worktrees/<branch> -b <branch> <base-branch>
 ```
 
-Then write `WORKTREE-README.md` (template below), develop, sync, and merge
-back. Clean up only when the user asks.
+Then write `WORKTREE-README.md` (template below), develop, and verify. Do not
+stage, commit, sync, merge, or clean up unless the user explicitly asks for
+that action.
 
 ## Workflow
 
@@ -53,20 +54,19 @@ back. Clean up only when the user asks.
    ```
    Update `Status` as work progresses.
 
-5. **Develop** inside the worktree; commit as usual:
-   ```bash
-   git -C .worktrees/<branch> add ... && git -C .worktrees/<branch> commit
-   ```
+5. **Develop and verify** inside the worktree. Run the repo's tests/checks and
+   leave all changes unstaged and uncommitted by default. Never run `git add`
+   or `git commit` unless the user explicitly asks.
 
-6. **Sync and verify** in the worktree before merging:
-   ```bash
-   git -C .worktrees/<branch> rebase <base-branch>   # or merge <base-branch>
-   # then run the repo's tests/checks inside the worktree
-   ```
+6. **Commit — only when the user asks.** Inspect status and diff, stage only
+   the requested paths, run relevant checks, then commit. A request to create,
+   develop, or verify a worktree is not permission to commit.
 
-7. **Merge back** from the base branch's checkout:
+7. **Sync or merge back — only when the user asks for that action.** A commit
+   request does not authorize syncing or merging. After work is committed:
    ```bash
-   git merge <branch>   # or push from the worktree and open a PR
+   git -C .worktrees/<branch> rebase <base-branch>
+   git merge <branch>   # run from the base branch's checkout
    ```
 
 8. **Cleanup — only when the user asks.** Never remove a worktree on your
@@ -84,6 +84,7 @@ back. Clean up only when the user asks.
 
 ## Rules
 
+- Never stage or commit by default; an explicit user request is required.
 - One branch cannot be checked out in two worktrees at once.
 - Untracked and ignored files do not transfer: build outputs, `node_modules`,
   venv are per-worktree; recreate them.
