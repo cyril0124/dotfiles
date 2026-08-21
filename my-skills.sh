@@ -38,6 +38,7 @@ LOCAL_SKILLS=(
   "show-mermaid-ascii"
   "clone-pr"
   "find-simplifications"
+  "worktree-dev"
 )
 
 REMOTE_SKILLS=(
