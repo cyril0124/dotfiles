@@ -38,6 +38,8 @@ LOCAL_SKILLS=(
   "show-mermaid-ascii"
   "clone-pr"
   "find-simplifications"
+  "doc-standards"
+  "sanitize-artifacts"
   "worktree-dev"
 )
 
