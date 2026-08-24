@@ -1,9 +1,9 @@
 -- Neovim headless setup: restore plugins, install treesitter parsers and Mason LSP servers.
 --
 -- Designed to be deterministic and idempotent in headless mode:
---   * Treesitter parsers are filtered through has_parser() so we never trigger
---     nvim-treesitter's interactive "reinstall? y/n" prompt (fn.input), which
---     hangs forever without a stdin in headless mode.
+--   * Treesitter parsers are installed through ts-install with skip.installed,
+--     so already-built parsers are never recompiled and no interactive prompt
+--     can block a session that has no stdin.
 --   * Async Mason operations are driven synchronously via vim.wait() instead of
 --     vim.defer_fn + "+qa", avoiding event-loop races that cause hangs.
 --
@@ -11,7 +11,7 @@
 
 local TS_PARSERS = {
   "c", "cpp", "lua", "python", "rust",
-  "scala", "markdown", "markdown_inline", "diff", "verilog",
+  "scala", "markdown", "markdown_inline", "diff", "systemverilog",
 }
 
 local MASON_PACKAGES = {
@@ -43,51 +43,42 @@ do
   end
 end
 
--- nvim-treesitter is lazy-loaded (event = BufReadPost); force it so the
--- TSInstallSync command and parsers module are available.
+-- ts-install is lazy-loaded (event = BufReadPost); force it so its setup() has
+-- run (which also puts the install dir on the runtimepath) and the install API
+-- is available. nvim-treesitter comes along as a dependency.
 do
-  local ok, err = pcall(vim.cmd, "Lazy load nvim-treesitter")
+  local ok, err = pcall(vim.cmd, "Lazy load ts-install.nvim")
   if not ok then
-    fail("failed to load nvim-treesitter: " .. tostring(err))
+    fail("failed to load ts-install.nvim: " .. tostring(err))
   end
 end
 
 -- 2. Install treesitter parsers (only the missing ones).
 do
-  local ok_mod, parsers = pcall(require, "nvim-treesitter.parsers")
-  if not ok_mod then
-    fail("nvim-treesitter.parsers module unavailable: " .. tostring(parsers))
+  local async = require("ts-install.async")
+  local install = require("ts-install.install")
+  local install_dir = require("ts-install.config").config.install_dir
+
+  log("treesitter: ensuring parsers: " .. table.concat(TS_PARSERS, " "))
+  local task = async.run(install.install, TS_PARSERS, { skip = { installed = true } })
+  local ok, err = pcall(task.wait, task, TS_TIMEOUT_MS)
+  if not ok then
+    log("treesitter: install raised an error (" .. tostring(err) .. "), verifying results")
   end
 
+  -- Verify every parser is actually present now. Probe ts-install's own install
+  -- dir, not the runtimepath: nvim bundles parsers for c/lua/markdown and those
+  -- would mask a failed install.
   local missing = {}
   for _, lang in ipairs(TS_PARSERS) do
-    if not parsers.has_parser(lang) then
+    if not vim.uv.fs_stat(vim.fs.joinpath(install_dir, "parser", lang .. ".so")) then
       table.insert(missing, lang)
     end
   end
-
-  if #missing == 0 then
-    log("treesitter: all parsers already installed: " .. table.concat(TS_PARSERS, " "))
-  else
-    log("treesitter: installing missing parsers: " .. table.concat(missing, " "))
-    -- TSInstallSync is synchronous; missing-only avoids the reinstall prompt.
-    local ok = pcall(vim.cmd, "TSInstallSync " .. table.concat(missing, " "))
-    if not ok then
-      log("treesitter: TSInstallSync raised an error, verifying results")
-    end
-
-    -- Verify every parser is actually present now.
-    local still_missing = {}
-    for _, lang in ipairs(missing) do
-      if not parsers.has_parser(lang) then
-        table.insert(still_missing, lang)
-      end
-    end
-    if #still_missing > 0 then
-      fail("treesitter parsers failed to install: " .. table.concat(still_missing, " "))
-    end
-    log("treesitter: installed " .. table.concat(missing, " "))
+  if #missing > 0 then
+    fail("treesitter parsers failed to install: " .. table.concat(missing, " "))
   end
+  log("treesitter: ready: " .. table.concat(TS_PARSERS, " "))
 end
 
 -- 3. Install Mason LSP servers (refresh registry, then install missing).

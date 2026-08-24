@@ -55,6 +55,11 @@ channels = ["conda-forge"]
 dependencies = { help2man = "*" }
 exposed = { help2man = "help2man" }
 
+[envs.tree-sitter-cli]
+channels = ["conda-forge"]
+dependencies = { tree-sitter-cli = "*" }
+exposed = { tree-sitter = "tree-sitter" }
+
 [envs.tokei]
 channels = ["conda-forge"]
 dependencies = { tokei = "*" }

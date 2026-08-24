@@ -1,6 +1,8 @@
 return {
     'nvim-telescope/telescope.nvim',
-    tag = '0.1.8',
+    -- 0.1.9+ previews via vim.treesitter.start instead of the nvim-treesitter
+    -- master-branch modules API, which no longer exists.
+    tag = 'v0.2.2',
     dependencies = {
         'nvim-lua/plenary.nvim',
         {

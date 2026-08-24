@@ -301,7 +301,7 @@ return {
                 return
             end
 
-            require("nvim-treesitter.configs").reattach_module("highlight", bufnr)
+            pcall(vim.treesitter.start, bufnr)
             managed_treesitter_buffers[bufnr] = nil
         end
 

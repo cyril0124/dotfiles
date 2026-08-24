@@ -556,6 +556,11 @@ install_skills() {
 install_nvim_setup() {
     info 'setting up neovim plugins and LSP servers'
 
+    # Parser compilation shells out to the tree-sitter CLI, which pixi installs
+    # into ~/.pixi/bin. pixi is installed with PIXI_NO_PATH_UPDATE, so that
+    # directory has to be put on PATH explicitly for the nvim child process.
+    export PATH="$HOME/.pixi/bin:$PATH"
+
     local nvim_cmd=nvim
     if ! command -v nvim &>/dev/null; then
         if [ -x "$HOME/.pixi/bin/nvim" ]; then
@@ -567,10 +572,9 @@ install_nvim_setup() {
     fi
 
     # Restore plugins, install treesitter parsers and Mason LSP servers.
-    # The heavy lifting lives in scripts/nvim_setup.lua: it filters treesitter
-    # parsers through has_parser() (avoiding the interactive reinstall prompt
-    # that hangs headless nvim) and drives async Mason installs synchronously
-    # via vim.wait().
+    # The heavy lifting lives in scripts/nvim_setup.lua: it installs treesitter
+    # parsers through ts-install (skipping already-installed ones) and drives
+    # async Mason installs synchronously via vim.wait().
     info 'restoring plugins and installing treesitter parsers + Mason LSP servers'
     if ! NVIM_BOOTSTRAP=1 $nvim_cmd --headless -c "luafile $DOTFILES_ROOT/scripts/nvim_setup.lua"; then
         return 1

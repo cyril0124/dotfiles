@@ -36,30 +36,24 @@ else
 fi
 
 echo "==> Treesitter parsers"
-# Ask nvim directly which parsers are loadable, rather than guessing the
-# on-disk path (which varies by nvim-treesitter version and install method).
-parsers=(c cpp lua python rust scala markdown markdown_inline diff verilog)
+# Probe ts-install's own install dir rather than the runtimepath: nvim bundles
+# parsers for c/lua/markdown/markdown_inline, so a runtimepath hit would report
+# OK for a parser that was never installed.
+parsers=(c cpp lua python rust scala markdown markdown_inline diff systemverilog)
 ts_check=$(mktemp /tmp/test-nvim-ts-XXXXXX.lua)
 cleanup_files+=("$ts_check")
 cat >"$ts_check" <<'LUA'
-local want = { "c", "cpp", "lua", "python", "rust", "scala", "markdown", "markdown_inline", "diff", "verilog" }
-pcall(vim.cmd, "Lazy load nvim-treesitter")
-local ok, parsers = pcall(require, "nvim-treesitter.parsers")
+local want = { "c", "cpp", "lua", "python", "rust", "scala", "markdown", "markdown_inline", "diff", "systemverilog" }
+pcall(vim.cmd, "Lazy load ts-install.nvim")
+local ok, cfg = pcall(require, "ts-install.config")
 if not ok then
   io.stdout:write("TS_MODULE_MISSING\n")
   vim.cmd("qa")
   return
 end
+local parser_dir = vim.fs.joinpath(cfg.config.install_dir, "parser")
 for _, lang in ipairs(want) do
-  local present = false
-  if type(parsers.has_parser) == "function" then
-    present = parsers.has_parser(lang)
-  end
-  -- Fallback: probe the runtime for a compiled parser library.
-  if not present then
-    present = #vim.api.nvim_get_runtime_file("parser/" .. lang .. ".so", false) > 0
-      or #vim.api.nvim_get_runtime_file("parser/" .. lang .. ".dll", false) > 0
-  end
+  local present = vim.uv.fs_stat(vim.fs.joinpath(parser_dir, lang .. ".so")) ~= nil
   io.stdout:write((present and "OK " or "MISSING ") .. lang .. "\n")
 end
 vim.cmd("qa")
@@ -67,7 +61,7 @@ LUA
 ts_result=$(nvim --headless -c "luafile $ts_check" +qa 2>/dev/null)
 all_ok=1
 if printf '%s' "$ts_result" | grep -q "TS_MODULE_MISSING"; then
-  fail "nvim-treesitter.parsers module unavailable"
+  fail "ts-install.config module unavailable"
   all_ok=0
 else
   for p in "${parsers[@]}"; do
