@@ -30,12 +30,16 @@ jobs:
           key: ${{ runner.os }}-pixi-${{ hashFiles('pixi/pixi-global.toml') }}
           restore-keys: ${{ runner.os }}-pixi-
 
+      # Exact key only, no restore-keys. A prefix hit seeds the plugin dir with
+      # commits that disagree with lazy-lock.json, and lazy rewrites the lockfile
+      # from whatever is on disk once it installs a missing plugin on startup,
+      # silently replacing the pinned commits. A miss clones every plugin at its
+      # pin, which is the fresh-machine path this job exists to test.
       - name: Cache nvim lazy plugins
         uses: actions/cache@v4
         with:
           path: ~/.local/share/nvim/lazy
           key: ${{ runner.os }}-nvim-lazy-${{ hashFiles('config/nvim/lazy-lock.json') }}
-          restore-keys: ${{ runner.os }}-nvim-lazy-
 
       - name: Cache nvim mason packages
         uses: actions/cache@v4
