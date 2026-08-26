@@ -8,7 +8,7 @@ split_horizontal = "prefix+minus"
 split_vertical = "prefix+_"
 # prefix+[ is previous_tab; copy-mode keeps enter only
 copy_mode = "prefix+enter"
-# Built-in goto lists panes; tab-only picker is prefix+s via local.tab-goto
+# Built-in goto lists panes; tab-only picker is prefix+s via local.tab-goto-rs
 goto = ""
 settings = "prefix+shift+s"
 detach = "prefix+d"
@@ -91,8 +91,8 @@ description = "close pane (confirm y)"
 [[keys.command]]
 key = "prefix+s"
 type = "plugin_action"
-command = "local.tab-goto.open"
-description = "tab goto (tabs only, j/k)"
+command = "local.tab-goto-rs.open"
+description = "tab goto (rust, tabs only, j/k)"
 
 [[keys.command]]
 key = "prefix+t"

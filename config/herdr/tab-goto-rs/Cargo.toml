@@ -1,0 +1,12 @@
+[package]
+name = "tab-goto"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+crossterm = "0.29"
+serde_json = "1"
+
+[profile.release]
+strip = true
+lto = true
