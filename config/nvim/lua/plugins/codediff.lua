@@ -23,7 +23,6 @@ return {
         local lifecycle = require("codediff.ui.lifecycle")
         local lifecycle_state = require("codediff.ui.lifecycle.state")
         local layout = require("codediff.ui.layout")
-        local explorer_actions = require("codediff.ui.explorer.actions")
         local explorer_refresh = require("codediff.ui.explorer.refresh")
         local view = require("codediff.ui.view")
         local inline_view = require("codediff.ui.view.inline_view")
@@ -31,7 +30,6 @@ return {
         local welcome = require("codediff.ui.welcome")
         local welcome_window = require("codediff.ui.view.welcome_window")
         local active_diffs = require("codediff.ui.lifecycle.session").get_active_diffs
-        local diff_result = require("lua.codediff_diff_result")
         local swap_guard = require("lua.codediff_swap_guard")
         local option_names = {
             "number",
@@ -48,9 +46,6 @@ return {
 
         local original_apply = assert_api(welcome_window.apply, "welcome_window.apply")
         local original_resume_diff = assert_api(lifecycle_state.resume_diff, "lifecycle_state.resume_diff")
-        local original_update_diff_result = assert_api(lifecycle.update_diff_result, "lifecycle.update_diff_result")
-        local original_toggle_view_mode = assert_api(explorer_actions.toggle_view_mode, "explorer_actions.toggle_view_mode")
-        local original_toggle_group = assert_api(explorer_actions.toggle_group, "explorer_actions.toggle_group")
         local original_explorer_refresh = assert_api(explorer_refresh.refresh, "explorer_refresh.refresh")
         local original_view_update = assert_api(view.update, "view.update")
         local original_inline_show_single_file = assert_api(inline_view.show_single_file, "inline_view.show_single_file")
@@ -88,12 +83,6 @@ return {
             vim.schedule(function()
                 vim.notify("CodeDiff " .. context .. " failed: " .. tostring(err), vim.log.levels.ERROR)
             end)
-        end
-
-        local function mark_force_explorer_refresh(explorer)
-            if explorer then
-                explorer._my_force_refresh = true
-            end
         end
 
         local function enable_wrap(winid)
@@ -513,29 +502,8 @@ return {
             end
         end
 
-        local function expand_explorer_root_groups(explorer)
-            if not (explorer and explorer.tree) then
-                return
-            end
-
-            local changed = false
-            for _, node in ipairs(explorer.tree:get_nodes() or {}) do
-                if node.data and node.data.type == "group" and not node:is_expanded() then
-                    node:expand()
-                    changed = true
-                end
-            end
-
-            if changed then
-                pcall(function()
-                    explorer.tree:render()
-                end)
-            end
-        end
-
-        local function schedule_explorer_sync(tabpage, opts_delay, groups_delay)
+        local function schedule_explorer_sync(tabpage, opts_delay)
             local o_delay = opts_delay or 20
-            local g_delay = groups_delay or 60
 
             local function sync_opts()
                 apply_current_explorer_window_opts(tabpage)
@@ -545,24 +513,14 @@ return {
                 features.lsp.sync(tabpage)
             end
 
-            local function sync_groups()
-                expand_explorer_root_groups(lifecycle.get_explorer(tabpage or vim.api.nvim_get_current_tabpage()))
-            end
-
             if o_delay > 0 then
                 vim.defer_fn(sync_opts, o_delay)
             else
                 vim.schedule(sync_opts)
             end
-
-            if g_delay > 0 then
-                vim.defer_fn(sync_groups, g_delay)
-            else
-                vim.schedule(sync_groups)
-            end
         end
 
-        local function wrap_with_explorer_sync(fn, opts_delay, groups_delay)
+        local function wrap_with_explorer_sync(fn, opts_delay)
             return function(tabpage, ...)
                 local args = { ... }
                 local ok, result = with_codediff_swap_guard(function()
@@ -572,7 +530,7 @@ return {
                     notify_codediff_failure("view update", result)
                     return nil
                 end
-                schedule_explorer_sync(tabpage, opts_delay, groups_delay)
+                schedule_explorer_sync(tabpage, opts_delay)
                 return result
             end
         end
@@ -678,13 +636,10 @@ return {
         side_by_side_view.show_deleted_virtual_file = wrap_with_explorer_sync(original_side_show_deleted_virtual_file)
         side_by_side_view.show_welcome = wrap_with_explorer_sync(original_side_show_welcome)
 
-        lifecycle.update_diff_result = function(tabpage, lines_diff)
-            return original_update_diff_result(tabpage, diff_result.normalize(lines_diff))
-        end
-
         lifecycle_state.resume_diff = function(tabpage)
             local session = lifecycle.get_session(tabpage)
-            if session and diff_result.is_malformed(session.stored_diff_result) then
+            local stored = session and session.stored_diff_result
+            if type(stored) == "table" and type(stored.changes) ~= "table" then
                 session.stored_diff_result = nil
             end
 
@@ -698,37 +653,12 @@ return {
             schedule_layout_sync(tabpage, 20)
             apply_current_session_wrap(tabpage)
             ensure_current_session_buflisted(tabpage)
-            schedule_explorer_sync(tabpage, 20, 40)
-        end
-
-        explorer_actions.toggle_view_mode = function(explorer, ...)
-            mark_force_explorer_refresh(explorer)
-            return original_toggle_view_mode(explorer, ...)
-        end
-
-        explorer_actions.toggle_group = function(explorer, group_name, ...)
-            mark_force_explorer_refresh(explorer)
-            return original_toggle_group(explorer, group_name, ...)
+            schedule_explorer_sync(tabpage, 20)
         end
 
         explorer_refresh.refresh = function(explorer)
             if not explorer or not explorer.git_root or explorer.base_revision or explorer.target_revision then
                 return original_explorer_refresh(explorer)
-            end
-
-            local force_refresh = explorer._my_force_refresh == true
-            explorer._my_force_refresh = nil
-
-            if force_refresh then
-                local ok, refresh_err = with_codediff_swap_guard(function()
-                    original_explorer_refresh(explorer)
-                end)
-                if not ok then
-                    notify_codediff_failure("explorer refresh", refresh_err)
-                    return
-                end
-                schedule_explorer_sync(explorer.tabpage, 20, 20)
-                return
             end
 
             local git = require("codediff.core.git")
@@ -752,7 +682,7 @@ return {
                         notify_codediff_failure("explorer refresh", refresh_err)
                         return
                     end
-                    schedule_explorer_sync(explorer.tabpage, 20, 20)
+                    schedule_explorer_sync(explorer.tabpage, 20)
                 end)
             end)
         end
@@ -767,7 +697,7 @@ return {
                 schedule_layout_sync(tabpage, 20)
                 schedule_current_session_wrap(tabpage)
                 ensure_current_session_buflisted(tabpage)
-                schedule_explorer_sync(tabpage, 20, 40)
+                schedule_explorer_sync(tabpage, 20)
                 features.treesitter.sync(tabpage)
                 features.diagnostics.sync(tabpage)
                 features.inlay_hints.sync(tabpage)

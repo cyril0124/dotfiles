@@ -422,37 +422,9 @@ install_opencode() {
     # Link all files and directories from opencode to ~/.config/opencode
     for item in "$src_dir"/*; do
         if [ -e "$item" ]; then
-            local name=$(basename "$item")
             local src="$item"
-            local dst="$dst_dir/$name"
-
-            # Copy tools directory instead of symlinking so custom tools
-            # can resolve @opencode-ai/plugin from the config node_modules
-            if [ "$name" = "tools" ] && [ -d "$src" ]; then
-                mkdir -p "$dst"
-                for toolfile in "$src"/*; do
-                    if [ -e "$toolfile" ]; then
-                        local toolname=$(basename "$toolfile")
-                        local dstfile="$dst/$toolname"
-                        if [ -L "$dstfile" ]; then
-                            rm "$dstfile"
-                        elif [ -f "$dstfile" ]; then
-                            # Only copy if source is newer
-                            if [ "$toolfile" -nt "$dstfile" ]; then
-                                cp "$toolfile" "$dstfile"
-                                success "updated $dstfile"
-                            else
-                                success "skipped $dstfile (up to date)"
-                            fi
-                            continue
-                        fi
-                        cp "$toolfile" "$dstfile"
-                        success "copied $toolfile to $dstfile"
-                    fi
-                done
-            else
-                link_file "$src" "$dst"
-            fi
+            local dst="$dst_dir/$(basename "$item")"
+            link_file "$src" "$dst"
         fi
     done
 }

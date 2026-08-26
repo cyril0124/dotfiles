@@ -154,7 +154,7 @@ def _status_badge(status: str) -> str:
     return raw.ljust(7)
 
 
-def _tree_tab_width(rows: list[dict[str, str]], inner: int) -> tuple[int, int]:
+def _tree_tab_width(inner: int) -> tuple[int, int]:
     """Return (tab_name_width, status_width) for tree leaves.
 
     Layout: pad(1)+branch(3)+num(2)+cur(2)+last(2)+name+gap(2)+status(7) ≈ 19 fixed.
@@ -262,7 +262,6 @@ def _workspace_order(rows: list[dict[str, str]], tab_indices: list[int]) -> list
 def _build_entries(
     rows: list[dict[str, str]],
     tab_indices: list[int],
-    current_wid: str,
     expanded: set[str],
 ) -> list[dict[str, Any]]:
     """Tree entries: workspace node, then tab children when expanded."""
@@ -278,7 +277,6 @@ def _build_entries(
         indices = by_ws.get(wid) or []
         if not indices:
             continue
-        is_current = wid == current_wid
         # Expanded set is authoritative (current ws starts expanded in pick_index).
         is_open = wid in expanded
         entries.append(
@@ -288,7 +286,6 @@ def _build_entries(
                 "workspace": labels.get(wid, wid),
                 "count": len(indices),
                 "expanded": is_open,
-                "is_current_ws": is_current,
             }
         )
         if is_open:
@@ -329,7 +326,6 @@ def pick_index(
         query = ""
         query_mode = False
         start_idx = max(0, min(start, len(rows) - 1))
-        current_wid = rows[start_idx].get("workspace_id") or "?"
         # Default: expand every workspace; h/l (or arrows in / mode) still folds.
         expanded = {
             (r.get("workspace_id") or "?")
@@ -340,7 +336,7 @@ def pick_index(
         def rebuild() -> list[dict[str, Any]]:
             nonlocal cursor
             tabs = _filtered_tab_indices(rows, filter_on, query)
-            entries = _build_entries(rows, tabs, current_wid, expanded)
+            entries = _build_entries(rows, tabs, expanded)
             if not entries:
                 cursor = 0
                 return entries
@@ -352,7 +348,6 @@ def pick_index(
             entries2 = _build_entries(
                 rows,
                 _filtered_tab_indices(rows, filter_on, query),
-                current_wid,
                 expanded,
             )
             for i, e in enumerate(entries2):
@@ -396,7 +391,7 @@ def pick_index(
                 flag = "".join(flags)
                 _put(stdscr, 0, max(0, inner - len(flag) - 1), flag, curses.A_BOLD)
 
-            w_tab, w_st = _tree_tab_width(rows, inner)
+            w_tab, w_st = _tree_tab_width(inner)
             sep = " " + (sep_char * max(0, inner - 2))
             _put(stdscr, 1, 0, _fit(sep, inner), curses.A_DIM)
 

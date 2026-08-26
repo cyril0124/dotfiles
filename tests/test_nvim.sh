@@ -39,7 +39,6 @@ echo "==> Treesitter parsers"
 # Probe ts-install's own install dir rather than the runtimepath: nvim bundles
 # parsers for c/lua/markdown/markdown_inline, so a runtimepath hit would report
 # OK for a parser that was never installed.
-parsers=(c cpp lua python rust scala markdown markdown_inline diff systemverilog)
 ts_check=$(mktemp /tmp/test-nvim-ts-XXXXXX.lua)
 cleanup_files+=("$ts_check")
 cat >"$ts_check" <<'LUA'
@@ -60,18 +59,28 @@ vim.cmd("qa")
 LUA
 ts_result=$(nvim --headless -c "luafile $ts_check" +qa 2>/dev/null)
 all_ok=1
+ok_langs=()
 if printf '%s' "$ts_result" | grep -q "TS_MODULE_MISSING"; then
   fail "ts-install.config module unavailable"
   all_ok=0
 else
-  for p in "${parsers[@]}"; do
-    if ! printf '%s\n' "$ts_result" | grep -qx "OK $p"; then
-      fail "treesitter parser missing: $p"
-      all_ok=0
-    fi
-  done
+  while IFS= read -r line; do
+    case "$line" in
+      OK\ *)
+        ok_langs+=("${line#OK }")
+        ;;
+      MISSING\ *)
+        fail "treesitter parser missing: ${line#MISSING }"
+        all_ok=0
+        ;;
+    esac
+  done <<< "$ts_result"
+  if [ "$all_ok" -eq 1 ] && [ "${#ok_langs[@]}" -eq 0 ]; then
+    fail "treesitter parser check produced no OK lines"
+    all_ok=0
+  fi
 fi
-[ "$all_ok" -eq 1 ] && pass "treesitter parsers present: ${parsers[*]}"
+[ "$all_ok" -eq 1 ] && pass "treesitter parsers present: ${ok_langs[*]}"
 
 echo "==> Mason packages"
 mason_dir="$NVIM_DATA/mason/packages"

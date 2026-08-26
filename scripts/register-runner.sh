@@ -249,19 +249,6 @@ cmd_run() {
     ./run.sh
 }
 
-get_field() {
-    local endpoint="$1"
-    local field="$2"
-    if [ -n "$_PAT_TOKEN" ]; then
-        curl -sS \
-            -H "Accept: application/vnd.github+json" \
-            -H "Authorization: Bearer $_PAT_TOKEN" \
-            "https://api.github.com/${endpoint}" | py_get "$field"
-    else
-        gh api "$endpoint" -q ".$field"
-    fi
-}
-
 get_registration_token() {
     local owner_repo="$1"
     if [ -n "$_PAT_TOKEN" ]; then

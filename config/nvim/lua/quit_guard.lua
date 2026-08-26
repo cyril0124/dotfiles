@@ -6,10 +6,6 @@ local function notify(message, level)
     vim.notify(message, level or vim.log.levels.INFO, { title = "Quit Guard" })
 end
 
-function M.is_locked()
-    return quit_locked
-end
-
 function M.toggle()
     quit_locked = not quit_locked
 
