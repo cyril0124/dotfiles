@@ -33,11 +33,6 @@ return {
         local active_diffs = require("codediff.ui.lifecycle.session").get_active_diffs
         local diff_result = require("lua.codediff_diff_result")
         local swap_guard = require("lua.codediff_swap_guard")
-        local managed_markview_buffers = {}
-        local managed_diagnostic_buffers = {}
-        local managed_inlay_hint_buffers = {}
-        local managed_lsp_clients = {}
-        local managed_treesitter_buffers = {}
         local option_names = {
             "number",
             "relativenumber",
@@ -270,182 +265,6 @@ return {
             end
         end
 
-        local function disable_treesitter(bufnr)
-            if not (bufnr and vim.api.nvim_buf_is_valid(bufnr)) then
-                return
-            end
-
-            if not has_treesitter_highlighter(bufnr) then
-                return
-            end
-
-            vim.treesitter.stop(bufnr)
-            apply_virtual_file_syntax(bufnr)
-            managed_treesitter_buffers[bufnr] = true
-        end
-
-        local function restore_treesitter(bufnr, diff_set)
-            if not (bufnr and vim.api.nvim_buf_is_valid(bufnr)) then
-                if bufnr then
-                    managed_treesitter_buffers[bufnr] = nil
-                end
-                return
-            end
-
-            if diff_set and diff_set[bufnr] then
-                return
-            end
-
-            if codediff_shared.is_virtual_buffer_name(vim.api.nvim_buf_get_name(bufnr)) then
-                managed_treesitter_buffers[bufnr] = nil
-                return
-            end
-
-            pcall(vim.treesitter.start, bufnr)
-            managed_treesitter_buffers[bufnr] = nil
-        end
-
-        local function sync_treesitter(tabpage)
-            local diff_set = build_active_diff_buf_set()
-            local session = tabpage and lifecycle.get_session(tabpage) or nil
-            if session then
-                disable_treesitter(session.original_bufnr)
-                disable_treesitter(session.modified_bufnr)
-                disable_treesitter(session.result_bufnr)
-            end
-
-            for bufnr, _ in pairs(managed_treesitter_buffers) do
-                restore_treesitter(bufnr, diff_set)
-            end
-        end
-
-        local function schedule_treesitter_sync(tabpage, delay_ms)
-            local function sync()
-                sync_treesitter(tabpage)
-            end
-
-            if delay_ms and delay_ms > 0 then
-                vim.defer_fn(sync, delay_ms)
-            else
-                vim.schedule(sync)
-            end
-        end
-
-        local function schedule_treesitter_restore(delay_ms, attempts_left)
-            local function attempt(i)
-                if i > attempts_left then
-                    return
-                end
-                sync_treesitter(nil)
-                if i < attempts_left and next(managed_treesitter_buffers) ~= nil then
-                    vim.defer_fn(function()
-                        attempt(i + 1)
-                    end, 80)
-                end
-            end
-
-            vim.defer_fn(function()
-                attempt(1)
-            end, delay_ms)
-        end
-
-        local function disable_markview(bufnr)
-            local commands, state = get_markview_modules()
-            if not (commands and state) then
-                return
-            end
-
-            if not (bufnr and vim.api.nvim_buf_is_valid(bufnr)) then
-                return
-            end
-
-            if not state.buf_attached(bufnr) then
-                return
-            end
-
-            local buffer_state = state.get_buffer_state(bufnr, false)
-            if not (buffer_state and buffer_state.enable) then
-                return
-            end
-
-            commands.disable(bufnr)
-            managed_markview_buffers[bufnr] = true
-        end
-
-        local function restore_markview(bufnr, diff_set)
-            local commands, state = get_markview_modules()
-            if not (commands and state) then
-                return
-            end
-
-            if not (bufnr and vim.api.nvim_buf_is_valid(bufnr)) then
-                if bufnr then
-                    managed_markview_buffers[bufnr] = nil
-                end
-                return
-            end
-
-            if diff_set and diff_set[bufnr] then
-                return
-            end
-
-            if not state.buf_attached(bufnr) then
-                managed_markview_buffers[bufnr] = nil
-                return
-            end
-
-            local buffer_state = state.get_buffer_state(bufnr, false)
-            if buffer_state and not buffer_state.enable then
-                commands.enable(bufnr)
-            end
-
-            managed_markview_buffers[bufnr] = nil
-        end
-
-        local function sync_markview(tabpage)
-            local diff_set = build_active_diff_buf_set()
-            local session = tabpage and lifecycle.get_session(tabpage) or nil
-            if session then
-                disable_markview(session.original_bufnr)
-                disable_markview(session.modified_bufnr)
-                disable_markview(session.result_bufnr)
-            end
-
-            for bufnr, _ in pairs(managed_markview_buffers) do
-                restore_markview(bufnr, diff_set)
-            end
-        end
-
-        local function schedule_markview_sync(tabpage, delay_ms)
-            local function sync()
-                sync_markview(tabpage)
-            end
-
-            if delay_ms and delay_ms > 0 then
-                vim.defer_fn(sync, delay_ms)
-            else
-                vim.schedule(sync)
-            end
-        end
-
-        local function schedule_markview_restore(delay_ms, attempts_left)
-            local function attempt(i)
-                if i > attempts_left then
-                    return
-                end
-                sync_markview(nil)
-                if i < attempts_left and next(managed_markview_buffers) ~= nil then
-                    vim.defer_fn(function()
-                        attempt(i + 1)
-                    end, 80)
-                end
-            end
-
-            vim.defer_fn(function()
-                attempt(1)
-            end, delay_ms)
-        end
-
         local function clear_tiny_inline_diagnostics(bufnr)
             local ok_extmarks, extmarks = pcall(require, "tiny-inline-diagnostic.extmarks")
             if ok_extmarks and extmarks and extmarks.clear then
@@ -453,256 +272,202 @@ return {
             end
         end
 
-        local function disable_diagnostics(bufnr)
-            if not (bufnr and vim.api.nvim_buf_is_valid(bufnr)) then
-                return
-            end
+        -- Generic per-buffer feature suspension: a feature is disabled in
+        -- active diff buffers and restored once the buffer leaves all diffs.
+        -- spec.disable(bufnr, value) returns a truthy managed value when it
+        -- changed something; nil keeps the previous managed value.
+        -- spec.restore(bufnr, value) returns false to keep the buffer managed
+        -- so a later sync retries the restore.
+        local function make_feature_manager(spec)
+            local managed = {}
+            local manager = {}
 
-            if not vim.diagnostic.is_enabled({ bufnr = bufnr }) then
-                return
-            end
-
-            vim.diagnostic.enable(false, { bufnr = bufnr })
-            clear_tiny_inline_diagnostics(bufnr)
-            managed_diagnostic_buffers[bufnr] = true
-        end
-
-        local function restore_diagnostics(bufnr, diff_set)
-            if not (bufnr and vim.api.nvim_buf_is_valid(bufnr)) then
-                if bufnr then
-                    managed_diagnostic_buffers[bufnr] = nil
-                end
-                return
-            end
-
-            if diff_set and diff_set[bufnr] then
-                return
-            end
-
-            vim.diagnostic.enable(true, { bufnr = bufnr })
-            managed_diagnostic_buffers[bufnr] = nil
-        end
-
-        local function disable_inlay_hints(bufnr)
-            if not (vim.lsp.inlay_hint and bufnr and vim.api.nvim_buf_is_valid(bufnr)) then
-                return
-            end
-
-            if not vim.lsp.inlay_hint.is_enabled({ bufnr = bufnr }) then
-                return
-            end
-
-            vim.lsp.inlay_hint.enable(false, { bufnr = bufnr })
-            managed_inlay_hint_buffers[bufnr] = true
-        end
-
-        local function restore_inlay_hints(bufnr, diff_set)
-            if not (vim.lsp.inlay_hint and bufnr and vim.api.nvim_buf_is_valid(bufnr)) then
-                if bufnr then
-                    managed_inlay_hint_buffers[bufnr] = nil
-                end
-                return
-            end
-
-            if diff_set and diff_set[bufnr] then
-                return
-            end
-
-            vim.lsp.inlay_hint.enable(true, { bufnr = bufnr })
-            managed_inlay_hint_buffers[bufnr] = nil
-        end
-
-        local function sync_inlay_hints(tabpage)
-            local diff_set = build_active_diff_buf_set()
-            local session = tabpage and lifecycle.get_session(tabpage) or nil
-            if session then
-                disable_inlay_hints(session.original_bufnr)
-                disable_inlay_hints(session.modified_bufnr)
-                disable_inlay_hints(session.result_bufnr)
-            end
-
-            for bufnr, _ in pairs(managed_inlay_hint_buffers) do
-                restore_inlay_hints(bufnr, diff_set)
-            end
-        end
-
-        local function schedule_inlay_hint_sync(tabpage, delay_ms)
-            local function sync()
-                sync_inlay_hints(tabpage)
-            end
-
-            if delay_ms and delay_ms > 0 then
-                vim.defer_fn(sync, delay_ms)
-            else
-                vim.schedule(sync)
-            end
-        end
-
-        local function schedule_inlay_hint_restore(delay_ms, attempts_left)
-            local function attempt(i)
-                if i > attempts_left then
+            function manager.disable(bufnr)
+                if not (bufnr and vim.api.nvim_buf_is_valid(bufnr)) then
                     return
                 end
-                sync_inlay_hints(nil)
-                if i < attempts_left and next(managed_inlay_hint_buffers) ~= nil then
-                    vim.defer_fn(function()
-                        attempt(i + 1)
-                    end, 80)
+
+                local value = spec.disable(bufnr, managed[bufnr])
+                if value ~= nil then
+                    managed[bufnr] = value
                 end
             end
 
-            vim.defer_fn(function()
-                attempt(1)
-            end, delay_ms)
-        end
+            local function restore(bufnr, diff_set)
+                if not vim.api.nvim_buf_is_valid(bufnr) then
+                    managed[bufnr] = nil
+                    return
+                end
 
-        local function detach_lsp_clients(bufnr)
-            if not (bufnr and vim.api.nvim_buf_is_valid(bufnr)) then
-                return
+                if diff_set and diff_set[bufnr] then
+                    return
+                end
+
+                if spec.restore(bufnr, managed[bufnr]) ~= false then
+                    managed[bufnr] = nil
+                end
             end
 
-            local clients = vim.lsp.get_clients({ bufnr = bufnr })
-            if not clients or #clients == 0 then
-                return
+            function manager.is_managed(bufnr)
+                return managed[bufnr] ~= nil
             end
 
-            local detached_client_ids = managed_lsp_clients[bufnr] or {}
-            local detached_any = false
+            function manager.sync(tabpage)
+                local diff_set = build_active_diff_buf_set()
+                local session = tabpage and lifecycle.get_session(tabpage) or nil
+                if session then
+                    manager.disable(session.original_bufnr)
+                    manager.disable(session.modified_bufnr)
+                    manager.disable(session.result_bufnr)
+                end
 
-            for _, client in ipairs(clients) do
-                if not detached_client_ids[client.id] then
-                    local ok = pcall(vim.lsp.buf_detach_client, bufnr, client.id)
-                    if ok then
-                        detached_client_ids[client.id] = true
-                        detached_any = true
+                for bufnr, _ in pairs(managed) do
+                    restore(bufnr, diff_set)
+                end
+            end
+
+            function manager.schedule_sync(tabpage, delay_ms)
+                local function sync()
+                    manager.sync(tabpage)
+                end
+
+                if delay_ms and delay_ms > 0 then
+                    vim.defer_fn(sync, delay_ms)
+                else
+                    vim.schedule(sync)
+                end
+            end
+
+            function manager.schedule_restore(delay_ms, attempts_left)
+                local function attempt(i)
+                    if i > attempts_left then
+                        return
+                    end
+                    manager.sync(nil)
+                    if i < attempts_left and next(managed) ~= nil then
+                        vim.defer_fn(function()
+                            attempt(i + 1)
+                        end, 80)
                     end
                 end
+
+                vim.defer_fn(function()
+                    attempt(1)
+                end, delay_ms)
             end
 
-            if detached_any then
-                managed_lsp_clients[bufnr] = detached_client_ids
-            end
+            return manager
         end
 
-        local function restore_lsp_clients(bufnr, diff_set)
-            if not bufnr then
-                return
-            end
+        local features = {
+            treesitter = make_feature_manager({
+                disable = function(bufnr)
+                    if not has_treesitter_highlighter(bufnr) then
+                        return nil
+                    end
 
-            local detached_client_ids = managed_lsp_clients[bufnr]
-            if not detached_client_ids then
-                return
-            end
+                    vim.treesitter.stop(bufnr)
+                    apply_virtual_file_syntax(bufnr)
+                    return true
+                end,
+                restore = function(bufnr)
+                    -- Virtual buffers keep plain syntax; never restart treesitter.
+                    if not codediff_shared.is_virtual_buffer_name(vim.api.nvim_buf_get_name(bufnr)) then
+                        pcall(vim.treesitter.start, bufnr)
+                    end
+                end,
+            }),
+            markview = make_feature_manager({
+                disable = function(bufnr)
+                    local commands, state = get_markview_modules()
+                    if not (commands and state) or not state.buf_attached(bufnr) then
+                        return nil
+                    end
 
-            if not vim.api.nvim_buf_is_valid(bufnr) then
-                managed_lsp_clients[bufnr] = nil
-                return
-            end
+                    local buffer_state = state.get_buffer_state(bufnr, false)
+                    if not (buffer_state and buffer_state.enable) then
+                        return nil
+                    end
 
-            if diff_set and diff_set[bufnr] then
-                return
-            end
+                    commands.disable(bufnr)
+                    return true
+                end,
+                restore = function(bufnr)
+                    local commands, state = get_markview_modules()
+                    if not (commands and state) then
+                        return false
+                    end
 
-            local all_attached = true
-            for client_id, _ in pairs(detached_client_ids) do
-                local ok, attached = pcall(vim.lsp.buf_attach_client, bufnr, client_id)
-                if not (ok and attached) then
-                    all_attached = false
-                end
-            end
+                    if not state.buf_attached(bufnr) then
+                        return
+                    end
 
-            if all_attached then
-                managed_lsp_clients[bufnr] = nil
-            end
-        end
+                    local buffer_state = state.get_buffer_state(bufnr, false)
+                    if buffer_state and not buffer_state.enable then
+                        commands.enable(bufnr)
+                    end
+                end,
+            }),
+            diagnostics = make_feature_manager({
+                disable = function(bufnr)
+                    if not vim.diagnostic.is_enabled({ bufnr = bufnr }) then
+                        return nil
+                    end
 
-        local function sync_lsp_clients(tabpage)
-            local diff_set = build_active_diff_buf_set()
-            local session = tabpage and lifecycle.get_session(tabpage) or nil
-            if session then
-                detach_lsp_clients(session.original_bufnr)
-                detach_lsp_clients(session.modified_bufnr)
-                detach_lsp_clients(session.result_bufnr)
-            end
+                    vim.diagnostic.enable(false, { bufnr = bufnr })
+                    clear_tiny_inline_diagnostics(bufnr)
+                    return true
+                end,
+                restore = function(bufnr)
+                    vim.diagnostic.enable(true, { bufnr = bufnr })
+                end,
+            }),
+            inlay_hints = make_feature_manager({
+                disable = function(bufnr)
+                    if not (vim.lsp.inlay_hint and vim.lsp.inlay_hint.is_enabled({ bufnr = bufnr })) then
+                        return nil
+                    end
 
-            for bufnr, _ in pairs(managed_lsp_clients) do
-                restore_lsp_clients(bufnr, diff_set)
-            end
-        end
+                    vim.lsp.inlay_hint.enable(false, { bufnr = bufnr })
+                    return true
+                end,
+                restore = function(bufnr)
+                    if vim.lsp.inlay_hint then
+                        vim.lsp.inlay_hint.enable(true, { bufnr = bufnr })
+                    end
+                end,
+            }),
+            lsp = make_feature_manager({
+                disable = function(bufnr, detached_client_ids)
+                    local clients = vim.lsp.get_clients({ bufnr = bufnr })
+                    if not clients or #clients == 0 then
+                        return nil
+                    end
 
-        local function schedule_lsp_sync(tabpage, delay_ms)
-            local function sync()
-                sync_lsp_clients(tabpage)
-            end
+                    detached_client_ids = detached_client_ids or {}
+                    local detached_any = false
+                    for _, client in ipairs(clients) do
+                        if not detached_client_ids[client.id] and pcall(vim.lsp.buf_detach_client, bufnr, client.id) then
+                            detached_client_ids[client.id] = true
+                            detached_any = true
+                        end
+                    end
 
-            if delay_ms and delay_ms > 0 then
-                vim.defer_fn(sync, delay_ms)
-            else
-                vim.schedule(sync)
-            end
-        end
+                    return detached_any and detached_client_ids or nil
+                end,
+                restore = function(bufnr, detached_client_ids)
+                    local all_attached = true
+                    for client_id, _ in pairs(detached_client_ids) do
+                        local ok, attached = pcall(vim.lsp.buf_attach_client, bufnr, client_id)
+                        if not (ok and attached) then
+                            all_attached = false
+                        end
+                    end
 
-        local function schedule_lsp_restore(delay_ms, attempts_left)
-            local function attempt(i)
-                if i > attempts_left then
-                    return
-                end
-                sync_lsp_clients(nil)
-                if i < attempts_left and next(managed_lsp_clients) ~= nil then
-                    vim.defer_fn(function()
-                        attempt(i + 1)
-                    end, 80)
-                end
-            end
-
-            vim.defer_fn(function()
-                attempt(1)
-            end, delay_ms)
-        end
-
-        local function sync_diagnostics(tabpage)
-            local diff_set = build_active_diff_buf_set()
-            local session = tabpage and lifecycle.get_session(tabpage) or nil
-            if session then
-                disable_diagnostics(session.original_bufnr)
-                disable_diagnostics(session.modified_bufnr)
-                disable_diagnostics(session.result_bufnr)
-            end
-
-            for bufnr, _ in pairs(managed_diagnostic_buffers) do
-                restore_diagnostics(bufnr, diff_set)
-            end
-        end
-
-        local function schedule_diagnostic_sync(tabpage, delay_ms)
-            local function sync()
-                sync_diagnostics(tabpage)
-            end
-
-            if delay_ms and delay_ms > 0 then
-                vim.defer_fn(sync, delay_ms)
-            else
-                vim.schedule(sync)
-            end
-        end
-
-        local function schedule_diagnostic_restore(delay_ms, attempts_left)
-            local function attempt(i)
-                if i > attempts_left then
-                    return
-                end
-                sync_diagnostics(nil)
-                if i < attempts_left and next(managed_diagnostic_buffers) ~= nil then
-                    vim.defer_fn(function()
-                        attempt(i + 1)
-                    end, 80)
-                end
-            end
-
-            vim.defer_fn(function()
-                attempt(1)
-            end, delay_ms)
-        end
+                    return all_attached
+                end,
+            }),
+        }
 
         local function apply_explorer_window_opts(winid)
             if not (winid and vim.api.nvim_win_is_valid(winid)) then
@@ -774,10 +539,10 @@ return {
 
             local function sync_opts()
                 apply_current_explorer_window_opts(tabpage)
-                sync_markview(tabpage)
-                sync_diagnostics(tabpage)
-                sync_inlay_hints(tabpage)
-                sync_lsp_clients(tabpage)
+                features.markview.sync(tabpage)
+                features.diagnostics.sync(tabpage)
+                features.inlay_hints.sync(tabpage)
+                features.lsp.sync(tabpage)
             end
 
             local function sync_groups()
@@ -1003,10 +768,10 @@ return {
                 schedule_current_session_wrap(tabpage)
                 ensure_current_session_buflisted(tabpage)
                 schedule_explorer_sync(tabpage, 20, 40)
-                sync_treesitter(tabpage)
-                sync_diagnostics(tabpage)
-                sync_inlay_hints(tabpage)
-                sync_lsp_clients(tabpage)
+                features.treesitter.sync(tabpage)
+                features.diagnostics.sync(tabpage)
+                features.inlay_hints.sync(tabpage)
+                features.lsp.sync(tabpage)
             end,
         })
 
@@ -1055,7 +820,7 @@ return {
             pattern = "CodeDiffFileSelect",
             callback = function(ev)
                 local tabpage = ev.data and ev.data.tabpage or nil
-                schedule_treesitter_sync(tabpage, 20)
+                features.treesitter.schedule_sync(tabpage, 20)
                 schedule_explorer_sync(tabpage)
             end,
         })
@@ -1064,11 +829,9 @@ return {
             group = group,
             pattern = "CodeDiffClose",
             callback = function(ev)
-                schedule_treesitter_restore(20, 6)
-                schedule_markview_restore(20, 6)
-                schedule_diagnostic_restore(20, 6)
-                schedule_inlay_hint_restore(20, 6)
-                schedule_lsp_restore(20, 6)
+                for _, feature in pairs(features) do
+                    feature.schedule_restore(20, 6)
+                end
             end,
         })
 
@@ -1077,7 +840,7 @@ return {
             pattern = "CodeDiffVirtualFileLoaded",
             callback = function(ev)
                 local bufnr = ev.data and ev.data.buf or nil
-                disable_treesitter(bufnr)
+                features.treesitter.disable(bufnr)
             end,
         })
 
@@ -1089,9 +852,9 @@ return {
                 end
 
                 vim.schedule(function()
-                    detach_lsp_clients(ev.buf)
-                    disable_diagnostics(ev.buf)
-                    disable_inlay_hints(ev.buf)
+                    features.lsp.disable(ev.buf)
+                    features.diagnostics.disable(ev.buf)
+                    features.inlay_hints.disable(ev.buf)
                 end)
             end,
         })
@@ -1101,11 +864,11 @@ return {
             pattern = { "MarkviewAttach", "MarkviewEnable" },
             callback = function(ev)
                 local bufnr = ev.data and ev.data.buffer or ev.buf
-                if not (buffer_in_active_diff(bufnr) or managed_markview_buffers[bufnr]) then
+                if not (buffer_in_active_diff(bufnr) or features.markview.is_managed(bufnr)) then
                     return
                 end
 
-                disable_markview(bufnr)
+                features.markview.disable(bufnr)
             end,
         })
 
@@ -1118,11 +881,9 @@ return {
                 end
 
                 if is_listable_session_buffer(ev.buf) then
-                    disable_treesitter(ev.buf)
-                    disable_markview(ev.buf)
-                    detach_lsp_clients(ev.buf)
-                    disable_diagnostics(ev.buf)
-                    disable_inlay_hints(ev.buf)
+                    for _, feature in pairs(features) do
+                        feature.disable(ev.buf)
+                    end
                     codediff.set_tabline_buffer(tabpage, ev.buf)
                     pcall(function()
                         vim.bo[ev.buf].buflisted = true
@@ -1130,11 +891,9 @@ return {
                     vim.schedule(function()
                         pcall(vim.cmd, "redrawtabline")
                     end)
-                    schedule_treesitter_sync(tabpage, 20)
-                    schedule_markview_sync(tabpage, 20)
-                    schedule_diagnostic_sync(tabpage, 20)
-                    schedule_inlay_hint_sync(tabpage, 20)
-                    schedule_lsp_sync(tabpage, 20)
+                    for _, feature in pairs(features) do
+                        feature.schedule_sync(tabpage, 20)
+                    end
                 end
 
                 if vim.bo[ev.buf].filetype == "codediff-explorer" then
