@@ -15,7 +15,7 @@ local TS_PARSERS = {
 }
 
 local MASON_PACKAGES = {
-  "emmylua_ls", "clangd", "json-lsp", "rust-analyzer", "ty",
+  "clangd", "json-lsp", "rust-analyzer", "ty",
 }
 
 -- Per-operation timeouts (ms). Generous because CI runners compile parsers and

@@ -56,10 +56,6 @@ local function apply_markview_diff_highlights()
 end
 
 return {
-    {
-        'numToStr/Comment.nvim',
-    },
-
     -- https://github.com/stevearc/conform.nvim
     {
         'stevearc/conform.nvim',

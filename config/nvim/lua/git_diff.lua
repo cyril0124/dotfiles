@@ -66,9 +66,4 @@ function M.open_last_commit_diff()
     require("lua.codediff").open("history " .. base_rev .. "..HEAD")
 end
 
-function M.reset_last_commit_depth()
-    vim.g._last_commit_depth = 0
-    require("lua.codediff").close_current()
-end
-
 return M
