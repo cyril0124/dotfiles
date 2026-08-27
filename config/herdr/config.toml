@@ -107,16 +107,16 @@ key = "prefix+f"
 type = "popup"
 command = "if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then printf '%s\n' 'Not a git repository.' 'Press any key to close.'; bash -c 'read -rsn1'; elif git diff --staged --quiet --ignore-submodules=dirty; then printf '%s\n' 'No staged changes.' 'Press any key to close.'; bash -c 'read -rsn1'; else git diff --staged --ignore-submodules=dirty | diffnav; fi"
 description = "git diff --staged | diffnav"
-width = "90%"
-height = "90%"
+width = "98%"
+height = "96%"
 
 [[keys.command]]
 key = "prefix+shift+f"
 type = "popup"
 command = "if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then printf '%s\n' 'Not a git repository.' 'Press any key to close.'; bash -c 'read -rsn1'; elif git diff --quiet --ignore-submodules=dirty; then printf '%s\n' 'No unstaged changes.' 'Press any key to close.'; bash -c 'read -rsn1'; else git diff --ignore-submodules=dirty | diffnav; fi"
 description = "git diff | diffnav"
-width = "90%"
-height = "90%"
+width = "98%"
+height = "96%"
 
 [ui]
 agent_panel_sort = "spaces"
