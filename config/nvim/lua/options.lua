@@ -7,6 +7,10 @@ vim.opt.smartindent = true
 
 -- Hint: use `:h <option>` to figure out the meaning if needed
 vim.opt.clipboard = "unnamedplus" -- use system clipboard
+-- Outside tmux, yank via OSC 52 so the outer terminal owns the clipboard.
+if not vim.env.TMUX or vim.env.TMUX == "" then
+	vim.g.clipboard = "osc52"
+end
 vim.opt.completeopt = { "menu", "menuone", "noselect" }
 vim.opt.mouse = "a" -- allow the mouse to be used in nvim
 vim.opt.mousemoveevent = true
