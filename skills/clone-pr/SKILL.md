@@ -1,11 +1,11 @@
 ---
 name: clone-pr
-description: "Clone a GitHub PR into ./tmp/pr<N>-<slug> on the exact PR head branch for local edits."
+description: "Clone a GitHub PR into ./tmp/pr<N>-<repo>-<slug> on the exact PR head branch for local edits."
 ---
 
 # Clone PR
 
-Clone a PR into `./tmp/pr<N>-<slug>` on the **same branch as the PR head**.
+Clone a PR into `./tmp/pr<N>-<repo>-<slug>` on the **same branch as the PR head**.
 
 ## Steps
 
@@ -16,10 +16,10 @@ gh pr view <pr-url|number> [--repo owner/repo] \
   --json number,title,headRefName,headRepository,headRepositoryOwner,url
 ```
 
-2. Build the dir name `pr<number>-<slug>` — slug short, readable, from branch/title/intent. Never overwrite an existing path: if `./tmp/pr<N>-<slug>` exists, append `-1`, then `-2`, … until free.
+2. Build the dir name `pr<number>-<repo>-<slug>` — `<repo>` is the base repo name lowercased, slug short and readable, from branch/title/intent. Never overwrite an existing path: if it exists, append `-1`, then `-2`, … until free.
 
 ```bash
-base=./tmp/pr<number>-<slug>; dir=$base; i=1
+base=./tmp/pr<number>-<repo>-<slug>; dir=$base; i=1
 while [ -e "$dir" ]; do dir=$base-$i; i=$((i+1)); done; echo "$dir"
 ```
 
