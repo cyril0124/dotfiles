@@ -49,7 +49,7 @@ REMOTE_SKILLS=(
   "kepano/obsidian-skills|obsidian-markdown@obsidian-markdown"
   "https://github.com/baidu-netdisk/bdpan-storage|baidu-drive@baidu-drive"
   "alchaincyf/darwin-skill@darwin-skill"
-  "mattpocock/skills|writing-great-skills@writing-great-skills"
+  "mattpocock/skills|writing-for-agents@writing-for-agents"
   "mattpocock/skills|teach@teach"
   "bahayonghang/drawio-skills|drawio@drawio"
   "https://github.com/herdrdev/herdr|herdr@herdr"
