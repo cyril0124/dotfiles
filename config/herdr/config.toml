@@ -95,6 +95,12 @@ command = "local.tab-goto-rs.open"
 description = "tab goto (rust, tabs only, j/k)"
 
 [[keys.command]]
+key = "prefix+p"
+type = "plugin_action"
+command = "local.action-palette.open"
+description = "command palette (plugin actions)"
+
+[[keys.command]]
 key = "prefix+t"
 type = "popup"
 command = "exec \"${SHELL:-sh}\""
@@ -129,8 +135,13 @@ prompt_new_tab_name = false
 [ui.sidebar.spaces]
 rows = [
   ["state_icon", "workspace"],
-  # ["branch", "git_status"],
   ["$host"],
+]
+
+[ui.sidebar.agents]
+rows = [
+  ["state_icon", "workspace", "tab"],
+  ["state_text", "agent"],
 ]
 
 [theme]

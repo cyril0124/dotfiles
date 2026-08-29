@@ -1,0 +1,23 @@
+id = "local.action-palette"
+name = "Action Palette"
+version = "0.1.0"
+min_herdr_version = "0.8.0"
+description = "Command palette for plugin actions: stdlib curses fuzzy filter, no fzf/jq."
+platforms = ["linux", "macos"]
+
+# Actions run on the herdr server without a TTY, so the entry action only opens
+# the overlay pane below; the interactive picker lives in the pane.
+[[actions]]
+id = "open"
+title = "Command palette (all plugin actions)"
+contexts = ["workspace", "pane"]
+command = ["python3", "open.py"]
+
+# Popup pane gets a real TTY. Absolute path via $HERDR_PLUGIN_ROOT because
+# open.py forwards --cwd of the origin pane, breaking relative resolution.
+# Size is computed dynamically in open.py (content + terminal bounds).
+[[panes]]
+id = "palette"
+title = "Actions"
+placement = "popup"
+command = ["sh", "-c", "exec python3 \"$HERDR_PLUGIN_ROOT/palette.py\""]
