@@ -55,7 +55,6 @@ Look for:
 - Logic errors, off-by-one, missing error handling
 - Wrong variable names, broken assumptions, race conditions
 - API misuse, regressions, behavior-breaking changes
-- Security/privacy leaks from the security/privacy gate
 - Missing tests for non-trivial behavior changes
 - **Real maintainability damage.** Misleading names, deep nesting or oversized new logic, dead code, incomplete refactors, non-obvious critical logic with no explanation, production residue. Details below.
 - Commented-out debug left in the staged diff
@@ -203,6 +202,13 @@ Stop if the final staged diff is not the one you reviewed, if whitespace errors 
 ### Step 6. Success path
 
 Nothing that should stop the commit after the final staged-boundary check:
+
+Before writing the commit message, apply this contamination gate:
+
+- Derive the message from the staged diff and codebase domain only.
+- Remove process references to the prompt author or conversation: prompts, user requests, turns, reviews, debugging sessions, failed attempts, or implementation constraints.
+- Keep the technical change and its engineering reason. A test-related change is valid when the staged diff actually adds or changes tests.
+- If the staged diff does not support an accurate message, stop and ask instead of inventing process wording.
 
 - Write a conventional commit: `<type>: <description>`.
 - Treat a user hint as intent, not as wording. Rewrite it in the codebase's language.
