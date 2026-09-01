@@ -1,11 +1,11 @@
 ---
 name: sanitize-artifacts
-description: Inspect and revise generated artifacts and git commit messages so they read as natural, standalone deliverables, without leaking prompt instructions, conversation history, implementation constraints, or production process artifacts.
+description: Inspect and revise generated artifacts so they read as natural, standalone deliverables, without leaking prompt instructions, conversation history, implementation constraints, or production process artifacts.
 ---
 
 # sanitize-artifacts
 
-Use this skill when the user asks you to inspect, clean up, sanitize, revise, polish, or quality-check artifacts (documents, code, configs, git commit messages/PR descriptions) produced during the current work session.
+Use this skill when the user asks you to inspect, clean up, sanitize, revise, polish, or quality-check artifacts produced during the current work session.
 
 This skill is especially important when the artifact was produced through iterative prompting, corrective instructions, examples, constraints, or vibe-coding-style collaboration.
 
@@ -112,27 +112,6 @@ When sanitizing an artifact, check:
 8. Is any meta-commentary present that belongs only in the production process?
 9. Are disclaimers or caveats included only when the audience truly needs them?
 10. Does the artifact have a single coherent voice?
-11. (For commit messages / PRs) Does it describe the technical change rather than the conversational prompt or debugging trail?
-
-## Git Commit Messages & PR Descriptions
-
-When sanitizing commit messages or PR descriptions, ensure they describe the *code change* from the perspective of the codebase, not the agent conversation.
-
-Common commit message anti-patterns to rewrite:
-
-- Bad: `fix: fix bug according to user prompt` / `fix: per user request, change X`
-  - Better: `fix: resolve null pointer when user profile is missing`
-- Bad: `chore: try different approaches after failed test`
-  - Better: `refactor: optimize caching strategy for session lookup`
-- Bad: `feat: implement X (avoiding Y as requested)`
-  - Better: `feat: implement X using native storage API`
-- Bad: `refactor: clean up after debugging session`
-  - Better: `refactor: remove temporary logging and unused helpers`
-
-Rules for commit messages:
-1. Describe **what** changed and **why** from an engineering standpoint.
-2. Never mention prompts, chat instructions, turns, or agent trial-and-error.
-3. Keep commit subject and body focused on the codebase domain.
 
 ## Revision Strategy
 
