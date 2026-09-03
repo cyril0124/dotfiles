@@ -10,7 +10,7 @@ Review the staged git changes. Commit only if that review passes. On the first p
 ## TL;DR
 
 ```
-git status --short + git diff --cached → staged-scope gate → security/correctness/readability-maintainability/doc drift review → final staged-boundary check → commit or report failure
+git status --short + git diff --cached → temp-file gate → staged-scope gate → security/correctness/readability-maintainability/doc drift review → final staged-boundary check → commit or report failure
 ```
 
 ## When to use
@@ -32,10 +32,22 @@ Run both commands before review:
 
 ```bash
 git status --short
+git diff --cached --name-only
 git diff --cached
 ```
 
 If `git diff --cached` is empty, report `Nothing staged for commit.` and stop.
+
+### Step 1.5. Temp-file gate
+
+Match every staged filename from `git diff --cached --name-only` against temporary-file patterns:
+
+- Editor/system junk: `*.swp`, `*~`, `*.bak`, `*.orig`, `*.rej`, `.DS_Store`, `Thumbs.db`
+- Tool temp output: `*.tmp`, `*.temp`, `*.log`, `*.out`, `*.cache`, `*.pid`
+- Scratch and debug artifacts: `tmp/`, `temp/`, `scratch/`, `*.draft.*`, `* - copy`, `* - 副本`, `debug_*`
+- Build/dep output: `node_modules/`, `dist/`, `build/`, `target/`, `__pycache__/`, `*.o`, `*.pyc`
+
+A match stops the commit as **Related**. Report the filename and the pattern it hit. Suggested fix: unstage the file (`git restore --staged <file>`) and, if the pattern can recur, add it to `.gitignore`. A staged file whose name only resembles a pattern is not a match. Judge by its actual content and role.
 Unstaged and untracked files stay out of the commit. Read them only when the staged diff is unreadable without that context.
 If `./AGENTS.md` or `./CLAUDE.md` exists, read each one before review. The staged content has to follow them.
 
@@ -45,7 +57,7 @@ Review every staged line. Do not assume it is correct. Run these gates in order:
 
 1. **Scope gate.** Every finding and the commit message must point at staged content only.
 2. **Project constraints gate.** If `./AGENTS.md` or `./CLAUDE.md` exists, check that every staged change follows the applicable rules in those files.
-3. **Security/privacy gate.** Stop at once for staged secrets, credentials, `.env` values, private keys, tokens, personal data, internal hosts/IPs, user absolute paths, machine-local cache/build paths, or staged logs, caches, or build outputs.
+3. **Security/privacy gate.** Stop at once for staged secrets, credentials, `.env` values, private keys, tokens, personal data, internal hosts/IPs, user absolute paths, machine-local cache/build paths, or staged logs, caches, or build outputs. The Step 1.5 temp-file gate covers filenames. This gate covers file contents.
 4. **Correctness gate.** Walk behavior, tests, interfaces, and regressions line by line.
 5. **Readability/maintainability gate.** Stop only for real maintainability damage in the staged diff. Style preference is not a stop.
 6. **Documentation drift gate.** Match staged behavior, interface, and command changes against tracked markdown.
@@ -168,6 +180,7 @@ Commit stopped.
 
 ## Review Checklist
 - [ ] Staged diff reviewed line by line
+- [ ] Temporary files checked at the filename level (Step 1.5)
 - [ ] Current-directory AGENTS.md/CLAUDE.md constraints and update need checked
 - [ ] Correctness/regression risks checked
 - [ ] Security/privacy leaks checked
@@ -234,6 +247,7 @@ Commit created.
 
 ## Review Checklist
 - [ ] Staged diff reviewed line by line
+- [ ] Temporary files checked at the filename level (Step 1.5)
 - [ ] Current-directory AGENTS.md/CLAUDE.md constraints and update need checked
 - [ ] Correctness/regression risks checked
 - [ ] Security/privacy leaks checked
@@ -290,6 +304,7 @@ These apply to the commit message, all chat output, and any suggested doc fix, i
 | Trigger | Action |
 |---|---|
 | `git diff --cached` is empty | Stop with `Nothing staged for commit.` |
+| Staged filename matches a temporary-file pattern | Stop as **Related**, name the file and pattern, suggest `git restore --staged` plus a `.gitignore` entry |
 | Staged secret/privacy leak is found | Stop as **Related**, explain the leak type, and provide a removal diff |
 | Staged maintainability damage is found | Stop as **Related** or **Unclear** under the readability/maintainability rules |
 | Staged behavior changes but docs may be stale | Stop as **Related** or **Unclear** under the documentation drift rules |
