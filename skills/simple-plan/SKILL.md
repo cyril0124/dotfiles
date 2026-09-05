@@ -1,6 +1,6 @@
 ---
 name: simple-plan
-description: Write complete, non-regressive implementation plans before coding. Use when the user asks for a plan, implementation steps, delivery plan, plan-before-coding, or revise/ask/run/run-verify controls. Produces full-goal coverage, preserved adjacent behavior, scoped assumptions, dependency-ordered steps, checklist, and a confirmation line.
+description: Write complete, non-regressive implementation plans before coding. Use when the user asks for a plan, implementation steps, delivery plan, plan-before-coding, or revise/ask/run/run-verify controls. Produces full-goal coverage, preserved adjacent behavior, dependency-ordered steps, checklist, and a confirmation line.
 ---
 
 # Simple Plan
@@ -14,7 +14,7 @@ A plan is valid only if it satisfies all of the following:
 1. **Full goal delivery** — every part of the requested outcome is covered by steps and checklist items. Partial delivery is not a plan; it is incomplete work.
 2. **No capability amputation** — do not drop, weaken, or defer existing related behavior just to make the new work easier. Adjacent features, APIs, invariants, UX paths, tests, docs, and contracts that the change touches must keep working unless the user explicitly asks to remove them.
 3. **No performance amputation** — do not regress latency, throughput, memory, I/O volume, or algorithmic cost class just to simplify the change. Keep existing performance characteristics of touched paths, or improve them when the goal requires it. A plan that trades known hot-path cost for coding convenience is invalid unless the user explicitly accepts that tradeoff.
-4. **No silent scope cuts** — `Scope.Out` may list only true non-goals (work outside the request, or work the user explicitly excluded). Never park required work under `Out` as a shortcut.
+4. **No silent scope cuts** — do not omit required work or park it as later without user approval. User-excluded work is simply not planned.
 5. **Lean among complete options** — once the full goal and preservation constraints are fixed, choose the smallest path that still meets them: existing pattern -> stdlib/native -> installed dependency -> minimal new code.
 
 If completeness and leanness conflict, keep completeness. Prefer a longer plan over a mutilated one. If performance preservation and coding convenience conflict, keep performance.
@@ -24,11 +24,11 @@ If completeness and leanness conflict, keep completeness. Prefer a longer plan o
 1. Identify the full goal and intended outcome from the latest user request. Expand implied requirements that are necessary for the goal to be real (call sites, contracts, migrations, tests, docs that the change invalidates).
 2. Inspect the context needed for current state, constraints, touch points, and adjacent behavior that must survive the change.
 3. Separate hard constraints from narrow assumptions. Name missing facts instead of inventing them.
-4. After local inspection: if one or more **blocking decision forks** remain — mutually exclusive choices that change architecture, scope, sequencing, or Preserve constraints, and cannot be resolved from available context — stop and ask the user before printing the plan. Prefer a short structured question with 2–4 concrete options when the runtime supports it; otherwise ask the same choices in plain text. Recommend a default option when one is defensible. Non-blocking unknowns stay under `Assumptions`.
+4. After local inspection: if one or more **blocking decision forks** remain — mutually exclusive choices that change architecture, scope, sequencing, or must-preserve constraints, and cannot be resolved from available context — stop and ask the user before printing the plan. Prefer a short structured question with 2–4 concrete options when the runtime supports it; otherwise ask the same choices in plain text. Recommend a default option when one is defensible. Attach non-blocking unknowns to the relevant step as `note`.
 5. Map **must-preserve** behavior and cost: existing public APIs, user-visible paths, data integrity, tests, sibling features that share the same code path, and known performance characteristics of touched hot paths (latency, throughput, memory, I/O, complexity class).
 6. Choose the leanest implementation path that still satisfies full goal delivery, capability preservation, and performance preservation.
 7. Explain the approach, show a concise ASCII visual, add a one-sentence plain-language summary, then decompose into dependency-ordered steps using the outcome-first step format below.
-8. Run a completeness self-check before printing: every requested outcome is in steps/checklist; no required work is hidden in `Out`; must-preserve items are explicit.
+8. Run a completeness self-check before printing: every requested outcome is in steps/checklist; no required work is omitted or deferred; must-preserve items are explicit in `Checklist`.
 9. End with the exact confirmation line unless the latest request already selects `revise`, `run`, `run-verify`, or asks for no confirmation. `ask` answers questions only and must still end with the confirmation line.
 
 ## Output Format
@@ -38,17 +38,6 @@ If completeness and leanness conflict, keep completeness. Prefer a longer plan o
 
 ### Goal
 <One paragraph with the full goal and intended outcome. No partial framing.>
-
-### Assumptions
-- <None, or narrow assumptions used to complete the plan.>
-
-### Scope
-- In: <all work required for full goal delivery>
-- Preserve: <adjacent behavior/contracts/paths that must keep working; include performance of touched hot paths when relevant>
-- Out: <only true non-goals or user-excluded work>
-
-### Dependencies / Risks
-- <None, or items that affect sequencing, correctness, or preservation.>
 
 ### Checklist
 - [ ] <Concrete item that must be true after implementation, including preservation checks.>
@@ -76,13 +65,13 @@ Confirm: proceed? (revise / ask / run / run-verify)
 
 - Match the user's language for all user-facing plan output.
 - Use the section order shown above.
+- Do not emit `Assumptions`, `Scope`, or `Dependencies / Risks` sections.
 - Under `Implementation Approach`, include a short ASCII visual (fenced `text` block). If the change is a UI, layout, CLI screen, or other user-visible surface, make that block a simple preview of the surface; otherwise show flow, layers, or touch points.
-- Use `None` when a section has no content.
 - Start each implementation step with an action verb describing its concrete outcome in plain language; put paths and symbols in the `location` sub-line, not the title.
-- Every step must include `location`, followed by three separate sub-lines: `today`, `change`, `verify`. For existing files, name a concrete inspected path and symbol/area when known. For new files, label the path as proposed and ground its placement in an inspected directory. Put unresolved locations under `Assumptions` or `Dependencies / Risks`; do not present them as inspected facts.
+- Every step must include `location`, followed by three separate sub-lines: `today`, `change`, `verify`. For existing files, name a concrete inspected path and symbol/area when known. For new files, label the path as proposed and ground its placement in an inspected directory. If a location is unresolved, add a `note` on that step and do not present the path as an inspected fact.
 - Do not pack today/change/verify onto one line.
-- Every step must map to real work under `Scope.In`; do not restate Scope or the ASCII visual as steps.
-- Keep `Dependencies / Risks` to items that change sequencing, correctness, data safety, security, preservation (capability or performance), or verification.
+- Every step must map to real work required by the goal; do not restate the ASCII visual as steps.
+- When a step depends on an assumption, risk, or sequencing constraint, add a `note` sub-line on that step. Omit `note` otherwise.
 - Make `Checklist` concrete enough to verify full goal delivery, must-preserve behavior, and must-preserve performance.
 - Include preservation checks in `Checklist` whenever the change touches shared paths, public APIs, data, multi-caller code, or hot paths.
 - When a hot path is touched, checklist must include at least one concrete performance check (complexity class, benchmark, profiling note, or measured budget) — not a vague "should stay fast".
@@ -111,7 +100,7 @@ STOP before implementation after printing the plan. Continue only when the lates
 ## Run Option
 
 1. Implement the latest complete plan directly when it fits one agent thread.
-2. For large plans, split work into independent subagent tasks by file, subsystem, or checklist slice. Each slice still inherits the full plan's Preserve constraints, including performance.
+2. For large plans, split work into independent subagent tasks by file, subsystem, or checklist slice. Each slice still inherits the full plan's must-preserve constraints, including performance.
 3. Give each implementation subagent its scope, relevant steps, checklist items, and must-preserve constraints (capability + performance).
 4. Keep the main agent responsible for integration, conflicts, preservation, and final checklist coverage.
 5. Report what changed, which checklist items passed, and confirm no required capability or performance characteristic was dropped.
@@ -119,7 +108,7 @@ STOP before implementation after printing the plan. Continue only when the lates
 ## Run-Verify Option
 
 1. Complete the run option first.
-2. Copy the plan's `Checklist` verbatim into the verification subagent prompt, including Preserve items.
+2. Copy the plan's `Checklist` verbatim into the verification subagent prompt, including preservation checks.
 3. Ask the subagent to inspect the real diff and relevant files against that `Checklist`.
 4. Report pass/fail with checklist evidence.
 5. If verification fails, fix only failed checklist items, launch a fresh independent verification subagent with the same `Checklist`, and repeat until the subagent reports no issues or a real blocker prevents completion.
@@ -131,7 +120,7 @@ STOP before implementation after printing the plan. Continue only when the lates
 |---|---|
 | No latest complete plan exists for `ask`, `run`, or `run-verify` | Print a plan first and stop at the checkpoint. |
 | `ask` is selected | Answer only; do not implement; end with the confirmation line. |
-| Required context is missing | List the missing fact under `Assumptions` or `Dependencies / Risks`; do not fabricate files, APIs, or commands. |
+| Required context is missing | Attach the missing fact to the relevant step as `note`; do not fabricate files, APIs, or commands. |
 | Blocking decision fork remains after local inspection | Ask the user (structured options if available, else plain text); do not assume a branch and print a plan on the wrong path. |
 | Requested goal is large | Split into ordered phases that still add up to full delivery; do not ship a permanently reduced goal. |
 | A step lacks a verification target | Rewrite that step before final output. |
@@ -145,7 +134,7 @@ Do not:
 
 - Amputate adjacent features, APIs, tests, docs, or user paths just to make the plan shorter.
 - Regress latency, throughput, memory, I/O, or algorithmic cost class of a touched path just to make the change easier.
-- Move required work into `Scope.Out` or "later" without user approval.
+- Omit required work or park it as later without user approval.
 - Deliver a stub, partial path, or single-caller fix when the goal needs the whole surface.
 - Turn the plan into a design essay or product roadmap.
 - Ask broad clarification questions before inspecting available local context.
