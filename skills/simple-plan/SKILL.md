@@ -28,9 +28,8 @@ If completeness and leanness conflict, keep completeness. Prefer a longer plan o
 5. Map **must-preserve** behavior and cost: existing public APIs, user-visible paths, data integrity, tests, sibling features that share the same code path, and known performance characteristics of touched hot paths (latency, throughput, memory, I/O, complexity class).
 6. Choose the leanest implementation path that still satisfies full goal delivery, capability preservation, and performance preservation.
 7. Explain the approach, show a concise ASCII visual, add a one-sentence plain-language summary, then decompose into dependency-ordered steps. Each step needs an inspected path plus separate today / change / verify lines.
-8. List only visible, relevant skills from the current session's available skills list.
-9. Run a completeness self-check before printing: every requested outcome is in steps/checklist; no required work is hidden in `Out`; must-preserve items are explicit.
-10. End with the exact confirmation line unless the latest request already selects `revise`, `run`, `run-verify`, or asks for no confirmation. `ask` answers questions only and must still end with the confirmation line.
+8. Run a completeness self-check before printing: every requested outcome is in steps/checklist; no required work is hidden in `Out`; must-preserve items are explicit.
+9. End with the exact confirmation line unless the latest request already selects `revise`, `run`, `run-verify`, or asks for no confirmation. `ask` answers questions only and must still end with the confirmation line.
 
 ## Output Format
 
@@ -50,9 +49,6 @@ If completeness and leanness conflict, keep completeness. Prefer a longer plan o
 
 ### Dependencies / Risks
 - <None, or items that affect sequencing, correctness, or preservation.>
-
-### Suggested Skills
-- <None, or visible skill + one-line reason.>
 
 ### Checklist
 - [ ] <Concrete item that must be true after implementation, including preservation checks.>
@@ -154,7 +150,6 @@ Do not:
 - Ask broad clarification questions before inspecting available local context.
 - Ask decision-fork questions for facts discoverable in local context, or for non-blocking preferences that do not change the plan.
 - Bind the decision-fork step to one specific questioning tool; keep it runtime-agnostic.
-- Recommend hidden or unavailable skills.
 - Add speculative abstractions, new dependencies, or future-proofing not required by the goal.
 - Treat assumptions as facts.
 - Claim verification passed without a real check or verifier result.
