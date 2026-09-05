@@ -5,7 +5,7 @@ description: Write complete, non-regressive implementation plans before coding. 
 
 # Simple Plan
 
-Turn available context into a complete, executable implementation plan. Completeness of the requested goal comes first; lean implementation is chosen only among options that deliver the full goal without amputating adjacent capabilities.
+Turn available context into an implementation plan the user can understand and correct before the AI executes it. Completeness of the requested goal comes first; lean implementation is chosen only among options that deliver the full goal without amputating adjacent capabilities.
 
 ## Completeness Rule
 
@@ -27,7 +27,7 @@ If completeness and leanness conflict, keep completeness. Prefer a longer plan o
 4. After local inspection: if one or more **blocking decision forks** remain — mutually exclusive choices that change architecture, scope, sequencing, or Preserve constraints, and cannot be resolved from available context — stop and ask the user before printing the plan. Prefer a short structured question with 2–4 concrete options when the runtime supports it; otherwise ask the same choices in plain text. Recommend a default option when one is defensible. Non-blocking unknowns stay under `Assumptions`.
 5. Map **must-preserve** behavior and cost: existing public APIs, user-visible paths, data integrity, tests, sibling features that share the same code path, and known performance characteristics of touched hot paths (latency, throughput, memory, I/O, complexity class).
 6. Choose the leanest implementation path that still satisfies full goal delivery, capability preservation, and performance preservation.
-7. Explain the approach, show a concise ASCII visual, add a one-sentence plain-language summary, then decompose into dependency-ordered steps. Each step needs an inspected path plus separate today / change / verify lines.
+7. Explain the approach, show a concise ASCII visual, add a one-sentence plain-language summary, then decompose into dependency-ordered steps using the outcome-first step format below.
 8. Run a completeness self-check before printing: every requested outcome is in steps/checklist; no required work is hidden in `Out`; must-preserve items are explicit.
 9. End with the exact confirmation line unless the latest request already selects `revise`, `run`, `run-verify`, or asks for no confirmation. `ask` answers questions only and must still end with the confirmation line.
 
@@ -63,7 +63,8 @@ If completeness and leanness conflict, keep completeness. Prefer a longer plan o
 In one sentence: <State the core solution in short, plain language.>
 
 ### Implementation Steps
-1. <Action> in `path/file` (`symbol` or area)
+1. <Action describing the concrete outcome in plain language>
+   - location: <modify `inspected/path` (`symbol` or area), or create `proposed/path` under an inspected directory>
    - today: <current behavior>
    - change: <what this step does>
    - verify: <check>
@@ -77,8 +78,8 @@ Confirm: proceed? (revise / ask / run / run-verify)
 - Use the section order shown above.
 - Under `Implementation Approach`, include a short ASCII visual (fenced `text` block). If the change is a UI, layout, CLI screen, or other user-visible surface, make that block a simple preview of the surface; otherwise show flow, layers, or touch points.
 - Use `None` when a section has no content.
-- Start each implementation step with an action verb.
-- Every step must name a concrete inspected path (and symbol/area when known), then three separate sub-lines: `today`, `change`, `verify`. Do not invent paths; put unknowns under `Assumptions` or `Dependencies / Risks`.
+- Start each implementation step with an action verb describing its concrete outcome in plain language; put paths and symbols in the `location` sub-line, not the title.
+- Every step must include `location`, followed by three separate sub-lines: `today`, `change`, `verify`. For existing files, name a concrete inspected path and symbol/area when known. For new files, label the path as proposed and ground its placement in an inspected directory. Put unresolved locations under `Assumptions` or `Dependencies / Risks`; do not present them as inspected facts.
 - Do not pack today/change/verify onto one line.
 - Every step must map to real work under `Scope.In`; do not restate Scope or the ASCII visual as steps.
 - Keep `Dependencies / Risks` to items that change sequencing, correctness, data safety, security, preservation (capability or performance), or verification.
@@ -158,4 +159,7 @@ Do not:
 
 ## Boundary
 
-Planning is complete when a capable agent can start work from the steps and checklist without rereading the conversation, deliver the full requested outcome, and leave must-preserve behavior and performance intact.
+Planning is complete when both conditions hold:
+
+1. The user can identify the final outcome, main changes, execution order, and material risks from the plan, and can point to a specific step to correct the AI's intended work.
+2. A capable agent can start work from the steps and checklist without rereading the conversation or deciding the core approach again, deliver the full requested outcome, and leave must-preserve behavior and performance intact.
