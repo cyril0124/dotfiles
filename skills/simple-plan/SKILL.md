@@ -1,154 +1,101 @@
 ---
 name: simple-plan
-description: Write complete, non-regressive implementation plans before coding. Use when the user asks for a plan, implementation steps, delivery plan, plan-before-coding, or revise/ask/run/run-verify controls. Produces full-goal coverage, preserved adjacent behavior, dependency-ordered steps, checklist, and a confirmation line.
+description: "Plan implementation before coding, with verifiable outcomes and preserved behavior and performance. Use when the user requests a plan or plan-before-coding, or selects the planning controls revise, ask, run, or run-verify, even if the plan is missing. Requests to edit or review this skill are not planning invocations."
 ---
 
-# Simple Plan
+# Simple plan
 
-Turn available context into an implementation plan the user can understand and correct before the AI executes it. Completeness of the requested goal comes first; lean implementation is chosen only among options that deliver the full goal without amputating adjacent capabilities.
+Produce a complete implementation plan that the user can correct and an agent can execute without deciding the core approach again. Choose the smallest implementation that delivers the full requested outcome.
 
-## Completeness Rule
+## Select the mode
 
-A plan is valid only if it satisfies all of the following:
+Interpret the latest request by intent, not by finding keywords in quoted text, code, or filenames. Control words apply to the active plan, not to unrelated requests. Editing this skill follows the user's editing request, not the planning checkpoint below.
 
-1. **Full goal delivery** — every part of the requested outcome is covered by steps and checklist items. Partial delivery is not a plan; it is incomplete work.
-2. **No capability amputation** — do not drop, weaken, or defer existing related behavior just to make the new work easier. Adjacent features, APIs, invariants, UX paths, tests, docs, and contracts that the change touches must keep working unless the user explicitly asks to remove them.
-3. **No performance amputation** — do not regress latency, throughput, memory, I/O volume, or algorithmic cost class just to simplify the change. Keep existing performance characteristics of touched paths, or improve them when the goal requires it. A plan that trades known hot-path cost for coding convenience is invalid unless the user explicitly accepts that tradeoff.
-4. **No silent scope cuts** — do not omit required work or park it as later without user approval. User-excluded work is simply not planned.
-5. **Lean among complete options** — once the full goal and preservation constraints are fixed, choose the smallest path that still meets them: existing pattern -> stdlib/native -> installed dependency -> minimal new code.
+| Request | Action | Where to stop |
+|---|---|---|
+| New plan | Inspect context and produce a complete plan. | At the checkpoint. |
+| `revise` | Incorporate the requested changes and reprint the complete plan. | At the checkpoint, unless execution is also explicitly authorized. |
+| `ask` | Answer the question using the active plan and relevant local evidence. If the answer changes the approach, identify the affected step without silently revising it. | After the answer and confirmation line. No implementation. |
+| `run` | Execute the latest complete plan using the execution rules below. | After reporting checklist results or a blocker. |
+| `run-verify` | Execute the latest complete plan, then obtain independent verification. | After reporting verified results or a blocker. |
+| No-confirmation wording | Omit the confirmation line. This alone does not authorize execution. | After the plan unless implementation is also explicitly authorized. |
 
-If completeness and leanness conflict, keep completeness. Prefer a longer plan over a mutilated one. If performance preservation and coding convenience conflict, keep performance.
+If `run` or `run-verify` has no complete plan to execute, produce one and stop at the checkpoint. If the goal is also missing, ask for it. For `ask` without a plan, answer a self-contained question from available evidence; ask for the missing plan only when the question depends on it.
 
-## Workflow
+For combined requests, honor explicit sequencing such as "revise, then run" or "answer, then implement." If it is unclear whether the user wants execution, ask one focused question before writing files. Authorization from an earlier turn does not override a newer plan-only or Q&A request.
 
-1. Identify the full goal and intended outcome from the latest user request. Expand implied requirements that are necessary for the goal to be real (call sites, contracts, migrations, tests, docs that the change invalidates).
-2. Inspect the context needed for current state, constraints, touch points, and adjacent behavior that must survive the change.
-3. Separate hard constraints from narrow assumptions. Name missing facts instead of inventing them.
-4. After local inspection: if one or more **blocking decision forks** remain — mutually exclusive choices that change architecture, scope, sequencing, or must-preserve constraints, and cannot be resolved from available context — stop and ask the user before printing the plan. Prefer a short structured question with 2–4 concrete options when the runtime supports it; otherwise ask the same choices in plain text. Recommend a default option when one is defensible. Attach non-blocking unknowns to the relevant step as `note`.
-5. Map **must-preserve** behavior and cost: existing public APIs, user-visible paths, data integrity, tests, sibling features that share the same code path, and known performance characteristics of touched hot paths (latency, throughput, memory, I/O, complexity class).
-6. Choose the leanest implementation path that still satisfies full goal delivery, capability preservation, and performance preservation.
-7. Explain the approach, show a concise ASCII visual, add a one-sentence plain-language summary, then decompose into dependency-ordered steps using the outcome-first step format below.
-8. Run a completeness self-check before printing: every requested outcome is in steps/checklist; no required work is omitted or deferred; must-preserve items are explicit in `Checklist`.
-9. End with the exact confirmation line unless the latest request already selects `revise`, `run`, `run-verify`, or asks for no confirmation. `ask` answers questions only and must still end with the confirmation line.
+## Build the plan
 
-## Output Format
+Planning permits read-only inspection. Do not edit files, install dependencies, or run commands that implement the change while preparing the plan.
 
-```markdown
+1. **Establish the outcome.** Extract every requested result, exclusions, and hard constraints. Include necessary integration work such as affected callers, contracts, data changes, tests, and invalidated docs. Add only work required to deliver the goal, not speculative improvements.
+2. **Inspect the affected paths.** Read the relevant code, configuration, tests, and directory structure. Identify current behavior, shared callers, and known hot-path costs. Use existing context when sufficient; investigate facts available locally before asking the user.
+3. **Resolve blocking decisions.** If mutually exclusive choices change architecture, scope, execution order, or preservation requirements and evidence cannot resolve them, ask before printing a plan. Use 2-4 concrete options, with a recommendation when justified. Use structured questions when supported, plain text otherwise. Put non-blocking unknowns in the relevant step's `note`. Missing evidence that prevents choosing an executable approach is a blocker, not a note.
+4. **Choose and sequence the implementation.** Prefer existing project patterns, then standard-library or native APIs, installed dependencies, and minimal new code. Order steps by actual dependencies. Large goals may use phases, but every phase needed for delivery belongs in the plan.
+5. **Check coverage.** Map each requested outcome and preservation requirement to an implementation step and a verifiable checklist item. Each step must name its location, current behavior, intended change, and verification target. Print the plan only when no required outcome or blocking decision is left unresolved.
+
+## Preservation requirements
+
+Preserve related behavior unless the user explicitly approves changing it. Cover public APIs, user-visible paths, data integrity, shared callers, sibling features, tests, and documentation contracts affected by the change. Do not remove tests or weaken assertions to conceal regressions. User-requested removals are part of the goal, not preservation failures.
+
+Preserve known latency, throughput, memory use, I/O volume, and algorithmic complexity on touched paths. A simpler implementation does not justify a known regression. If a tradeoff is necessary, obtain explicit approval before treating it as accepted.
+
+For a touched hot path, include a concrete performance check: a complexity comparison, benchmark, profile, or measured budget relevant to the change. If no baseline exists, plan to establish one before modifying that path. Do not invent measurements or promise measured equivalence from code inspection alone.
+
+## Plan format
+
+Match the user's language in prose. Keep the section order and step fields below; use the literal confirmation line defined under Checkpoint. Keep the plan as short as the complete goal allows. Do not add separate assumptions, scope, or risks sections; attach material constraints to the affected steps.
+
+````markdown
 ## Plan
 
 ### Goal
-<One paragraph with the full goal and intended outcome. No partial framing.>
+<Full requested outcome and intended observable result.>
 
 ### Checklist
-- [ ] <Concrete item that must be true after implementation, including preservation checks.>
+- [ ] <Verifiable outcome or preservation requirement; identify the step that covers it.>
 
 ### Implementation Approach
-<A concise explanation of how the implementation will achieve the full goal without cutting adjacent capabilities.>
+<How the implementation delivers the goal while preserving affected behavior and cost.>
 
 ```text
-<ASCII visual: for UI/layout/CLI screens or other user-visible surfaces, a simple preview of the surface; otherwise flow, layers, or touch points.>
+<Concise ASCII visual: for UI/layout/CLI screens, preview the changed surface.
+Otherwise show the relevant flow, layers, or touch points.>
 ```
 
-In one sentence: <State the core solution in short, plain language.>
+In one sentence: <Core solution in plain language.>
 
 ### Implementation Steps
-1. <Action describing the concrete outcome in plain language>
-   - location: <modify `inspected/path` (`symbol` or area), or create `proposed/path` under an inspected directory>
-   - today: <current behavior>
-   - change: <what this step does>
-   - verify: <check>
+1. <Action verb and concrete outcome, without paths in the title>
+   - location: <Inspected file and symbol/area, or proposed new path under an inspected directory>
+   - today: <Current behavior supported by inspection>
+   - change: <Specific implementation work>
+   - verify: <Check and observable pass condition>
+   - note: <Only when needed: assumption, unresolved non-blocking fact, risk, or sequencing constraint>
+````
 
-Confirm: proceed? (revise / ask / run / run-verify)
-```
+Use separate `location`, `today`, `change`, and `verify` lines in that order. Omit `note` when unnecessary. Mark proposed paths as proposed; if an exact location is unresolved, name the inspected parent area and use `note` to specify how it will be located. Never present a guessed file, API, or command as an inspected fact. Partial evidence establishes only what it shows: seeing one export or test does not prove that others are absent. Verify absence before claiming it, or state the narrower known fact.
 
-## Output Rules
+Use commands discovered in the project when known. Otherwise describe the required check and how its command will be identified. Include success criteria, not just "run tests." Keep checklist items unchecked until execution supplies evidence. Omit discussion history, rejected alternatives, roadmaps, and unrelated future work.
 
-- Match the user's language for all user-facing plan output.
-- Use the section order shown above.
-- Do not emit `Assumptions`, `Scope`, or `Dependencies / Risks` sections.
-- Under `Implementation Approach`, include a short ASCII visual (fenced `text` block). If the change is a UI, layout, CLI screen, or other user-visible surface, make that block a simple preview of the surface; otherwise show flow, layers, or touch points.
-- Start each implementation step with an action verb describing its concrete outcome in plain language; put paths and symbols in the `location` sub-line, not the title.
-- Every step must include `location`, followed by three separate sub-lines: `today`, `change`, `verify`. For existing files, name a concrete inspected path and symbol/area when known. For new files, label the path as proposed and ground its placement in an inspected directory. If a location is unresolved, add a `note` on that step and do not present the path as an inspected fact.
-- Do not pack today/change/verify onto one line.
-- Every step must map to real work required by the goal; do not restate the ASCII visual as steps.
-- When a step depends on an assumption, risk, or sequencing constraint, add a `note` sub-line on that step. Omit `note` otherwise.
-- Make `Checklist` concrete enough to verify full goal delivery, must-preserve behavior, and must-preserve performance.
-- Include preservation checks in `Checklist` whenever the change touches shared paths, public APIs, data, multi-caller code, or hot paths.
-- When a hot path is touched, checklist must include at least one concrete performance check (complexity class, benchmark, profiling note, or measured budget) — not a vague "should stay fast".
-- Omit discussion history, rejected alternatives, product roadmaps, and speculative future work that is not required by the goal.
-- Do not write code, edit files, or run implementation commands while producing the initial plan.
-- End with `Confirm: proceed? (revise / ask / run / run-verify)` unless the latest request selected `revise`, `run`, `run-verify`, or asked for no confirmation. After `ask`, always reprint the confirmation line.
+## Checkpoint
 
-## CHECKPOINT
+After an initial or revised plan, STOP before implementation unless the latest request explicitly authorizes it and a complete plan is available.
 
-STOP before implementation after printing the plan. Continue only when the latest request contains:
+End plan-only and Q&A responses with exactly this line, except when the user requests no confirmation:
 
-- `revise`: incorporate changes and reprint the complete plan.
-- `ask`: answer the user's question(s) about the latest plan or related local context; do not implement, edit files, or run implementation commands. End with the confirmation line.
-- `run`: implement the latest complete plan.
-- `run-verify`: implement, then verify with an independent subagent.
-- No-confirmation wording: omit the confirmation line; implement only if the request also authorizes implementation.
+`Confirm: proceed? (revise / ask / run / run-verify)`
 
-## Ask Option
+## Execute the plan
 
-1. Treat `ask` as Q&A only. Do not enter `run` or `run-verify`.
-2. Answer from the latest complete plan and available local context. Inspect code/files when needed to answer accurately.
-3. Keep the answer scoped to the question; do not rewrite the whole plan unless the user also says `revise`.
-4. If the answer reveals the plan should change, say so briefly and suggest `revise`; do not silently rewrite and proceed.
-5. Always end with `Confirm: proceed? (revise / ask / run / run-verify)`.
+1. Recheck relevant files against the plan before editing. Work with existing user changes. If new evidence invalidates the approach or requires a material scope or preservation tradeoff, report it and resolve the decision before proceeding. Local implementation details that do not change the agreed outcome can be resolved during execution.
+2. Implement the dependency-ordered steps. Use one agent for tightly coupled work. Delegate only independent work with clear file or subsystem ownership; provide each agent its steps, checklist items, and behavior and performance requirements. The main agent owns integration and full checklist coverage.
+3. Run the planned checks for `run` as well as `run-verify`. Record each checklist item as passed, failed, or unverified, with command results or file evidence appropriate to the claim. A failing check is a failure; unavailable tools or environments leave the item unverified. Fix failures within the agreed scope. Report blockers explicitly rather than reducing the goal or claiming success.
+4. For `run`, report the implemented outcome and checklist results. For `run-verify`, continue below before reporting completion. Distinguish implementation completion from verified behavior and measured performance.
 
-## Run Option
+## Independent verification
 
-1. Implement the latest complete plan directly when it fits one agent thread.
-2. For large plans, split work into independent subagent tasks by file, subsystem, or checklist slice. Each slice still inherits the full plan's must-preserve constraints, including performance.
-3. Give each implementation subagent its scope, relevant steps, checklist items, and must-preserve constraints (capability + performance).
-4. Keep the main agent responsible for integration, conflicts, preservation, and final checklist coverage.
-5. Report what changed, which checklist items passed, and confirm no required capability or performance characteristic was dropped.
-
-## Run-Verify Option
-
-1. Complete the run option first.
-2. Copy the plan's `Checklist` verbatim into the verification subagent prompt, including preservation checks.
-3. Ask the subagent to inspect the real diff and relevant files against that `Checklist`.
-4. Report pass/fail with checklist evidence.
-5. If verification fails, fix only failed checklist items, launch a fresh independent verification subagent with the same `Checklist`, and repeat until the subagent reports no issues or a real blocker prevents completion.
-6. If no verifier can run, report verification unavailable and do not claim checklist pass.
-
-## Failure Handling
-
-| Trigger | Action |
-|---|---|
-| No latest complete plan exists for `ask`, `run`, or `run-verify` | Print a plan first and stop at the checkpoint. |
-| `ask` is selected | Answer only; do not implement; end with the confirmation line. |
-| Required context is missing | Attach the missing fact to the relevant step as `note`; do not fabricate files, APIs, or commands. |
-| Blocking decision fork remains after local inspection | Ask the user (structured options if available, else plain text); do not assume a branch and print a plan on the wrong path. |
-| Requested goal is large | Split into ordered phases that still add up to full delivery; do not ship a permanently reduced goal. |
-| A step lacks a verification target | Rewrite that step before final output. |
-| Plan would remove or weaken adjacent capability to simplify work | Reject that plan; rewrite so the capability is preserved or explicitly approved for removal by the user. |
-| Plan would regress performance of a touched path to simplify work | Reject that plan; rewrite to preserve cost class / budget, or get explicit user approval for the tradeoff. |
-| Verification fails | Fix only failed checklist items, then rerun independent verification until the subagent reports no issues or a real blocker prevents completion. |
-
-## Anti-Patterns
-
-Do not:
-
-- Amputate adjacent features, APIs, tests, docs, or user paths just to make the plan shorter.
-- Regress latency, throughput, memory, I/O, or algorithmic cost class of a touched path just to make the change easier.
-- Omit required work or park it as later without user approval.
-- Deliver a stub, partial path, or single-caller fix when the goal needs the whole surface.
-- Turn the plan into a design essay or product roadmap.
-- Ask broad clarification questions before inspecting available local context.
-- Ask decision-fork questions for facts discoverable in local context, or for non-blocking preferences that do not change the plan.
-- Bind the decision-fork step to one specific questioning tool; keep it runtime-agnostic.
-- Add speculative abstractions, new dependencies, or future-proofing not required by the goal.
-- Treat assumptions as facts.
-- Claim verification passed without a real check or verifier result.
-- Continue implementing after the plan unless the latest request authorizes it.
-- Treat `ask` as authorization to implement, edit files, or skip the confirmation line.
-
-## Boundary
-
-Planning is complete when both conditions hold:
-
-1. The user can identify the final outcome, main changes, execution order, and material risks from the plan, and can point to a specific step to correct the AI's intended work.
-2. A capable agent can start work from the steps and checklist without rereading the conversation or deciding the core approach again, deliver the full requested outcome, and leave must-preserve behavior and performance intact.
+1. Give a read-only verification subagent the complete plan, its Checklist verbatim, the actual changed-file scope, and executed check results. Ask it to inspect the real diff and relevant callers and tests, run feasible checks, and report evidence per item plus regressions introduced by the changes. If no verifier can run, report independent verification unavailable; do not substitute self-review and call it independent.
+2. Assess findings against the files and observed behavior. Fix confirmed failures and introduced regressions, including ones omitted from the original checklist. If a missing requirement is found, update the plan and checklist explicitly; obtain approval for material scope changes. A disputed finding needs counterevidence, not dismissal.
+3. After fixes, run the relevant checks and request a fresh independent verification against the full current checklist, identifying any checklist changes. Repeat while confirmed failures remain and can be addressed. If progress requires unavailable evidence, tools, access, or a user decision, report that blocker and leave the affected items unverified or failed.
+4. Report each checklist item's status with evidence. A verifier's "no issues" does not turn unrun checks into passes. Completion requires all required items to pass; otherwise state what remains incomplete.
