@@ -5,105 +5,67 @@ from __future__ import annotations
 
 import json
 import os
-import shutil
-import subprocess
+import socket
 import sys
 
-
-def herdr_bin() -> str:
-    path = os.environ.get("HERDR_BIN_PATH") or ""
-    if path and os.access(path, os.X_OK):
-        return path
-    from shutil import which
-
-    found = which("herdr")
-    if not found:
-        print("herdr not found", file=sys.stderr)
-        sys.exit(1)
-    return found
+from picker import herdr_bin, herdr_json, load_tabs
 
 
-def herdr_json(bin_path: str, *args: str) -> dict:
-    raw = subprocess.check_output([bin_path, *args], stderr=subprocess.DEVNULL)
-    payload = json.loads(raw)
-    if not isinstance(payload, dict):
-        return {}
-    result = payload.get("result")
-    return result if isinstance(result, dict) else payload
-
-
-def popup_size(bin_path: str) -> tuple[int, int]:
-    tabs: list = []
-    try:
-        tabs = herdr_json(bin_path, "tab", "list").get("tabs") or []
-    except Exception:
-        tabs = []
-    if not isinstance(tabs, list):
-        tabs = []
-
-    workspaces: dict[str, str] = {}
-    try:
-        for ws in herdr_json(bin_path, "workspace", "list").get("workspaces") or []:
-            if not isinstance(ws, dict):
-                continue
-            wid = ws.get("workspace_id")
-            if isinstance(wid, str) and wid:
-                label = ws.get("label")
-                workspaces[wid] = label if isinstance(label, str) and label else wid
-    except Exception:
-        pass
-
-    max_line = len("  tab  workspace  RUN ")
-    for tab in tabs:
-        if not isinstance(tab, dict):
-            continue
-        wid = tab.get("workspace_id") if isinstance(tab.get("workspace_id"), str) else "?"
-        wlabel = workspaces.get(wid, wid)
-        tlabel = (
-            tab.get("label")
-            if isinstance(tab.get("label"), str) and tab.get("label")
-            else (tab.get("tab_id") or "")
-        )
-        status = tab.get("agent_status") if isinstance(tab.get("agent_status"), str) else ""
-        # marker + tab + gaps + workspace + badge
-        line_len = 2 + len(str(tlabel)) + 2 + len(wlabel) + 2 + max(4, len(status))
-        max_line = max(max_line, line_len)
-
-    term = shutil.get_terminal_size(fallback=(100, 30))
-    n = max(1, len(tabs))
-    # chrome ≈ help + seps + footer + border
-    height = max(10, min(n + 8, max(10, int(term.lines * 0.85))))
-    # Tree needs room for branch + long tab names + status column.
-    width = max(48, min(max(max_line + 14, 48), max(48, int(term.columns * 0.92))))
+def content_size(rows: list[dict[str, str]], cols: int, lines: int) -> tuple[int, int]:
+    groups = len({row["workspace_id"] for row in rows})
+    # Four picker chrome rows plus the two outer border rows.
+    height = min(max(len(rows) + groups + 6, 10), lines)
+    max_line = max(
+        (
+            2 + len(row["tab"]) + 2 + len(row["workspace"])
+            + 2 + max(4, len(row["status"]))
+            for row in rows
+        ),
+        default=21,
+    )
+    width = min(max(max_line + 14, 48), cols * 92 // 100)
     return width, height
 
 
+def popup_size(bin_path: str) -> tuple[int, int]:
+    rows = load_tabs(bin_path)
+    area = herdr_json(bin_path, "pane", "layout")["layout"]["area"]
+    cols, lines = area["width"], area["height"]
+    if type(cols) is not int or type(lines) is not int or cols <= 0 or lines <= 0:
+        raise ValueError("pane layout must contain positive integer area dimensions")
+    return content_size(rows, cols, lines)
+
+
 def main() -> int:
-    bin_path = herdr_bin()
-    width, height = popup_size(bin_path)
-    cmd = [
-        bin_path,
-        "plugin",
-        "pane",
-        "open",
-        "--plugin",
-        "local.tab-goto",
-        "--entrypoint",
-        "picker",
-        "--placement",
-        "popup",
-        "--width",
-        str(width),
-        "--height",
-        str(height),
-        "--focus",
-    ]
-    os.execv(bin_path, cmd)
+    width, height = popup_size(herdr_bin())
+    request = {
+        "id": "local.tab-goto.open",
+        "method": "plugin.pane.open",
+        "params": {
+            "plugin_id": "local.tab-goto",
+            "entrypoint": "picker",
+            "placement": "popup",
+            "width": width,
+            "height": height,
+            "focus": True,
+        },
+    }
+    with socket.socket(socket.AF_UNIX) as sock:
+        sock.connect(os.environ["HERDR_SOCKET_PATH"])
+        sock.sendall((json.dumps(request) + "\n").encode())
+        with sock.makefile("r", encoding="utf-8") as stream:
+            response = json.loads(stream.readline())
+    if "error" in response:
+        raise RuntimeError(f"plugin.pane.open: {response['error']}")
+    if not isinstance(response.get("result"), dict):
+        raise RuntimeError(f"plugin.pane.open: malformed response: {response}")
+    print(json.dumps(response))
+    return 0
 
 
 if __name__ == "__main__":
     try:
         raise SystemExit(main())
-    except subprocess.CalledProcessError as exc:
-        print(f"failed: {exc}", file=sys.stderr)
-        raise SystemExit(exc.returncode or 1)
+    except Exception as exc:
+        print(f"failed to open tab picker: {exc}", file=sys.stderr)
+        raise SystemExit(1)

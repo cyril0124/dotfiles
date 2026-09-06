@@ -2,8 +2,8 @@
 //! One binary, two modes: `open` (popup launcher) and `picker` (default, TUI).
 
 use std::collections::HashSet;
-use std::io::{self, IsTerminal, Write};
-use std::os::unix::process::CommandExt;
+use std::io::{self, BufRead, IsTerminal, Write};
+use std::os::unix::net::UnixStream;
 use std::process::Command;
 
 use crossterm::{
@@ -772,60 +772,103 @@ fn ui_loop(
 
 // ---------- open mode ----------
 
-fn popup_size(bin: &str) -> (usize, usize) {
-    let tabs = herdr_json(bin, &["tab", "list"])
-        .ok()
-        .and_then(|r| r.get("tabs").and_then(|t| t.as_array()).cloned())
-        .unwrap_or_default();
-    let workspaces = load_workspaces(bin);
+fn popup_size(bin: &str) -> Result<(usize, usize), String> {
+    let rows = load_tabs(bin)?;
+    let layout = herdr_json(bin, &["pane", "layout"])?;
+    let area = &layout["layout"]["area"];
+    let cols = area["width"].as_u64().filter(|n| *n > 0)
+        .ok_or("pane layout is missing a positive area width")? as usize;
+    let lines = area["height"].as_u64().filter(|n| *n > 0)
+        .ok_or("pane layout is missing a positive area height")? as usize;
+    Ok(content_size(&rows, cols, lines))
+}
 
-    let mut max_line = "  tab  workspace  RUN ".chars().count();
-    for tab in &tabs {
-        let wid = json_str(tab, "workspace_id").unwrap_or_else(|| "?".into());
-        let wlabel = workspaces.get(&wid).cloned().unwrap_or_else(|| wid.clone());
-        let tlabel = json_str(tab, "label")
-            .filter(|s| !s.is_empty())
-            .or_else(|| json_str(tab, "tab_id"))
-            .unwrap_or_default();
-        let status = json_str(tab, "agent_status").unwrap_or_default();
-        // marker + tab + gaps + workspace + badge
-        let line_len =
-            2 + tlabel.chars().count() + 2 + wlabel.chars().count() + 2 + 4usize.max(status.len());
-        max_line = max_line.max(line_len);
-    }
-
-    let (cols, lines) = terminal::size().unwrap_or((100, 30));
-    let (cols, lines) = (cols as usize, lines as usize);
-    let n = 1usize.max(tabs.len());
-    // chrome ≈ help + seps + footer + border
-    let height = 10usize.max((n + 8).min(10usize.max(lines * 85 / 100)));
-    // Tree needs room for branch + long tab names + status column.
-    let width = 48usize.max((max_line + 14).max(48).min(48usize.max(cols * 92 / 100)));
+fn content_size(rows: &[Row], cols: usize, lines: usize) -> (usize, usize) {
+    let groups = rows.iter().map(|r| &r.workspace_id).collect::<HashSet<_>>().len();
+    // Four picker chrome rows plus the two outer border rows.
+    let height = (rows.len() + groups + 6).max(10).min(lines);
+    let max_line = rows.iter().map(|r| {
+        2 + r.tab.chars().count() + 2 + r.workspace.chars().count() + 2 + r.status.len().max(4)
+    }).max().unwrap_or(21);
+    let width = (max_line + 14).max(48).min(cols * 92 / 100);
     (width, height)
 }
 
+fn open_popup(bin: &str) -> Result<(), Box<dyn std::error::Error>> {
+    let (width, height) = popup_size(bin)?;
+    let socket = std::env::var("HERDR_SOCKET_PATH")?;
+    let request = serde_json::json!({
+        "id": "local.tab-goto-rs.open",
+        "method": "plugin.pane.open",
+        "params": {
+            "plugin_id": "local.tab-goto-rs",
+            "entrypoint": "picker",
+            "placement": "popup",
+            "width": width,
+            "height": height,
+            "focus": true
+        }
+    });
+    let mut stream = UnixStream::connect(socket)?;
+    serde_json::to_writer(&mut stream, &request)?;
+    stream.write_all(b"\n")?;
+    let mut response = String::new();
+    io::BufReader::new(stream).read_line(&mut response)?;
+    let response: Value = serde_json::from_str(&response)?;
+    if let Some(error) = response.get("error") {
+        return Err(format!("plugin.pane.open: {error}").into());
+    }
+    if !response["result"].is_object() {
+        return Err(format!("plugin.pane.open: malformed response: {response}").into());
+    }
+    println!("{response}");
+    Ok(())
+}
+
 fn open_mode(bin: &str) -> i32 {
-    let (width, height) = popup_size(bin);
-    let err = Command::new(bin)
-        .args([
-            "plugin",
-            "pane",
-            "open",
-            "--plugin",
-            "local.tab-goto-rs",
-            "--entrypoint",
-            "picker",
-            "--placement",
-            "popup",
-            "--width",
-            &width.to_string(),
-            "--height",
-            &height.to_string(),
-            "--focus",
-        ])
-        .exec();
-    eprintln!("failed to exec herdr: {err}");
-    1
+    match open_popup(bin) {
+        Ok(()) => 0,
+        Err(error) => {
+            eprintln!("failed to open tab picker: {error}");
+            1
+        }
+    }
+}
+
+#[cfg(test)]
+mod size_tests {
+    use super::*;
+
+    fn tabs(count: usize, groups: usize) -> Vec<Row> {
+        (0..count).map(|i| Row {
+            tab_id: format!("t{i}"),
+            workspace_id: format!("w{}", i % groups),
+            workspace: "workspace".into(),
+            tab: "tab".into(),
+            status: String::new(),
+            focused: false,
+        }).collect()
+    }
+
+    #[test]
+    fn fits_tabs_and_workspace_headers_on_tall_terminal() {
+        let rows = tabs(40, 8);
+        assert_eq!(content_size(&rows, 200, 65).1, 54);
+    }
+
+    #[test]
+    fn uses_available_height_before_scrolling() {
+        let rows = tabs(55, 2);
+        assert_eq!(content_size(&rows, 200, 65).1, 63);
+        assert_eq!(content_size(&rows, 200, 30).1, 30);
+    }
+
+    #[test]
+    fn stays_inside_small_terminal() {
+        let (width, height) = content_size(&tabs(4, 2), 30, 8);
+        assert!(width <= 30);
+        assert_eq!(height, 8);
+    }
 }
 
 // ---------- picker main ----------
