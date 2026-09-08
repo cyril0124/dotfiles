@@ -325,6 +325,7 @@ def pick_index(
         filter_on = False
         query = ""
         query_mode = False
+        pending_g = False
         start_idx = max(0, min(start, len(rows) - 1))
         # Default: expand every workspace; h/l (or arrows in / mode) still folds.
         expanded = {
@@ -370,6 +371,7 @@ def pick_index(
             if height < 4 or width < 16:
                 _put(stdscr, 0, 0, "window too small", curses.A_BOLD)
                 stdscr.refresh()
+                pending_g = False
                 ch = stdscr.getch()
                 if ch in (27, ord("q")):
                     return None
@@ -380,7 +382,7 @@ def pick_index(
                 caret = "█"
                 help_l = f"/{query}{caret}  arrows move  esc done  ^u clear"
             else:
-                help_l = "j/k · 1-9 · n last · / filter · click · h/l fold · enter · f · esc"
+                help_l = "j/k · gg/G · 1-9 · n last · / filter · click · h/l fold · enter · f · esc"
             _put(stdscr, 0, 1, _fit(help_l, max(0, inner - 1)), curses.A_DIM)
             flags: list[str] = []
             if filter_on:
@@ -651,8 +653,19 @@ def pick_index(
                 # ignore other keys in query mode (including q/f as letters only if printable)
                 continue
 
+            # A second consecutive g jumps to the first visible tree entry.
+            if ch == ord("g"):
+                if pending_g:
+                    cursor = 0
+                pending_g = not pending_g
+                continue
+            if ch != curses.KEY_RESIZE:
+                pending_g = False
+
             # normal mode
-            if ch in (ord("j"), curses.KEY_DOWN):
+            if ch == ord("G"):
+                cursor = max(0, len(entries) - 1)
+            elif ch in (ord("j"), curses.KEY_DOWN):
                 move_down()
             elif ch in (ord("k"), curses.KEY_UP):
                 move_up()

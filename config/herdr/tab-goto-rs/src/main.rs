@@ -395,6 +395,7 @@ fn ui_loop(
     let mut filter_on = false;
     let mut query = String::new();
     let mut query_mode = false;
+    let mut pending_g = false;
     let start_idx = start.min(rows.len().saturating_sub(1));
     // Default: expand every workspace; h/l still folds.
     let mut expanded: HashSet<String> = rows.iter().map(|r| r.workspace_id.clone()).collect();
@@ -420,6 +421,7 @@ fn ui_loop(
         queue!(out, Clear(ClearType::All))?;
 
         if height < 4 || width < 16 {
+            pending_g = false;
             put(out, width, 0, 0, "window too small", St::bold());
             out.flush()?;
             if let Event::Key(k) = crossterm::event::read()? {
@@ -436,7 +438,7 @@ fn ui_loop(
         let help_l = if query_mode {
             format!("/{query}█  arrows move  esc done  ^u clear")
         } else {
-            "j/k · 1-9 · n last · / filter · click · h/l fold · enter · f · esc".to_string()
+            "j/k · gg/G · 1-9 · n last · / filter · click · h/l fold · enter · f · esc".to_string()
         };
         put(out, width, 0, 1, &fit(&help_l, inner.saturating_sub(1)), St::dim());
         let mut flags = String::new();
@@ -680,6 +682,7 @@ fn ui_loop(
 
         match ev {
             Event::Mouse(m) => {
+                pending_g = false;
                 if matches!(m.kind, MouseEventKind::Down(MouseButton::Left)) && !entries.is_empty() {
                     let my = m.row as usize;
                     let top = scroll_top(cursor, view_h);
@@ -723,7 +726,18 @@ fn ui_loop(
                     }
                     continue;
                 }
+                // A second consecutive g jumps to the first visible tree entry.
+                if k.code == KeyCode::Char('g') {
+                    if pending_g {
+                        cursor = 0;
+                    }
+                    pending_g = !pending_g;
+                    continue;
+                }
+                pending_g = false;
+
                 match k.code {
+                    KeyCode::Char('G') => cursor = entries.len().saturating_sub(1),
                     KeyCode::Char('j') | KeyCode::Down => move_down(&mut cursor),
                     KeyCode::Char('k') | KeyCode::Up => move_up(&mut cursor),
                     KeyCode::Char('l') | KeyCode::Right => fold_right!(),
