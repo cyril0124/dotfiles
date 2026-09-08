@@ -22,6 +22,7 @@ LOCAL_SKILLS=(
   "review"
   "explain-diff"
   "minimal-change"
+  "readable-code"
   "parallelize"
   "git-add-hunk"
   "self-improve"
