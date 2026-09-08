@@ -1,6 +1,6 @@
 ---
 name: visual-comment
-description: Add ASCII visual diagrams as inline comments directly into source code so the code becomes visually readable. Supports whole-file, function/class, or explicit-region annotation using line comments, with diagrams scoped to the requested target. Use when the user runs /visual-comment, asks to "add ascii comments", "visualize this code with comments", "annotate code with diagrams", or wants annotated source that explains control flow, data flow, state machines, or call relationships.
+description: Use when asked to add ASCII diagrams as inline code comments.
 ---
 
 # Visual Comment

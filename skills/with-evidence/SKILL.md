@@ -1,6 +1,6 @@
 ---
 name: with-evidence
-description: Require evidence-backed answers for the current response. Use when the user says "with-evidence" or "evidence" and wants claims supported by verifiable local files, command output, or external documentation.
+description: Use when the user explicitly requests evidence-backed claims.
 ---
 
 # With Evidence

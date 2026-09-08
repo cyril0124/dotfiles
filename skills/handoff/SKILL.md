@@ -1,6 +1,6 @@
 ---
 name: handoff
-description: Compact the current conversation into a handoff document for another agent to pick up.
+description: Use when requesting a handoff to another agent.
 ---
 
 Write a handoff document summarising the current conversation so a fresh agent can continue the work.

@@ -1,6 +1,6 @@
 ---
 name: cross-check
-description: "Launch parallel subagents to review recent changes after code modification. Trigger on: 'cross-check', 'review changes', 'check my changes', '审查改动', '交叉检查', 'review my work'. Do not use for general PR review — only for reviewing changes just made by the current agent."
+description: Use when asked to cross-check changes just made by the current agent.
 ---
 
 # Cross-Check

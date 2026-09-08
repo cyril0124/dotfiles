@@ -1,6 +1,6 @@
 ---
 name: plain-speak
-description: Explain complex things in plain language with ASCII visuals.
+description: Use when asked to explain complex topics in plain language.
 ---
 
 # Plain Speak

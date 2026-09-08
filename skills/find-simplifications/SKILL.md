@@ -1,6 +1,6 @@
 ---
 name: find-simplifications
-description: 'Identify evidence-backed simplification candidates across a codebase: dead code, speculative abstractions, duplicated state, defensive bloat, over-engineering, or hand-rolled logic where standard libraries/dependencies exist. Produces structured, verified de-bloating proposals grouped into Tier A/B/C with call-site proof and risk analysis.'
+description: Use when asked to find dead code, duplication, or unnecessary complexity in a codebase.
 ---
 
 # Finding Codebase Simplifications

@@ -1,6 +1,6 @@
 ---
 name: worktree-dev
-description: Parallel development with git worktrees inside the repo at `.worktrees/<branch>`, each tracked by an untracked WORKTREE-README.md stating its purpose, with a dedup check before creation, no commits without an explicit user request, and read-before-cleanup. Use when user mentions "worktree", "parallel development", "parallel branch", wants isolated branch work without stashing, or asks to create, merge back, or clean up worktrees.
+description: Use for Git worktree creation, isolated parallel development, merging back, or cleanup.
 ---
 
 # Worktree Development

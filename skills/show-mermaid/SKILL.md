@@ -1,6 +1,6 @@
 ---
 name: show-mermaid
-description: Author Mermaid diagrams as fenced source for flowchart/graph, stateDiagram, classDiagram, erDiagram, and sequenceDiagram. Use when the user wants Mermaid (not ASCII boxes, not SVG render), says show/draw/visualize with Mermaid, /show-mermaid, architecture/flow/sequence/state/class/ER as Mermaid.
+description: Use when asked for Mermaid diagram source, rather than rendered ASCII or images.
 ---
 
 # Show Mermaid

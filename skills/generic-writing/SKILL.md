@@ -1,6 +1,6 @@
 ---
 name: generic-writing
-description: "Write reusable, context-light guidance. Use for general wording, abstract guidance, reusable templates, portable explanations, or content not tied to the current repo/task. Do not use for exact local commands, file edits, live debugging, or project-specific decisions."
+description: Use for reusable guidance or templates not tied to the current project.
 ---
 # Generic Writing
 Turn local or overly concrete wording into portable guidance without losing intent.

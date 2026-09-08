@@ -1,6 +1,6 @@
 ---
 name: clone-pr
-description: "Clone a GitHub PR into ./tmp/pr<N>-<repo>-<slug> on the exact PR head branch for local edits."
+description: Use when asked to clone a GitHub PR locally for editing.
 ---
 
 # Clone PR

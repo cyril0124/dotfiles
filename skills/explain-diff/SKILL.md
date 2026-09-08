@@ -1,6 +1,6 @@
 ---
 name: explain-diff
-description: Explain code in plain Chinese — Git diff hunk by hunk (default), or whole-file natural blocks when no diff is in scope. Use when user asks to explain a diff or existing code, runs /explain-diff or /explain-code, documents staged/unstaged changes, or walks through code without a diff.
+description: Use when asked to explain a Git diff or existing code.
 ---
 
 # Explain Code

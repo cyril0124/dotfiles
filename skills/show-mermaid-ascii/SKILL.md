@@ -1,6 +1,6 @@
 ---
 name: show-mermaid-ascii
-description: Render Mermaid as terminal ASCII/Unicode via mermaid_ascii.py for flowchart/graph, stateDiagram, classDiagram, erDiagram, and sequenceDiagram. Use when the user wants ASCII Mermaid, terminal Mermaid, /show-mermaid-ascii, or architecture/flow/sequence/state/class/ER as ASCII (not fenced Mermaid source alone, not hand-drawn boxes, not themed SVG).
+description: Use when asked to render Mermaid diagrams as terminal ASCII or Unicode.
 ---
 
 # Show Mermaid ASCII

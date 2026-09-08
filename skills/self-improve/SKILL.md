@@ -1,6 +1,6 @@
 ---
 name: self-improve
-description: Extract behavior-improvement rules from the current conversation. Use when the user invokes self-improve.
+description: Use only when the user invokes self-improve.
 ---
 
 # Self Improve

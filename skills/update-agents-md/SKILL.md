@@ -1,6 +1,6 @@
 ---
 name: update-agents-md
-description: "Propose AGENTS.md change(s) and write only after confirmation. Manual only. Trigger on: update-agents-md, $update-agents-md, c=<N>, a candidate number after c=<N>, or revise/next/yes after a proposal."
+description: 'Use only on explicit update-agents-md or c=<N> invocation, or replies to its pending proposal.'
 ---
 
 # Update AGENTS.md

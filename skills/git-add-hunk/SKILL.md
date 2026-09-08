@@ -1,6 +1,6 @@
 ---
 name: git-add-hunk
-description: Stage specific hunks instead of whole files.
+description: Use when staging selected Git hunks rather than whole files.
 ---
 
 Stage only part of a modified file by saving the full diff and deleting unwanted hunks.

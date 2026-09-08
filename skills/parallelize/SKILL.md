@@ -1,6 +1,6 @@
 ---
 name: parallelize
-description: 'Parallelize decomposable work via subagents. Trigger: "parallelize", "sub=N", "use subagents", "并行", "多代理", broad review/search/debug. Avoid single-step, ordered, shared-write work.'
+description: 'Use for explicit parallelism requests, including sub=N, or broad investigation with independent tasks.'
 ---
 
 # Parallelize

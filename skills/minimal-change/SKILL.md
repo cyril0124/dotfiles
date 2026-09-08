@@ -1,6 +1,6 @@
 ---
 name: minimal-change
-description: Prefer the smallest sufficient change. Reject broad refactors, abstractions, dependencies, fallbacks, and scope creep. Use for targeted fixes/changes, "minimal", "smallest change", "lean", or tight requests.
+description: Use for narrowly scoped fixes or requests for the smallest sufficient change.
 ---
 
 Keep work limited to the stated goal.

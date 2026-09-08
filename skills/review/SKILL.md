@@ -1,6 +1,6 @@
 ---
 name: review
-description: Reviews user-specified content and reports evidence-based issues with severity, plain-language explanation, and per-issue fixes (code diffs or text rewrites). Use when the user asks to review, audit, check, inspect, or critique code, diffs, files, documents, plans, or pasted content.
+description: Use when asked to review code, diffs, documents, plans, or pasted content.
 ---
 
 # Review

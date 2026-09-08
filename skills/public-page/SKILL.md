@@ -1,6 +1,6 @@
 ---
 name: public-page
-description: Publish static HTML files or static site directories to temporary public URLs with automatic TTL expiry, without platform auth or local tunnels. Uses PageDrop by default and can fall back to Aired. Use when the user wants a public web page, shareable demo, hosted HTML report, or non-local preview without using a personal hosting account; do not use for permanent production sites or dynamic backends.
+description: Use when asked to publish static HTML or a static site at a temporary public URL.
 ---
 
 # Public Page

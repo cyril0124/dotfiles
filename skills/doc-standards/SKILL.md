@@ -1,6 +1,6 @@
 ---
 name: doc-standards
-description: 'Use when writing, reorganizing, reviewing, or trimming documentation in a codebase. Enforces high-signal technical writing: eliminates doc slop/narrative leakage, establishes single source of truth (One Home Per Fact), separates tutorials from references, and keeps bilingual (EN/ZH) pairings synchronized.'
+description: Use when writing, reviewing, or reorganizing codebase documentation.
 ---
 
 # Documentation Standards & Quality Workflow

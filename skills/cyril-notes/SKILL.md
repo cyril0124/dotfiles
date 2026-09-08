@@ -1,6 +1,6 @@
 ---
 name: cyril-notes
-description: "Read and answer questions from the user's personal notes. Trigger on: 'my notes', 'check my notes', 'notes say', 'in my notes', 'look up notes', or equivalent note-lookup intent in any language. Do not use for general knowledge without note-related intent."
+description: Use when asked to look up or answer from the user's personal notes.
 ---
 
 # Cyril Notes

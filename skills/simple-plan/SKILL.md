@@ -1,6 +1,6 @@
 ---
 name: simple-plan
-description: "Plan implementation before coding, with verifiable outcomes and preserved behavior and performance. Use when the user requests a plan or plan-before-coding, or selects the planning controls revise, ask, run, or run-verify, even if the plan is missing. Requests to edit or review this skill are not planning invocations."
+description: 'Use for implementation planning requests or planning controls: revise, ask, run, run-verify. Excludes editing this skill.'
 ---
 
 # Simple plan

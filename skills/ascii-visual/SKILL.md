@@ -1,6 +1,6 @@
 ---
 name: ascii-visual
-description: Generate aligned ASCII diagrams for architecture, workflows, file trees, and data visualizations. Use when creating box-drawing diagrams, terminal-rendered layouts, swimlanes, blast radius, or when CJK/emoji alignment is needed. Triggers include "draw diagram", "ASCII diagram", "aligned", "visualize architecture".
+description: Use when creating ASCII diagrams, terminal layouts, or diagrams requiring CJK alignment.
 ---
 
 # ASCII Visual

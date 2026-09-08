@@ -1,6 +1,6 @@
 ---
 name: commit-stage
-description: "Review staged git changes, then commit if they pass. Trigger on: 'commit-stage', 'commit staged', 'review and commit', '提交暂存区', '检查并提交'. Skip general git ops, and skip reviews that do not ask for a commit."
+description: Use when asked to commit staged changes or review and commit.
 ---
 
 # Commit-stage

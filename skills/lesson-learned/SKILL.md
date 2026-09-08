@@ -1,6 +1,6 @@
 ---
 name: lesson-learned
-description: Generate exactly one evidence-backed, portable lesson from the current conversation and append it to LESSON.md. Trigger when the user invokes `$lesson-learned` or explicitly asks to generate, record, or extract exactly one lesson from the current conversation. Requests to review, explain, or improve this skill itself take priority and must not execute the logging workflow; use self-improve for broad conversation analysis.
+description: Use when explicitly asked to record exactly one lesson from this conversation. Excludes reviewing or editing this skill.
 ---
 
 # Lesson Learned
