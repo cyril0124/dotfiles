@@ -12,21 +12,14 @@
 
 ## Tool Usage Principles
 
-- Calls that are parallelizable, independent, free of shared writes, free of ordering dependencies, and cheaper to summarize than to serialize should be run in parallel.
-- Calls with dependencies, shared state, result interference, or obviously higher noise and summarization cost when parallelized must be run sequentially.
+- Parallelize independent operations when it reduces latency without shared-state conflicts or excessive output; serialize dependent operations.
 
 ## Engineering Quality Baseline
 
-- Write human-readable, maintainable code: use descriptive names, straightforward control flow, and cohesive functions with clear responsibilities. Prefer clarity over cleverness or terse expressions.
-- Keep code visually clean and easy to scan through consistent formatting, logical grouping, and the project's existing conventions. Structure code so a reader can understand and safely change it without reconstructing hidden assumptions.
-
-- Do not preserve backward compatibility. Remove obsolete paths instead of adding compatibility layers, fallbacks, or migrations.
-- Choose the simplest implementation that fully meets the current requirements. Avoid speculative abstractions, configuration, and indirection.
-- Grow the system in layers. Start from the smallest version that works end to end, and add each new capability on top of a product that already works. Never trade a working product for unfinished complexity.
-- Keep components modular and concerns clearly separated.
-- Prefer established, well-maintained libraries when they reduce overall complexity or improve reliability. Do not reimplement common functionality without a clear reason.
-- Lean on the dependencies already in the project before writing your own implementation or adding packages. Do not assume a library lacks a capability without checking its documentation and types.
-- Make architectural decisions for the long term. Do not accept a stopgap that only works for now and is meant to be replaced later.
+- Follow existing conventions and keep code readable, with descriptive names, straightforward control flow, and cohesive modules.
+- Choose the simplest complete solution within the requested scope. For larger changes, keep each increment working end to end. Add abstractions only for current requirements.
+- Check existing dependencies before implementing common functionality or adding packages. Prefer maintained libraries when they reduce total complexity.
+- Within the requested change, remove obsolete internal paths rather than adding compatibility layers. Preserve persisted data and externally consumed interfaces unless the task explicitly authorizes breaking them.
 
 ## Reality Over Assumption
 
@@ -36,15 +29,13 @@
 
 ## Testing and Validation
 
-- Keep code testable. Prioritize end-to-end tests that exercise real user workflows across integrated components and assert meaningful observable outcomes. Use focused unit tests only where they cover concrete risks more effectively, such as complex logic or hard-to-reach edge cases. Scale coverage to behavioral risk rather than test count.
-- Do not over-test. Skip dedicated tests for trivial, deterministic facts whose correctness is already clear, such as asserting that a fixed string exists in a file. Add tests when they reduce a concrete regression risk or resolve behavioral uncertainty.
-- Avoid tests that add no meaningful coverage, including getter/setter snapshots, mock-only assertions, implementation-detail checks, and no-risk happy paths.
-- When running backend unit tests, enforce a hard timeout of 60 seconds to avoid stuck tasks.
-- Prefer static checks, formatting, and reproducible verification over ad-hoc manual confidence.
+- Choose validation proportional to behavioral risk. Prefer checks that verify observable outcomes; add tests for concrete regression risks.
+- After relevant checks pass, stop testing unless new changes or evidence justify more. Use explicit timeouts suited to the command; investigate timeouts instead of blindly rerunning.
 
 ## Execution Principles
 
 - Fill in missing information: when the user's intent is incomplete, first gather what can be directly obtained from the code, files, configuration, and context. Do not guess, and do not ask the user for information that can be retrieved directly.
 - Do not run `git reset --hard` or `git push` unless the user explicitly asks for it.
 - Before finishing the task, clean up any temporary files and scripts created during this task. If they are needed for reproduction, troubleshooting, or the user explicitly asks to keep them, keep them and say so.
-- Think before coding: state assumptions explicitly; if multiple interpretations exist, present them instead of picking silently; push back when a simpler approach exists; stop and ask when confused.
+- Resolve routine implementation choices using repository evidence and existing conventions. Ask only when missing information materially changes scope, user-visible behavior, or safety.
+- For implementation tasks, continue through implementation, relevant validation, and fixing failures caused by the change. Stop when the requested outcome is verified or a concrete blocker requires user input. Stay within the requested scope.
