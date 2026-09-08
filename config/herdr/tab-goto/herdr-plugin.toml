@@ -10,10 +10,11 @@ id = "picker"
 title = "goto"
 placement = "popup"
 # Size is computed dynamically in open.py (content + terminal bounds).
-command = ["python3", "picker.py"]
+# Stdlib-only startup; module mode reuses Python's bytecode cache.
+command = ["python3", "-S", "-m", "picker"]
 
 [[actions]]
 id = "open"
 title = "Open tab picker"
 contexts = ["pane", "workspace"]
-command = ["python3", "open.py"]
+command = ["python3", "-S", "-m", "open"]

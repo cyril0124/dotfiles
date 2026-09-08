@@ -20,7 +20,8 @@ import unittest
 
 class PickerKeysTests(unittest.TestCase):
     def check_keys(self, keys, expected_tab):
-        commands = [[sys.executable, str(Path(__file__).with_name("picker.py"))]]
+        picker_dir = Path(__file__).resolve().parent
+        commands = [[sys.executable, "-S", "-m", "picker"]]
         if binary := os.environ.get("TAB_GOTO_RS_BIN"):
             commands.append([str(Path(binary).resolve()), "picker"])
 
@@ -52,7 +53,9 @@ class PickerKeysTests(unittest.TestCase):
                 fcntl.ioctl(slave, termios.TIOCSWINSZ, struct.pack("HHHH", 8, 100, 0, 0))
                 env = dict(os.environ, TERM="xterm-256color", ESCDELAY="25", HERDR_BIN_PATH=str(stub),
                            HERDR_PLUGIN_STATE_DIR=directory)
-                process = subprocess.Popen(command, stdin=slave, stdout=slave, stderr=slave, env=env)
+                process = subprocess.Popen(
+                    command, cwd=picker_dir, stdin=slave, stdout=slave, stderr=slave, env=env,
+                )
                 os.close(slave)
                 try:
                     self.wait_for(master, b"3/6")

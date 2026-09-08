@@ -9,7 +9,9 @@ if [ -x "$dir/tab-goto" ]; then
     exec "$dir/tab-goto" "$mode"
 fi
 
+# Stdlib-only startup; module mode reuses Python's bytecode cache.
+cd "$dir/../tab-goto" || exit 1
 case "$mode" in
-    open) exec python3 "$dir/../tab-goto/open.py" ;;
-    *)    exec python3 "$dir/../tab-goto/picker.py" ;;
+    open) exec python3 -S -m open ;;
+    *)    exec python3 -S -m picker ;;
 esac
