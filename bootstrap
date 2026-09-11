@@ -238,6 +238,19 @@ build_tab_goto_rs () {
     fi
 }
 
+# Build the C++ tab-goto picker when a compiler exists; without one the
+# plugin's run.sh falls back to the Python version.
+build_tab_goto_cpp () {
+    local dir="$DOTFILES_ROOT/config/herdr/tab-goto-cpp"
+    [ -d "$dir" ] || return 0
+
+    if (cd "$dir" && sh ./build.sh >/dev/null 2>&1); then
+        success 'built herdr tab-goto (c++)'
+    else
+        info 'build failed; herdr tab-goto (c++) will fall back to python'
+    fi
+}
+
 install_herdr_plugins () {
     local list="$DOTFILES_ROOT/config/herdr/plugins.txt"
     local plugin rel path
@@ -250,6 +263,7 @@ install_herdr_plugins () {
     fi
 
     build_tab_goto_rs
+    build_tab_goto_cpp
 
     info 'installing herdr plugins from config/herdr/plugins.txt'
 

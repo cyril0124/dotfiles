@@ -7,4 +7,5 @@ link:config/herdr/action-palette
 link:config/herdr/host-metrics
 link:config/herdr/tab-goto
 link:config/herdr/tab-goto-rs
+link:config/herdr/tab-goto-cpp
 link:config/herdr/pane-close

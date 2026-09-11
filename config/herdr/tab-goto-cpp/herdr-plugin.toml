@@ -1,0 +1,19 @@
+id = "local.tab-goto-cpp"
+name = "Tab Goto (C++)"
+version = "0.1.0"
+min_herdr_version = "0.8.0"
+description = "Session tab picker (tabs only), C++ port for faster startup."
+platforms = ["linux", "macos"]
+
+[[panes]]
+id = "picker"
+title = "goto"
+placement = "popup"
+# Size is computed dynamically in `tab-goto open` (content + terminal bounds).
+command = ["sh", "run.sh", "picker"]
+
+[[actions]]
+id = "open"
+title = "Open tab picker (c++)"
+contexts = ["pane", "workspace"]
+command = ["sh", "run.sh", "open"]
