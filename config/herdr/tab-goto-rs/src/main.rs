@@ -683,9 +683,18 @@ fn ui_loop(
         match ev {
             Event::Mouse(m) => {
                 pending_g = false;
-                if matches!(m.kind, MouseEventKind::Down(MouseButton::Left)) && !entries.is_empty() {
-                    let my = m.row as usize;
-                    let top = scroll_top(cursor, view_h);
+                let my = m.row as usize;
+                let top = scroll_top(cursor, view_h);
+                if !entries.is_empty() && my >= list_top && my < list_top + view_h {
+                    let e_i = top + (my - list_top);
+                    if e_i < entries.len() {
+                        // Mouse movement updates the highlighted row immediately.
+                        cursor = e_i;
+                    }
+                }
+                if matches!(m.kind, MouseEventKind::Down(MouseButton::Left))
+                    && !entries.is_empty()
+                {
                     if my >= list_top && my < list_top + view_h {
                         let e_i = top + (my - list_top);
                         if e_i < entries.len() {

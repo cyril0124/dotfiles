@@ -595,9 +595,12 @@ def pick_index(
                     | getattr(curses, "BUTTON1_PRESSED", 0)
                     | getattr(curses, "BUTTON1_RELEASED", 0)
                 )
+                moved = bstate & getattr(curses, "REPORT_MOUSE_POSITION", 0)
                 if not clicked and bstate == 0:
                     clicked = True
-                if not clicked or not entries:
+                if not clicked and not moved:
+                    return None
+                if not entries:
                     return None
                 list_top_m = 2
                 sep_bottom_m = height - 2
@@ -614,6 +617,8 @@ def pick_index(
                     return None
                 ent = entries[e_i]
                 cursor = e_i
+                if not clicked:
+                    return None
                 if ent["kind"] == "tab":
                     return int(ent["idx"])
                 wid = str(ent.get("workspace_id") or "")
