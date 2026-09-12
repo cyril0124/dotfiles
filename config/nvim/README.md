@@ -93,6 +93,7 @@ Personal Neovim configuration using [lazy.nvim](https://github.com/folke/lazy.nv
 | `:TS` | Trim trailing whitespace |
 | `:WW` | Enable line wrapping |
 | `:NW` | Disable line wrapping |
+| `:Zoom` | Zoom current window in a temporary tab and restore the layout on toggle |
 | `:AnsiEnable` | Enable ANSI color rendering |
 | `:AnsiToggle` | Toggle ANSI color rendering |
 

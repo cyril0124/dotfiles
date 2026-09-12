@@ -24,3 +24,14 @@ end, { desc = "Globally disable line wrapping for all windows" })
 vim.api.nvim_create_user_command("WW", function()
     wrap_toggle.enable()
 end, { desc = "Globally enable line wrapping for all windows" })
+
+-- Zoom the current window in a temporary tab and restore the original layout on toggle.
+vim.api.nvim_create_user_command("Zoom", function()
+    if vim.t.zoomed then
+        vim.cmd("tabclose")
+        return
+    end
+
+    vim.cmd("tab split")
+    vim.t.zoomed = true
+end, { desc = "Zoom current window" })
