@@ -41,6 +41,7 @@ LOCAL_SKILLS=(
   "doc-standards"
   "sanitize-artifacts"
   "worktree-dev"
+  "xpra-web"
 )
 
 REMOTE_SKILLS=(
