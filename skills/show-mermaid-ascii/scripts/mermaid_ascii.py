@@ -275,6 +275,11 @@ def parse_graph(src: str) -> Optional[Graph]:
             graph.cur_group = stack[-1]
             continue
         if first_word == "end":
+            # Mermaid treats an unmatched `end` as invalid input. Ignore it so
+            # a partially typed diagram still renders instead of crashing the
+            # editor or CLI with an empty-stack exception.
+            if not stack:
+                continue
             stack.pop()
             graph.cur_group = stack[-1] if stack else None
             continue
