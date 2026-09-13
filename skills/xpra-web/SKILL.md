@@ -26,6 +26,7 @@ rest of their words passed through unchanged:
 | The user writes | You run |
 | --- | --- |
 | `xpra-web` alone, or "open X in the browser on this host" | `ensure`, preceded by `run -- X` when a program is named |
+| "add X to my session :10" | `run --display :10 -- X` |
 | `xpra-web ls`, `xpra-web list` | `list` |
 | `xpra-web close-all` | `close-all` |
 | `xpra-web close xclock` | `close xclock` |
@@ -45,9 +46,10 @@ Run the script from this skill's directory (`<skill dir>/scripts/xpra-web.sh`):
 
 ```bash
 bash scripts/xpra-web.sh ensure                # always a fresh session on a free port
-bash scripts/xpra-web.sh ensure --port 35971   # that exact port, reusing the session holding it if any
+bash scripts/xpra-web.sh ensure --port 35971   # that exact port, reusing a live session that already holds it
 bash scripts/xpra-web.sh ensure --no-password  # no password on this session's TCP bind
-bash scripts/xpra-web.sh run -- xclock         # launch a program inside that session
+bash scripts/xpra-web.sh run -- xclock         # launch xclock in a session of its own
+bash scripts/xpra-web.sh run --display :10 -- myapp  # add a window to a session the user named
 bash scripts/xpra-web.sh list                  # displays, ports, windows, program pids (`ls` also works)
 bash scripts/xpra-web.sh close xclock          # close matching programs, port stays
 bash scripts/xpra-web.sh close --all           # close every program, keep the session
@@ -58,9 +60,7 @@ bash scripts/xpra-web.sh stop --all            # stop every live session (destru
 
 Options: `--host HOST` (default `0.0.0.0`), `--port PORT` (default `0`, kernel picks), `--display :N`, `--password PW`, `--no-password`.
 
-`ensure` opens a fresh session on a free port every time: a live session is reused only when `--display :N` names it or `--port N` names the port it already holds. `--port` and the auth mode are requests, not hints. A live session that does not match them is left alone and a new session starts on the port and auth mode you asked for, so several sessions on different ports can coexist.
-
-`run` is different: it reuses a live session that matches `--host` and the auth mode, so several programs share one port instead of opening a new one per program.
+`ensure` and `run` both start a session on a free port; `run` therefore puts each program on its own port unless the request names an existing session (`--display :N` or `--port N`). [Reuse rules](#reuse-rules) gives the exact conditions and who may ask for reuse.
 
 A new session takes about 3 seconds, a reused one about half a second. A host or port that cannot be bound is rejected in under a second, before `xpra start` runs, so a bad address never waits out a startup timeout.
 
@@ -148,9 +148,9 @@ Sessions are shared by design, so one session can hold programs you did not star
 
 A killed GUI loses whatever was only in memory, so a broad close is destructive, not cleanup.
 
-`close` matches a child by command-line substring, ignoring case, so `close myapp` also matches `myapp --config /path/to/file`. It reports `CLOSED=<n>` and `STILL_RUNNING=<pids>`. No match is normal, not an error.
+`close` matches a child by command-line substring, ignoring case, so `close myapp` also matches `myapp --config /path/to/file`. It reports `CLOSED=<n>` and `STILL_RUNNING=<pids>`, or `none` when nothing survived. No match is normal, not an error.
 
-Avoid `pkill` and `killall` by program name. On a shared host they reach the xpra server, other users' processes and the agent's own command line. `close` only touches pids reported by this session's `xpra info`.
+`close` only touches pids reported by this session's `xpra info`, so it stays inside the session; `pkill` and `killall` match by name across the host, reaching the xpra server, other users' processes and the agent's own command line.
 
 When the user names something that is not running, say so and show `list`.
 
@@ -164,7 +164,7 @@ Give the user the port, the password when there is one, and both access paths:
 
 With `AUTH=none`, state that the port is unprotected instead of naming a password.
 
-When `WEB=no`, no browser client was served, which means the html5 web root is missing. Do not pass `--html=on` or `--html=auto` on the command line: that overrides the configured path and the server logs `Error: cannot find the html web root`. Leave `--html` alone and the config applies.
+When `WEB=no`, no browser client was served, which means the html5 web root is missing. Leave `--html` unset so the configured path applies: `--html=on` or `--html=auto` overrides it and the server logs `Error: cannot find the html web root`.
 
 ## When xpra is missing
 
@@ -178,20 +178,21 @@ xpra alone covers the TCP path (`ATTACH`). The browser path also needs the html5
 
 ## Reuse rules
 
-- `ensure` starts a new session on a free port every time. A live session is reused only when the request names it: `--display :N` pointing at that live session, or `--port N` naming the port that session already holds. Plain `ensure` and `ensure --port 0` always create a session.
-- `run` reuses the first live session that matches the request on all axes: listener host equals `--host` exactly, listener port equals `--port` when a non-zero port was asked for, and the session's auth mode equals the requested one (`file` by default, `none` with `--no-password`). Host, port and auth are all fixed at startup, so any mismatch starts a new session rather than ignoring the request.
-- What it left alone is reported on stderr, for example `2 live session(s) left alone: default is a fresh session; pass --port N or --display :N to reuse one`, or `3 live session(s) do not match host=127.0.0.1, port=0, auth=none; starting a new one` when `run` found no match.
+- The default is a fresh session on a free port. A live session is joined only when the request names it: `--display :N` pointing at that live session, or `--port N` naming the port that session already holds. Plain `ensure`, plain `run` and `run --port 0` always create a session.
+- A named session is joined only when it matches on all axes: listener host equals `--host` exactly, listener port equals `--port` when a non-zero port was asked for, and the session's auth mode equals the requested one (`file` by default, `none` with `--no-password`). Host, port and auth are all fixed at startup, so any mismatch fails or starts a new session rather than ignoring the request.
+- Reuse is the user's call, not a convenience: pass `--display :N` or `--port N` only when the user asked to add a window to an existing session, never to save a port on your own.
+- What it left alone is reported on stderr, for example `2 live session(s) left alone: default is a fresh session; pass --port N or --display :N to reuse one` for a plain request, or `3 live session(s) do not match host=0.0.0.0, port=35971, auth=file; starting a new one` when the named `--port` is held by a session that differs on host or auth. A named `--display` never gets this treatment: a mismatch there fails outright, as the next bullet says.
 - A new session takes the first free display in `:10` to `:99`, skipping displays xpra knows and existing `/tmp/.X11-unix/X<n>` sockets.
 - `--display :N` naming a live session that does not match fails with the live listener printed, and says to stop it or drop `--port` / `--no-password`. A live session is never restarted or reinterpreted behind the user's back.
 - `--port N` fails before `xpra start` when N is held by some other process, and is reused when N belongs to a matching live session. `--port 0` means the kernel picks, and then any port is acceptable.
-- A second session is the `ensure` default, not a symptom. Only `run` treats a different program as no reason for one: many GUIs it launches share a session and a port.
-- `ensure --port N` or `ensure --display :N` repeated with the same named target returns the same session and port.
+- A repeated `--port N` or `--display :N` request returns the same session and port, for `ensure` and `run` alike.
+- A second session is the default outcome, not a symptom: a new program gets a session of its own unless the request names an existing one to join.
 
 ## Background execution
 
 The server daemonizes itself (`--daemon=yes`) and returns in about 3 seconds, so nothing here needs a background shell. Do not run `xpra start` in a way that blocks for the session's lifetime.
 
-`run` sends one control command to the running server and returns at once. The program becomes a child of the xpra server, so it outlives the agent shell and joins the shared session.
+`run` sends one control command to the running server and returns at once. The program becomes a child of the xpra server, so it outlives the agent shell and lives in the session `run` chose.
 
 When the agent has a process tool, use it for a command that has to stay in the foreground and be supervised, for example `process start name=myapp command='DISPLAY=:10 myapp'`, or an `xpra start --daemon=no` server.
 
@@ -227,27 +228,12 @@ A client maps windows, so `xpra screenshot` stays empty until something attaches
 
 ## Troubleshooting
 
-| Symptom | Cause | Action |
-| --- | --- | --- |
-| exit code 3, `xpra is not installed` | the dependency is absent | ask the user, then install (see [When xpra is missing](#when-xpra-is-missing)) |
-| `Error: cannot find the html web root` in `server.log` | `--html=on` or `auto` overrode the config path | drop `--html`, restart the session |
-| no listener within 10s | Xvfb or xpra startup failed after the bind check passed | the script prints the `server.log` tail; read it |
-| `WEB=no` but the session is live | html root missing on this machine | use the xpra client path, or set `html = <dir>` in `~/.config/xpra/xpra.conf` |
-| the user does not know the password | the default is the user name, stored in `PASSWORD_FILE` | read the file, or rewrite it with `ensure --password PW` |
-| `AUTH=none` and that was not requested | the session was started with `--no-password`, or by another tool without `auth=` | report the port as unprotected; `stop :N` then a plain `ensure` gives a password-protected session |
-| a second session appeared while a session was live | `ensure` starts a fresh session by default, or a `run` request matched no live session | expected for `ensure`; `list` shows both, `stop :N` ends the one you no longer need, `ensure --port N` reuses a named one |
-| `cannot bind <host>:<port>` | the port is held by a process that is not a matching live session | drop `--port` to let the kernel pick one, or choose another port |
-| window never appears in the browser | nothing attached yet, or the child exited | `list`, then check the child with `ps` |
-| browser shows a proxy `403 Forbidden` page | the viewer's HTTP proxy intercepts the port URL | add the host to `no_proxy`, or use the `LOCAL` URL through `ssh -L` |
-| program dies immediately | missing env, license or display library | relaunch with `run -- env ...` and check the child's output |
-| `run` says `xpra refused to launch` | xpra's reason is in the message; a reused session may have been started without new commands enabled | start a fresh session on a free display, or stop that session and re-run `ensure` |
-
-Session log: `/run/user/$(id -u)/xpra/<N>/server.log`.
+Read [`references/troubleshooting.md`](references/troubleshooting.md) when a command exits non-zero or a session misbehaves: it maps each symptom to its cause and the action to take, and names the session log.
 
 ## Security
 
-With `auth=file`, the TCP bind requires the password in `PASSWORD_FILE`, and xpra verifies it by challenge-response, so the password does not travel in clear. `--no-password` removes that check entirely: the listener accepts any client that can reach the port, so use it with `--host 127.0.0.1` unless the user asks for a wider bind, and never describe such a port as protected. The stream itself is unencrypted and anyone on the network can try passwords against a password-protected port: keep it on a trusted network, or publish it through an SSH tunnel. `--host 127.0.0.1` keeps it local either way.
+With `auth=file`, the TCP bind requires the password in `PASSWORD_FILE`, and xpra verifies it by challenge-response, so the password does not travel in clear. `--no-password` removes that check entirely: the listener accepts any client that can reach the port, which is why that mode belongs on `127.0.0.1` (see [No password](#no-password)). The stream itself is unencrypted and anyone on the network can try passwords against a password-protected port: keep it on a trusted network, or publish it through an SSH tunnel. `--host 127.0.0.1` keeps it local either way.
 
 ## Cleanup
 
-`stop :N` ends the session and its children. A plain `ensure` never reuses a running session, so sessions pile up on their own ports until `stop :N` or `stop --all` ends them; `ensure --port N` is what finds one again.
+`stop :N` ends the session and its children. Plain `ensure` and `run` never join a running session, so sessions pile up on their own ports until `stop :N` or `stop --all` ends them; naming `--port N` or `--display :N` is what finds one again.

@@ -4,9 +4,10 @@ set -euo pipefail
 # Serve Linux X11 GUI programs from this machine over TCP, so they can be viewed
 # in a browser (xpra html5 client) or with a local `xpra attach`.
 #
-# One session holds many GUI programs: `ensure` starts a fresh session on a fresh
-# port by default, and reuses a live session only when `--display`/`--port` names
-# one. `run` reuses a matching session so several programs share one port.
+# One session holds many GUI programs. `ensure` and `run` both start a fresh
+# session on a fresh port by default, and join a live one only when
+# `--display`/`--port` names it, so every program gets its own port unless the
+# caller asks to share one.
 
 HOST="0.0.0.0"
 PORT="0"
@@ -14,10 +15,6 @@ DISPLAY_ARG=""
 PASSWORD=""
 AUTH_MODE="file"
 WAIT_SECONDS="${XPRA_WEB_WAIT_SECONDS:-10}"
-
-# "explicit": a fresh session unless --display or --port names a live one.
-# "always": reuse any live session matching host and auth.
-REUSE_POLICY="explicit"
 
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 RUN_IN="$SCRIPT_DIR/xpra-run-in.sh"
@@ -31,7 +28,7 @@ usage() {
   cat <<'USAGE'
 Usage:
   xpra-web.sh ensure [options]          Start a network-visible xpra session
-  xpra-web.sh run [options] -- CMD ...  Ensure a session, then launch CMD inside it
+  xpra-web.sh run [options] -- CMD ...  Start or name a session, then launch CMD inside it
   xpra-web.sh list | ls                 Show live sessions, ports, windows and programs
   xpra-web.sh close PATTERN | --all     Close matching programs, keep the session alive
   xpra-web.sh close-all [--force]       Close every program everywhere, then stop every session
@@ -50,11 +47,10 @@ Options:
 
 --password and --no-password are mutually exclusive.
 
-ensure starts a new session on a free port every time. It reuses a live session
-only when --display names that live session, or when --port N is given and a
-session holding N also matches --host and the auth mode. run reuses a live
-session matching --host and the auth mode (and --port when set), so several
-programs share one port.
+ensure and run start a new session on a free port by default. A live session is
+joined only when the request names it: --display names that live session, or
+--port N names the port it holds. A named session must also match --host and the
+auth mode, so a different program gets its own port unless you ask to share one.
 
 Output: KEY=value lines (SESSION, DISPLAY, BIND, PORT, BROWSER, ATTACH, AUTH,
 PASSWORD, PASSWORD_FILE, WEB, ...).
@@ -286,8 +282,8 @@ ensure_session() {
   local display="$DISPLAY_ARG" session="reused" listener="" bind_host="" port=""
   local requested_live=0 skipped=0 bind_opt="" may_reuse=1 reason=""
 
-  # A fresh session is the default: only a named display or port reuses one.
-  if [ "$REUSE_POLICY" = "explicit" ] && [ "$PORT" = "0" ] && [ -z "$DISPLAY_ARG" ]; then
+  # A fresh session is the default: only a named display or port joins a live one.
+  if [ "$PORT" = "0" ] && [ -z "$DISPLAY_ARG" ]; then
     may_reuse=0
     reason="default is a fresh session; pass --port N or --display :N to reuse one"
   fi
@@ -383,10 +379,12 @@ ensure_session() {
   fi
 }
 
-# Resolve the display of the session to reuse, starting one if needed.
+# Resolve the display to launch in, starting a session when the request names none.
 ensure_display() {
   local out
-  out=$(ensure_session)
+  # ensure_session reports refusal through its exit status; without this the
+  # failure dies in the subshell and the launch runs with an empty display.
+  out=$(ensure_session) || return 1
   printf '%s\n' "$out" >&2
   printf '%s\n' "$out" | sed -n 's/^DISPLAY=//p'
 }
@@ -656,9 +654,9 @@ quote_arg() {
 
 cmd_run() {
   local display out pid cwd=$PWD cmdline arg
-  # A launched program joins a live session: sharing one port is the point of run.
-  REUSE_POLICY="always"
-  display=$(ensure_display)
+  # Like ensure, a launched program gets a session of its own unless the request
+  # names a live one to join with --display/--port.
+  display=$(ensure_display) || exit 1
 
   # Pass the whole command as one shlex-quoted string: xpra drops extra argv
   # entries, and splits a string itself.
