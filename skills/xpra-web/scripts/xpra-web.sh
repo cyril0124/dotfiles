@@ -4,14 +4,20 @@ set -euo pipefail
 # Serve Linux X11 GUI programs from this machine over TCP, so they can be viewed
 # in a browser (xpra html5 client) or with a local `xpra attach`.
 #
-# One session holds many GUI programs: `ensure`/`run` reuse the first live xpra
-# session that already listens on a reachable host instead of creating a new one.
+# One session holds many GUI programs: `ensure` starts a fresh session on a fresh
+# port by default, and reuses a live session only when `--display`/`--port` names
+# one. `run` reuses a matching session so several programs share one port.
 
 HOST="0.0.0.0"
 PORT="0"
 DISPLAY_ARG=""
 PASSWORD=""
+AUTH_MODE="file"
 WAIT_SECONDS="${XPRA_WEB_WAIT_SECONDS:-10}"
+
+# "explicit": a fresh session unless --display or --port names a live one.
+# "always": reuse any live session matching host and auth.
+REUSE_POLICY="explicit"
 
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 RUN_IN="$SCRIPT_DIR/xpra-run-in.sh"
@@ -24,21 +30,31 @@ PASSWORD_FILE="$PASSWORD_DIR/password"
 usage() {
   cat <<'USAGE'
 Usage:
-  xpra-web.sh ensure [options]          Reuse or start a network-visible xpra session
+  xpra-web.sh ensure [options]          Start a network-visible xpra session
   xpra-web.sh run [options] -- CMD ...  Ensure a session, then launch CMD inside it
-  xpra-web.sh list                      Show live sessions, ports, windows and programs
+  xpra-web.sh list | ls                 Show live sessions, ports, windows and programs
   xpra-web.sh close PATTERN | --all     Close matching programs, keep the session alive
+  xpra-web.sh close-all [--force]       Close every program everywhere, then stop every session
   xpra-web.sh stop :N | --all           Stop one named session, or every session
   xpra-web.sh help                      Show this message
 
   --all                 With stop: stop every live session. With close: every program
-  --force               With close: SIGKILL programs that ignore SIGTERM
+  --force               With close/close-all: SIGKILL programs that ignore SIGTERM
 
 Options:
   --host HOST      Bind address (default: 0.0.0.0)
   --port PORT      Bind port; 0 lets the kernel pick one (default: 0)
   --display :N     Use display :N instead of the first free one
   --password PW    Password for the TCP bind (default: the user name)
+  --no-password    Bind with no password at all (auth=none)
+
+--password and --no-password are mutually exclusive.
+
+ensure starts a new session on a free port every time. It reuses a live session
+only when --display names that live session, or when --port N is given and a
+session holding N also matches --host and the auth mode. run reuses a live
+session matching --host and the auth mode (and --port when set), so several
+programs share one port.
 
 Output: KEY=value lines (SESSION, DISPLAY, BIND, PORT, BROWSER, ATTACH, AUTH,
 PASSWORD, PASSWORD_FILE, WEB, ...).
@@ -234,6 +250,30 @@ session_auth() {
   esac
 }
 
+# A live session is reusable only when its listener matches the request on every
+# axis. Host, port and auth mode are all fixed at startup, so a mismatch means a
+# new session, never a silently different one.
+listener_matches() {
+  local display=$1 listener=$2
+  [ "${listener%% *}" = "$HOST" ] || return 1
+  if [ "$PORT" != "0" ] && [ "${listener##* }" != "$PORT" ]; then
+    return 1
+  fi
+  [ "$(session_auth "$display")" = "$AUTH_MODE" ] || return 1
+  return 0
+}
+
+# An unauthenticated listener on a routable address is open to everyone who can
+# reach it, which the caller has to say out loud when reporting the port.
+warn_if_unauthenticated() {
+  local bind_host=$1 port=$2
+  case "$bind_host" in
+    127.0.0.1|::1|localhost) return 0 ;;
+  esac
+  printf '%s\n' "WARNING: $bind_host:$port has no password, so anyone who can reach it has full access." >&2
+  printf '%s\n' "Use --host 127.0.0.1 to keep it local, or keep the port on a trusted network." >&2
+}
+
 # The password file a running session authenticates against, when it is visible.
 session_password_file() {
   local argv
@@ -243,23 +283,36 @@ session_password_file() {
 
 # Find a reusable session, or start one. Prints the result block.
 ensure_session() {
-  local display="$DISPLAY_ARG" session="reused" listener="" bind_host="" port="" requested_live=0
+  local display="$DISPLAY_ARG" session="reused" listener="" bind_host="" port=""
+  local requested_live=0 skipped=0 bind_opt="" may_reuse=1 reason=""
+
+  # A fresh session is the default: only a named display or port reuses one.
+  if [ "$REUSE_POLICY" = "explicit" ] && [ "$PORT" = "0" ] && [ -z "$DISPLAY_ARG" ]; then
+    may_reuse=0
+    reason="default is a fresh session; pass --port N or --display :N to reuse one"
+  fi
 
   if [ -n "$display" ]; then
     if "$XPRA" info "$display" >/dev/null 2>&1; then
       requested_live=1
       listener=$(tcp_listener "$display" || true)
+      if [ -n "$listener" ] && ! listener_matches "$display" "$listener"; then
+        fail "session $display listens on ${listener%% *}:${listener##* } (auth=$(session_auth "$display")); that does not match host=$HOST, port=$PORT, auth=$AUTH_MODE. Stop $display first, or drop --port / --no-password."
+      fi
     fi
-  else
+  elif [ "$may_reuse" = 1 ]; then
     while IFS= read -r candidate; do
       listener=$(tcp_listener "$candidate" || true)
       [ -n "$listener" ] || continue
-      # Reuse only an exact host match. A 0.0.0.0 session does not satisfy a
-      # request for 127.0.0.1, and a listener cannot be changed after startup.
-      [ "${listener%% *}" = "$HOST" ] || continue
+      if ! listener_matches "$candidate" "$listener"; then
+        skipped=$((skipped + 1))
+        continue
+      fi
       display=$candidate
       break
     done < <(live_displays)
+  else
+    skipped=$(live_displays | grep -c . || true)
   fi
 
   if [ -n "$display" ] && [ -n "$listener" ]; then
@@ -269,17 +322,14 @@ ensure_session() {
     auth=$(session_auth "$display")
     pw_file=$(session_password_file "$display")
     [ -n "$pw_file" ] || pw_file="$PASSWORD_FILE"
-    if [ "$pw_file" = "$PASSWORD_FILE" ] && { [ -n "$PASSWORD" ] || [ ! -f "$PASSWORD_FILE" ]; }; then
+    if [ "$auth" = "file" ] && [ "$pw_file" = "$PASSWORD_FILE" ] && { [ -n "$PASSWORD" ] || [ ! -f "$PASSWORD_FILE" ]; }; then
       # xpra re-reads the file when its mtime changes, so this applies at once.
       # Rewriting a missing file keeps a live session reachable.
       prepare_password
       info "password file written to $PASSWORD_FILE; the running session uses it on the next connection"
     fi
     print_result "$session" "$display" "$bind_host" "$port" "$auth" "" "$pw_file"
-    if [ "$auth" = "none" ] && [ "$bind_host" != "127.0.0.1" ]; then
-      printf '%s\n' "WARNING: session $display has no TCP password, so anyone who can reach $bind_host:$port has full access." >&2
-      printf '%s\n' "Stop it and run ensure again to require the password in $PASSWORD_FILE." >&2
-    fi
+    [ "$auth" = "none" ] && warn_if_unauthenticated "$bind_host" "$port"
     return 0
   fi
 
@@ -295,10 +345,23 @@ ensure_session() {
   if ! port_is_free "$HOST" "$PORT"; then
     fail "cannot bind $HOST:$PORT (already in use, or not a local address); drop --port to let the kernel pick one"
   fi
-  prepare_password
-  info "starting xpra session $display on $HOST:$PORT (password in $PASSWORD_FILE)"
+  if [ "$skipped" != "0" ]; then
+    if [ -n "$reason" ]; then
+      info "$skipped live session(s) left alone: $reason"
+    else
+      info "$skipped live session(s) do not match host=$HOST, port=$PORT, auth=$AUTH_MODE; starting a new one"
+    fi
+  fi
+  if [ "$AUTH_MODE" = "none" ]; then
+    bind_opt="$HOST:$PORT"
+    info "starting xpra session $display on $HOST:$PORT with no password (auth=none)"
+  else
+    prepare_password
+    bind_opt="$HOST:$PORT,auth=file,filename=$PASSWORD_FILE"
+    info "starting xpra session $display on $HOST:$PORT (password in $PASSWORD_FILE)"
+  fi
   if ! "$XPRA" start "$display" \
-    --bind-tcp="$HOST:$PORT,auth=file,filename=$PASSWORD_FILE" \
+    --bind-tcp="$bind_opt" \
     --daemon=yes \
     --mdns=no \
     --start-new-commands=yes >/dev/null 2>&1; then
@@ -312,7 +375,12 @@ ensure_session() {
   }
   bind_host=${listener%% *}
   port=${listener##* }
-  print_result "$session" "$display" "$bind_host" "$port" "file" "$(cat "$PASSWORD_FILE")" "$PASSWORD_FILE"
+  if [ "$AUTH_MODE" = "none" ]; then
+    print_result "$session" "$display" "$bind_host" "$port" "none" "" ""
+    warn_if_unauthenticated "$bind_host" "$port"
+  else
+    print_result "$session" "$display" "$bind_host" "$port" "file" "$(cat "$PASSWORD_FILE")" "$PASSWORD_FILE"
+  fi
 }
 
 # Resolve the display of the session to reuse, starting one if needed.
@@ -395,41 +463,13 @@ cmd_stop() {
   "$XPRA" stop "$display"
 }
 
-# Close selected programs inside a session, leaving the session and its port alive.
-cmd_close() {
-  local display="$DISPLAY_ARG" all=0 force=0 arg sessions count
-  local -a patterns=() pids=() labels=() alive=()
+# Close programs inside one session, leaving the session and its port alive.
+# Args: DISPLAY FORCE ALL [PATTERN ...]
+close_session_programs() {
+  local display=$1 force=$2 all=$3
+  shift 3
+  local -a patterns=("$@") pids=() labels=() alive=()
   local table pid cmd label pattern i deadline
-
-  for arg in "$@"; do
-    case "$arg" in
-      --all) all=1 ;;
-      --force) force=1 ;;
-      -*) fail "unknown option for close: $arg" ;;
-      "") fail "close pattern must not be empty" ;;
-      *) patterns+=("$arg") ;;
-    esac
-  done
-
-  # Never pick a session on the user's behalf: a wrong guess closes unrelated work.
-  if [ -z "$display" ]; then
-    sessions=$(live_displays)
-    count=$(printf '%s\n' "$sessions" | grep -c . || true)
-    if [ "$count" = "0" ]; then
-      fail "no live xpra session to close programs in"
-    fi
-    if [ "$count" != "1" ]; then
-      printf 'ERROR: %s live sessions, pass --display :N to choose one\n' "$count" >&2
-      printf '%s\n' "$sessions" | sed 's/^/  /' >&2
-      exit 2
-    fi
-    display=$sessions
-  fi
-  [ -n "$display" ] || fail "no live xpra session to close programs in"
-
-  if [ "$all" = 0 ] && [ "${#patterns[@]}" = 0 ]; then
-    fail "close needs a program name, a pattern, or --all"
-  fi
 
   table=$(child_table "$display" || true)
   if [ -z "$table" ]; then
@@ -489,6 +529,81 @@ cmd_close() {
   printf 'STILL_RUNNING=%s\n' "${alive[*]:-none}"
 }
 
+# Close programs in one session, named with --display or the only live one.
+cmd_close() {
+  local display="$DISPLAY_ARG" all=0 force=0 arg sessions count
+  local -a patterns=()
+
+  for arg in "$@"; do
+    case "$arg" in
+      --all) all=1 ;;
+      --force) force=1 ;;
+      -*) fail "unknown option for close: $arg" ;;
+      "") fail "close pattern must not be empty" ;;
+      *) patterns+=("$arg") ;;
+    esac
+  done
+
+  # Never pick a session on the user's behalf: a wrong guess closes unrelated work.
+  if [ -z "$display" ]; then
+    sessions=$(live_displays)
+    count=$(printf '%s\n' "$sessions" | grep -c . || true)
+    if [ "$count" = "0" ]; then
+      fail "no live xpra session to close programs in"
+    fi
+    if [ "$count" != "1" ]; then
+      printf 'ERROR: %s live sessions, pass --display :N to choose one, or use close-all\n' "$count" >&2
+      printf '%s\n' "$sessions" | sed 's/^/  /' >&2
+      exit 2
+    fi
+    display=$sessions
+  fi
+
+  if [ "$all" = 0 ] && [ "${#patterns[@]}" = 0 ]; then
+    fail "close needs a program name, a pattern, or --all"
+  fi
+
+  if [ "$all" = 1 ]; then
+    close_session_programs "$display" "$force" 1
+  else
+    close_session_programs "$display" "$force" 0 "${patterns[@]}"
+  fi
+}
+
+# Close every program in every session and then stop those sessions, so nothing
+# survives and every port is released.
+cmd_close_all() {
+  local force=0 arg display sessions stopped=0
+
+  for arg in "$@"; do
+    case "$arg" in
+      --force) force=1 ;;
+      "") ;;
+      *) fail "close-all takes no arguments except --force (got: $arg)" ;;
+    esac
+  done
+
+  sessions=$(live_displays)
+  if [ -z "$sessions" ]; then
+    printf 'no live xpra sessions\n'
+    return 0
+  fi
+
+  while IFS= read -r display; do
+    [ -n "$display" ] || continue
+    close_session_programs "$display" "$force" 1
+  done <<< "$sessions"
+
+  while IFS= read -r display; do
+    [ -n "$display" ] || continue
+    info "stopping xpra session $display"
+    "$XPRA" stop "$display" || true
+    stopped=$((stopped + 1))
+  done <<< "$sessions"
+
+  printf 'SESSIONS_STOPPED=%s\n' "$stopped"
+}
+
 # Print "<pid>\t<command>" for the programs running in a display.
 # xpra marks its own infrastructure children (Xvfb, ibus) with ignore=True.
 child_table() {
@@ -541,6 +656,8 @@ quote_arg() {
 
 cmd_run() {
   local display out pid cwd=$PWD cmdline arg
+  # A launched program joins a live session: sharing one port is the point of run.
+  REUSE_POLICY="always"
   display=$(ensure_display)
 
   # Pass the whole command as one shlex-quoted string: xpra drops extra argv
@@ -574,16 +691,22 @@ main() {
       --port) [ "$#" -ge 2 ] || fail "--port requires a value"; PORT=$2; shift 2 ;;
       --display) [ "$#" -ge 2 ] || fail "--display requires a value"; DISPLAY_ARG=$2; shift 2 ;;
       --password) [ "$#" -ge 2 ] || fail "--password requires a value"; PASSWORD=$2; shift 2 ;;
+      --no-password) AUTH_MODE="none"; shift ;;
       --) shift; break ;;
       *) break ;;
     esac
   done
 
+  if [ "$AUTH_MODE" = "none" ] && [ -n "$PASSWORD" ]; then
+    fail "--password and --no-password are mutually exclusive"
+  fi
+
   case "$command" in
     ensure) ensure_session ;;
     run) [ "$#" -gt 0 ] || fail "run requires a command after --"; cmd_run "$@" ;;
-    list) cmd_list ;;
+    list|ls) cmd_list ;;
     close) cmd_close "$@" ;;
+    close-all) cmd_close_all "$@" ;;
     stop) cmd_stop "$@" ;;
     *) usage; fail "unknown command: $command" ;;
   esac
