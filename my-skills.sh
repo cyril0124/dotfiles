@@ -21,6 +21,7 @@ LOCAL_SKILLS=(
   "cross-check"
   "review"
   "explain-diff"
+  "show-diff"
   "minimal-change"
   "readable-code"
   "parallelize"
