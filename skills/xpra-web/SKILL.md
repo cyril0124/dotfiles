@@ -50,7 +50,7 @@ bash scripts/xpra-web.sh ensure --port 35971   # that exact port, reusing a live
 bash scripts/xpra-web.sh ensure --no-password  # no password on this session's TCP bind
 bash scripts/xpra-web.sh run -- xclock         # launch xclock in a session of its own
 bash scripts/xpra-web.sh run --display :10 -- myapp  # add a window to a session the user named
-bash scripts/xpra-web.sh list                  # displays, ports, windows, program pids (`ls` also works)
+bash scripts/xpra-web.sh list                  # displays, ports, windows, programs, directories (`ls` also works)
 bash scripts/xpra-web.sh close xclock          # close matching programs, port stays
 bash scripts/xpra-web.sh close --all           # close every program, keep the session
 bash scripts/xpra-web.sh close-all             # close every program everywhere, then stop every session
@@ -91,8 +91,13 @@ APP_PID=12345
 `list` prints one tab-separated line per session:
 
 ```
-:10	tcp=0.0.0.0:35971	windows=xclock	programs=xclock(12345)
+:10	tcp=0.0.0.0:35971	windows=xclock	programs=xclock(12345)	cwd=/path/to/project
 ```
+
+`programs=` gives each child as `name(pid)`. `cwd=` is the working directory those
+children actually run in, read from `/proc/<pid>/cwd` and deduplicated, so programs
+started from one directory show one path; it is `none` when nothing runs or when
+procfs hides the directory.
 
 ## Passwords
 
@@ -140,7 +145,7 @@ Match the scope the user asked for. Closing one program is not a request to tear
 
 Sessions are shared by design, so one session can hold programs you did not start, including the user's own work started in parallel. Before closing anything:
 
-1. Run `list` (`ls` works too) and read `programs=<name>(<pid>)`.
+1. Run `list` (`ls` works too) and read `programs=<name>(<pid>)` and `cwd=<dir>`.
 2. Close by program name, not by session.
 3. Use `close --all`, `stop --all`, `stop :N` or `close-all` only for the scope the user asked for.
 
@@ -198,7 +203,7 @@ When the agent has a process tool, use it for a command that has to stay in the 
 
 ## Working directory and environment
 
-`run` starts the program in the directory it was called from. GUI tools write next to where they run, so logs, session files and screenshots land in the user's working directory instead of the directory the session was created from. The command prints `CWD=<dir>`.
+`run` starts the program in the directory it was called from. GUI tools write next to where they run, so logs, session files and screenshots land in the user's working directory instead of the directory the session was created from. The command prints `CWD=<dir>`, and `list` reports the running children's directories in its `cwd=` column.
 
 xpra has no per-command working directory: it runs every child in the server's own directory. The bundled `scripts/xpra-run-in.sh` changes to the requested directory and `exec`s the program, so the pid xpra tracks belongs to the program itself and `close <name>` still finds it.
 

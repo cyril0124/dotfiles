@@ -29,7 +29,7 @@ usage() {
 Usage:
   xpra-web.sh ensure [options]          Start a network-visible xpra session
   xpra-web.sh run [options] -- CMD ...  Start or name a session, then launch CMD inside it
-  xpra-web.sh list | ls                 Show live sessions, ports, windows and programs
+  xpra-web.sh list | ls                 Show live sessions, ports, windows, programs and directories
   xpra-web.sh close PATTERN | --all     Close matching programs, keep the session alive
   xpra-web.sh close-all [--force]       Close every program everywhere, then stop every session
   xpra-web.sh stop :N | --all           Stop one named session, or every session
@@ -390,7 +390,7 @@ ensure_display() {
 }
 
 cmd_list() {
-  local display listener windows programs found=0 all_windows
+  local display listener windows programs dirs found=0 all_windows
   # xpra lists every display at once; keep the rows that belong to this one.
   all_windows=$("$XPRA" list-windows 2>/dev/null || true)
   while IFS= read -r display; do
@@ -403,8 +403,9 @@ cmd_list() {
         paste -sd ', ' -
     ) || windows=""
     programs=$(child_table "$display" | format_programs || true)
-    printf '%s\ttcp=%s\twindows=%s\tprograms=%s\n' \
-      "$display" "${listener// /:}" "${windows:-none}" "${programs:-none}"
+    dirs=$(dirs_of "$display")
+    printf '%s\ttcp=%s\twindows=%s\tprograms=%s\tcwd=%s\n' \
+      "$display" "${listener// /:}" "${windows:-none}" "${programs:-none}" "${dirs:-none}"
   done < <(live_displays)
   [ "$found" = 1 ] || printf 'no live xpra sessions\n'
 }
@@ -621,6 +622,26 @@ child_table() {
         if (ignore[i] == "False" && dead[i] == "False") print pid[i] "\t" cmd[i]
     }
   ' | sort -n
+}
+
+# Working directory of one process, empty when procfs does not expose it.
+cwd_of() {
+  readlink "/proc/$1/cwd" 2>/dev/null || true
+}
+
+# Working directories of a display's programs, deduplicated, comma separated.
+# Two programs launched with `run` from the same directory collapse into one entry.
+dirs_of() {
+  local display=$1 pid dir out="" seen=" "
+  while IFS=$'\t' read -r pid _; do
+    [ -n "$pid" ] || continue
+    dir=$(cwd_of "$pid")
+    [ -n "$dir" ] || continue
+    case "$seen" in *" $dir "*) continue ;; esac
+    seen="$seen$dir "
+    out+="$dir, "
+  done < <(child_table "$display")
+  printf '%s\n' "${out%, }"
 }
 
 format_programs() {
