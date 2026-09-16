@@ -33,6 +33,22 @@ Preserve completeness unless the patch is long enough to impede review or exceed
 
 A request to expand omitted hunks continues the preview. Show those hunks without applying changes. If the user requests application later, recheck the current source and apply the complete solution, including changes omitted from the preview.
 
+## Checkpoint
+
+After a preview, STOP before implementation unless the latest request explicitly authorizes applying the patch and a complete proposal is available.
+
+| Control | Action | Where to stop |
+|---|---|---|
+| `revise` | Incorporate the requested changes and reprint the complete diff. | At the checkpoint. |
+| `ask` | Answer the question from the proposal and relevant local evidence. If the answer changes the solution, identify the affected hunk without silently revising it. | After the answer and confirmation line. No implementation. |
+| `apply` | Implement the previewed solution against the currently inspected source. | After reporting the applied changes and their validation status. |
+
+Omit the confirmation line only when the user requests no confirmation. Omission alone does not authorize application.
+
+End every preview response with exactly this line, printed after the completion statement below:
+
+`Confirm: apply? (revise / ask / apply)`
+
 ## Completion
 
 State that project files remain unchanged. If the proposed code has not run, say so explicitly; passing checks on the original code do not validate the proposal. When blocked, name the missing fact and ask for that fact instead of inventing a patch. If inspection shows no change is needed, state the evidence and produce no artificial diff.
