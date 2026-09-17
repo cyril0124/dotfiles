@@ -8,8 +8,23 @@ vim.opt.smartindent = true
 -- Hint: use `:h <option>` to figure out the meaning if needed
 vim.opt.clipboard = "unnamedplus" -- use system clipboard
 -- Outside tmux, yank via OSC 52 so the outer terminal owns the clipboard.
+-- Paste returns 0: OSC 52 reads hang on terminals that never reply.
 if not vim.env.TMUX or vim.env.TMUX == "" then
-	vim.g.clipboard = "osc52"
+	local osc52 = require("vim.ui.clipboard.osc52")
+	local function no_paste()
+		return 0
+	end
+	vim.g.clipboard = {
+		name = "OSC 52",
+		copy = {
+			["+"] = osc52.copy("+"),
+			["*"] = osc52.copy("*"),
+		},
+		paste = {
+			["+"] = no_paste,
+			["*"] = no_paste,
+		},
+	}
 end
 vim.opt.completeopt = { "menu", "menuone", "noselect" }
 vim.opt.mouse = "a" -- allow the mouse to be used in nvim
