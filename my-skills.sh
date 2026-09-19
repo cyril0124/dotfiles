@@ -37,6 +37,7 @@ LOCAL_SKILLS=(
   "lesson-learned"
   "show-mermaid"
   "show-mermaid-ascii"
+  "drawio-svg"
   "clone-pr"
   "find-simplifications"
   "doc-standards"
