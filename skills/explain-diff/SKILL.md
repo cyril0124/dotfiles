@@ -1,6 +1,7 @@
 ---
 name: explain-diff
 description: Use when asked to explain a Git diff or existing code.
+disable-model-invocation: true
 ---
 
 # Explain Code

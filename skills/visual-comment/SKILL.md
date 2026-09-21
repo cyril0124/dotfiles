@@ -1,6 +1,7 @@
 ---
 name: visual-comment
 description: Use when asked to add ASCII diagrams as inline code comments.
+disable-model-invocation: true
 ---
 
 # Visual Comment
