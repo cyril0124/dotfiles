@@ -69,13 +69,14 @@ fail() {
 
 show_help() {
   cat <<EOF
-Usage: ./my-skills.sh [all|local|list]
+Usage: ./my-skills.sh [all|local|update|list]
 
 Install the skills recorded in this repo.
 
 Commands:
   all     Install all recorded skills (default)
   local   Install local repo skills only
+  update  Update installed remote skills to their latest upstream versions
   list    Print the configured remote skills
   help    Show this message
 
@@ -165,6 +166,12 @@ run_skills_remove() {
   DISABLE_TELEMETRY=1 run_skills remove "$@" -g -a "${AGENTS[@]}" -y
 }
 
+run_skills_update() {
+  # The update subcommand only handles scope and confirmation flags, so agent
+  # targeting stays in the add/remove path and updated skills refresh in place.
+  DISABLE_TELEMETRY=1 run_skills update "$@" -g -y
+}
+
 run_skills_add_for_spec() {
   local spec=$1
   local source selector
@@ -241,6 +248,30 @@ install_remote_skills() {
   done
 }
 
+update_remote_skills() {
+  info "updating remote skills"
+  load_installed_skills
+
+  local spec skill_name targets=()
+  for spec in "${REMOTE_SKILLS[@]}"; do
+    skill_name=$(spec_skill_name "$spec")
+    if [ -z "${INSTALLED_SKILLS[$skill_name]:-}" ]; then
+      info "skip update for not installed skill: $skill_name"
+      continue
+    fi
+
+    targets+=("$skill_name")
+  done
+
+  if [ "${#targets[@]}" -eq 0 ]; then
+    info "no installed remote skills to update"
+    return
+  fi
+
+  info "update: ${targets[*]}"
+  run_skills_update "${targets[@]}"
+}
+
 print_list() {
   printf 'Local skills:\n'
   printf '  %s\n' "${LOCAL_SKILLS[@]}"
@@ -266,6 +297,10 @@ main() {
       require_tools
       install_remote_skills
       install_local_skills
+      ;;
+    update|upgrade)
+      require_tools
+      update_remote_skills
       ;;
     *)
       show_help
