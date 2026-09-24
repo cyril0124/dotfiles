@@ -12,7 +12,7 @@
 
 ## Tool Usage Principles
 
-- Parallelize independent operations when it reduces latency without shared-state conflicts or excessive output; serialize dependent operations.
+- Issue independent tool calls in parallel within the same response, e.g. several `bash` commands, `read` on multiple known files, or `rg`/`fd` probes that narrow the same search. A call that needs another call's output, or whose output would be excessive on its own, stays sequential.
 
 ## Engineering Quality Baseline
 
