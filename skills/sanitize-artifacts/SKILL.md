@@ -130,6 +130,21 @@ Verify mechanically instead of only rereading:
 2. Search the artifact for them, staged and committed content included.
 3. Fix every hit. Keep a hit only when the artifact genuinely needs it, and disclose that exception in one line after the artifact.
 
+## Language Polish
+
+After removing content residue, scan for AI writing patterns:
+
+- **AI vocabulary.** Replace: additionally, crucial, delve, enhance, foster, garner, pivotal, showcase, tapestry, testament, underscore, vibrant. Use the plain word.
+- **Fancy "is".** "Serves as", "stands as", "boasts", "features" → "is" or "has".
+- **Em dashes.** Replace with a period or comma.
+- **Bold overuse.** Do not bold every proper noun or acronym. A bold lead-in earns its place only when it names a distinct item followed by genuinely new detail.
+- **Inline-header lists.** A bold label that restates the line it introduces is a tell. Convert to prose.
+- **Title case headings.** Sentence case only.
+- **Chatbot phrases.** Remove "I hope this helps", "Let me know if…", "Of course!", "Certainly!".
+- **Filler.** "In order to" → "to". "Due to the fact that" → "because". "It is important to note that" → delete.
+- **Active voice.** Name the actor: "queries are validated" → "the compiler validates queries".
+- **Plain words.** "Utilize" → "use". "Leverage" → "use". "Facilitate" → "help". "Numerous" → "many".
+
 ## Inspection Checklist
 
 When sanitizing an artifact, check:
@@ -146,6 +161,7 @@ When sanitizing an artifact, check:
 10. Does the artifact have a single coherent voice?
 11. Does every example read as a generic instance rather than a record of this case?
 12. Did the token sweep come back clean, and is the staged, committed, or pushed record updated?
+13. Does the artifact read without AI vocabulary, em dashes, bold overuse, title-case headings, or chatbot phrases?
 
 ## Revision Strategy
 
