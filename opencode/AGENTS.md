@@ -29,6 +29,16 @@
 
 ## Testing and Validation
 
+### Test Strategy
+
+- Never write unit tests after the code. Tests written against a finished implementation only restate it, bugs included, and give false confidence.
+- Highly prefer E2E as the sole testing mechanism: verify complex features work, not that individual functions return expected values.
+- Pick a medium-to-hard E2E scenario, not the simplest that could pass: realistic input sizes, non-trivial state, real ordering or timing constraints, so a broken feature actually fails the test. Trivial happy path proves nothing.
+- Every E2E run must produce a verifiable, repeatable artifact (report, log, screenshot, data file), re-checkable later without re-reading test code.
+- Testing a system in isolation: first list every way it could fail, then write the code.
+
+### Validation Scope
+
 - Choose validation proportional to behavioral risk. Prefer checks that verify observable outcomes; add tests for concrete regression risks.
 - After relevant checks pass, stop testing unless new changes or evidence justify more. Use explicit timeouts suited to the command; investigate timeouts instead of blindly rerunning.
 
