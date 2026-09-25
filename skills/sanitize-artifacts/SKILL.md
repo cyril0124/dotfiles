@@ -145,6 +145,8 @@ After removing content residue, scan for AI writing patterns:
 - **Active voice.** Name the actor: "queries are validated" → "the compiler validates queries".
 - **Plain words.** "Utilize" → "use". "Leverage" → "use". "Facilitate" → "help". "Numerous" → "many".
 
+These checks cover English prose. A Chinese artifact also follows [Chinese style](references/chinese-style.md): quotation marks, translationese, over-compressed technical terms, invented compounds, the 不是……而是…… pattern, and padding at the section level.
+
 ## Inspection Checklist
 
 When sanitizing an artifact, check:
@@ -162,6 +164,7 @@ When sanitizing an artifact, check:
 11. Does every example read as a generic instance rather than a record of this case?
 12. Did the token sweep come back clean, and is the staged, committed, or pushed record updated?
 13. Does the artifact read without AI vocabulary, em dashes, bold overuse, title-case headings, or chatbot phrases?
+14. For a Chinese artifact, does it pass the checks in [chinese-style.md](references/chinese-style.md)?
 
 ## Revision Strategy
 
