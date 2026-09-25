@@ -382,7 +382,7 @@ def pick_index(
                 caret = "█"
                 help_l = f"/{query}{caret}  arrows move  esc done  ^u clear"
             else:
-                help_l = "j/k · gg/G · 1-9 · n last · / filter · click · h/l fold · enter · f · esc"
+                help_l = "j/k · gg/G · 1-9 · n last · / filter · click · h/l fold · enter/space · f · esc"
             _put(stdscr, 0, 1, _fit(help_l, max(0, inner - 1)), curses.A_DIM)
             flags: list[str] = []
             if filter_on:
@@ -698,6 +698,12 @@ def pick_index(
                     if seen == want:
                         return int(ent["idx"])
             elif ch in (curses.KEY_ENTER, 10, 13):
+                picked = activate()
+                if picked is not None:
+                    return picked
+            elif ch == ord(" "):
+                # Space activates like enter; the filter query types it instead
+                # (see the 32..126 branch above).
                 picked = activate()
                 if picked is not None:
                     return picked

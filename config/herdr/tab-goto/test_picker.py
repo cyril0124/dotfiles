@@ -1,6 +1,6 @@
 """Exercise picker keyboard input through a real pseudo-terminal.
 
-Set TAB_GOTO_RS_BIN to also test a compiled Rust picker.
+Set TAB_GOTO_RS_BIN or TAB_GOTO_CPP_BIN to also test a compiled picker.
 """
 
 import fcntl
@@ -19,13 +19,18 @@ import unittest
 
 
 class PickerKeysTests(unittest.TestCase):
-    def check_keys(self, keys, expected_tab):
-        picker_dir = Path(__file__).resolve().parent
+    def picker_commands(self):
+        """The Python picker plus any compiled picker passed via the env."""
         commands = [[sys.executable, "-S", "-m", "picker"]]
-        if binary := os.environ.get("TAB_GOTO_RS_BIN"):
-            commands.append([str(Path(binary).resolve()), "picker"])
+        for variable in ("TAB_GOTO_RS_BIN", "TAB_GOTO_CPP_BIN"):
+            if binary := os.environ.get(variable):
+                commands.append([str(Path(binary).resolve()), "picker"])
+        return commands
 
-        for command in commands:
+    def check_keys(self, keys, expected_tab, activate=b"\r"):
+        picker_dir = Path(__file__).resolve().parent
+
+        for command in self.picker_commands():
             with self.subTest(command=command), tempfile.TemporaryDirectory() as directory:
                 root = Path(directory)
                 tabs = [
@@ -68,7 +73,7 @@ class PickerKeysTests(unittest.TestCase):
                             os.read(master, 65536)
                             if time.monotonic() >= deadline:
                                 self.fail("Picker did not finish drawing")
-                    os.write(master, b"\r")
+                    os.write(master, activate)
                     self.assertEqual(process.wait(timeout=3), 0)
                     self.assertEqual((root / "focused").read_text(), expected_tab)
                 finally:
@@ -91,6 +96,15 @@ class PickerKeysTests(unittest.TestCase):
             if expected in output:
                 return
         self.fail(f"Missing {expected!r} in terminal output: {output!r}")
+
+    def test_space_activates(self):
+        self.check_keys(b"G", "t3", activate=b" ")
+
+    def test_space_extends_a_filter_query(self):
+        # A space typed while filtering must narrow the query to the single
+        # "gG tab 3" match; had it activated instead, the picker would have
+        # focused the initial row and left the query at "tab".
+        self.check_keys(b"/tab 3", "t3")
 
     def test_last_and_scrolling(self):
         self.check_keys(b"G", "t3")

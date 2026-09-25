@@ -469,7 +469,7 @@ private:
 
         const std::string help =
             query_mode_ ? "/" + query_ + "█  arrows move  esc done  ^u clear"
-                        : "j/k · gg/G · 1-9 · n last · / filter · click · h/l fold · enter · f · esc";
+                        : "j/k · gg/G · 1-9 · n last · / filter · click · h/l fold · enter/space · f · esc";
         put(frame, size.width, 0, 1, fit(help, std::max(0, inner - 1)), dim_style());
 
         std::string flags;
@@ -661,7 +661,13 @@ private:
 
         switch (event.key) {
             case Key::Char:
-                handle_char(event.ch);
+                // Space activates like enter; inside the filter query it stays a
+                // typed character (see the query_mode_ branch above).
+                if (event.ch == ' ') {
+                    if (const auto picked = activate()) finish(*picked);
+                } else {
+                    handle_char(event.ch);
+                }
                 break;
             case Key::Down: move_down(); break;
             case Key::Up: move_up(); break;

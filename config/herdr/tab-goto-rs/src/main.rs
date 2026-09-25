@@ -438,7 +438,7 @@ fn ui_loop(
         let help_l = if query_mode {
             format!("/{query}█  arrows move  esc done  ^u clear")
         } else {
-            "j/k · gg/G · 1-9 · n last · / filter · click · h/l fold · enter · f · esc".to_string()
+            "j/k · gg/G · 1-9 · n last · / filter · click · h/l fold · enter/space · f · esc".to_string()
         };
         put(out, width, 0, 1, &fit(&help_l, inner.saturating_sub(1)), St::dim());
         let mut flags = String::new();
@@ -773,6 +773,13 @@ fn ui_loop(
                         }
                     }
                     KeyCode::Enter => {
+                        if let Some(picked) = activate!() {
+                            return Ok(Some(picked));
+                        }
+                    }
+                    // Space activates like enter; inside the filter query it stays
+                    // a typed character (see the query_mode branch above).
+                    KeyCode::Char(' ') => {
                         if let Some(picked) = activate!() {
                             return Ok(Some(picked));
                         }
