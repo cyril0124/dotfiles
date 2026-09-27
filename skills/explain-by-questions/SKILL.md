@@ -35,7 +35,7 @@ Why is it called X?
 references: 1, 3
 
 ## Why it exists
-- <bullet>
+- <bullet, literal tokens in backticks, at most one bold phrase>
 - <bullet>
 
 references: 1, 2
@@ -79,7 +79,9 @@ Sections:
 Style:
 
 - One analogy max, optional, in the lead line or the bullet it clarifies. No second metaphor.
-- Three unfamiliar terms max, each defined at first appearance. Bold only a term's first definition.
+- Three unfamiliar terms max, each defined at first appearance.
+- Backticks mark every literal the reader might copy or search: identifier, API or class name, signal, command, flag, path, environment variable, status code, config key, value. Keep the source's own spelling inside the backticks.
+- Bold marks the load-bearing phrase: a term at its first definition, or the conclusion its bullet turns on. One bolded phrase per bullet at most, never a whole bullet, never decoration. A bullet holding two bolded phrases is a defect.
 - Language: every user-facing word, headings and citation labels included, in the user's language. Structure unchanged by language.
 
 Name section:
@@ -140,26 +142,26 @@ the whole system down with it.
 
 - A client sends two hundred requests a second
 - The connection pool fills instantly, and every other request slows down with it
-- The outage is not caused, it is amplified
+- The outage is **not caused, it is amplified**
 
 references: none
 
 ## How it works
 
 - The entry point counts requests per identity, then rejects or queues whatever passes the threshold
-- The counter lives in shared storage near that entry, so every machine spends one budget
+- The counter lives in shared storage near that entry, so **every machine spends one budget**
   * It is the bouncer counting heads at a club door: entry is not blocked, the room is kept from
     packing so tight that nobody can move
 - Steps per request:
   1. Read the counter for the client's key
   2. Under the threshold: serve the request, increment the counter
-  3. At the threshold: return 429, or queue the request
+  3. At the threshold: return `429`, or queue the request
 
 references: 1, 2
 
 ## Where it stops
 
-- Thresholds are hard to tune: loose and nothing is blocked, tight and ordinary traffic takes the hit
+- Thresholds are **hard to tune**: loose and nothing is blocked, tight and ordinary traffic takes the hit
 - It stops one runaway client, not everyone slowing down at once
 - A per-client limit does not answer a total load problem; that is a queue or capacity decision (2)
 
@@ -200,3 +202,4 @@ references: 2, 3
 5. Each content section closed by an ascending `references:` line, `none` when nothing is sourced, every fact and every ID accounted for on both sides?
 6. Every source opened this turn and admissible, external ones as markdown links, one source per claim, one bucket per item, no bucket in the body?
 7. Headings, body, and citation labels in the language the user wrote in?
+8. Literals inside backticks, at most one bolded phrase per bullet, no bullet wholly bolded?
