@@ -1,22 +1,22 @@
 ---
 name: worktree-dev
-description: Use for Git worktree creation, isolated parallel development, merging back, cleanup, or explicit worktree-dev finish.
+description: Git worktree creation, isolated parallel development, merging back, cleanup, or explicit worktree-dev finish.
 ---
 
 # Worktree Development
 
 Parallel development in isolated worktrees at `.worktrees/<branch>` inside the
 repo. Every worktree carries an untracked `WORKTREE-README.md` stating why it
-exists; read those files before creating a new one. `<base-branch>` means the
-branch the work will merge back into.
+exists; read those before creating a new one. `<base-branch>` = branch the work
+merges back into.
 
 ## Invocation
 
-`worktree-dev finish` runs the finish workflow below. This invocation explicitly
-authorizes staging task-related hunks, committing, merging into the base branch,
-and removing the completed worktree. Proceed through all four actions without
-asking for separate approval. A request to edit or explain this skill does not
-invoke finish. Other requests authorize only the actions they name.
+`worktree-dev finish` runs the finish workflow below and explicitly authorizes
+five actions, no separate approval: stage task-related hunks, commit, rebase the
+task branch onto the base branch, fast-forward the base branch, remove the
+completed worktree. Editing or explaining this skill does not invoke finish.
+Other requests authorize only the actions they name.
 
 ## Quick start
 
@@ -27,9 +27,8 @@ while IFS= read -r line; do case "$line" in worktree\ *) f="${line#worktree }/WO
 git worktree add .worktrees/<branch> -b <branch> <base-branch>
 ```
 
-Then write `WORKTREE-README.md` (template below), develop, and verify. Do not
-stage, commit, sync, merge, or clean up unless the user explicitly asks for
-that action.
+Then write `WORKTREE-README.md` (template below), develop, verify. No stage,
+commit, sync, merge, or cleanup unless the user explicitly asks.
 
 ## Workflow
 
@@ -43,8 +42,8 @@ that action.
    git worktree list --porcelain |
    while IFS= read -r line; do case "$line" in worktree\ *) f="${line#worktree }/WORKTREE-README.md"; [ ! -f "$f" ] || { printf '== %s\n' "$f"; cat "$f"; };; esac; done
    ```
-   If an existing worktree already covers the goal, reuse it instead of
-   creating a duplicate. Create a new one only when no README matches.
+   Reuse a worktree that already covers the goal; create new only when no README
+   matches.
 
 3. **Create** the worktree:
    ```bash
@@ -52,8 +51,8 @@ that action.
    git worktree add .worktrees/<branch> <branch>                    # existing branch
    ```
 
-4. **Write WORKTREE-README.md** in the worktree root. Keep it untracked —
-   never commit it:
+4. **Write WORKTREE-README.md** in the worktree root, untracked — never commit
+   it:
    ```markdown
    # Worktree: <branch>
    - Purpose: <what this worktree is for, one or two sentences>
@@ -63,85 +62,99 @@ that action.
    ```
    Update `Status` as work progresses.
 
-5. **Develop and verify** inside the worktree. Run the repo's tests/checks and
-   leave all changes unstaged and uncommitted by default. Never run `git add`
-   or `git commit` unless the user explicitly asks.
+5. **Develop and verify** inside the worktree. Run repo tests/checks; leave
+   changes unstaged and uncommitted by default. Never `git add`/`git commit`
+   unless the user explicitly asks.
 
 6. **Commit — only when the user asks.** Inspect status and diff, stage only
-   the requested hunks, run relevant checks, then commit. A request to create,
-   develop, or verify a worktree is not permission to commit.
+   requested hunks, run checks, commit. Creating, developing, or verifying a
+   worktree is not permission to commit.
 
-7. **Sync or merge back — only when the user asks for that action.** A commit
-   request does not authorize syncing or merging. After work is committed:
+7. **Sync or merge back — only when the user asks for it.** A commit request does
+   not authorize sync or merge. After commit: rebase, then fast-forward; never a
+   merge commit:
    ```bash
    git -C .worktrees/<branch> rebase <base-branch>
-   git merge <branch>   # run from the base branch's checkout
+   git merge --ff-only <branch>   # run from the base branch's checkout
    ```
 
-8. **Cleanup — only when the user asks.** Never remove a worktree on your
-   own initiative; a merged worktree may stay for later reuse or reference.
-   When the user asks for cleanup, read the README first to confirm the
-   purpose is fulfilled and merged, then:
+8. **Cleanup — only when the user asks.** Never remove a worktree on your own; a
+   merged one may stay for reuse or reference. On request, read the README first
+   to confirm purpose fulfilled and merged, then:
    ```bash
    rm .worktrees/<branch>/WORKTREE-README.md
    git worktree remove .worktrees/<branch>
    git branch -d <branch>
    git worktree prune
    ```
-   If `remove` still fails on untracked files, investigate them — do not
-   blindly `--force`.
+   `remove` failing on untracked files: investigate them — no blind `--force`.
 
 ## Finish workflow
 
 1. **Identify the target.** Read `git worktree list --porcelain` and the target's
-   `WORKTREE-README.md`. Resolve the worktree, task scope, base branch, and base
-   checkout from the invocation, README, and current task context. For older
-   READMEs without a base branch, use repository evidence; ask only if the target
-   or base remains ambiguous. Inspect status, staged and unstaged diffs, and
-   commits in `<base-branch>..<branch>`. Every commit being merged must belong to
-   the requested task. Stop on an unfinished merge/rebase or unrelated staged
-   changes; preserve them and report the blocker.
+   `WORKTREE-README.md`. Resolve worktree, task scope, base branch, base checkout
+   from invocation, README, task context. No base branch in an older README: use
+   repository evidence; ask only if still ambiguous. Inspect status, staged and
+   unstaged diffs, commits in `<base-branch>..<branch>`; every commit to merge
+   must belong to the requested task. Stop on an unfinished merge/rebase or
+   unrelated staged changes: preserve them, report the blocker.
 
-2. **Stage related hunks.** Use `git add -p -- <paths>` to select only task-related
-   hunks, splitting mixed hunks as needed. Without an interactive terminal,
-   construct a patch containing only the selected changes and apply it with
-   `git apply --cached`; remove the temporary patch afterward. Use path-level
-   `git add -- <path>` only when the entire change belongs to the task, including
-   new files. Never stage `WORKTREE-README.md`. Inspect `git diff --cached` and
-   `git diff --cached --check`; proceed only when the staged diff contains all
-   intended changes and no unrelated changes.
+2. **Stage related hunks.** `git add -p -- <paths>` for task-related hunks only;
+   split mixed hunks. No interactive terminal: build a patch of the selected
+   changes, `git apply --cached`, delete the temp patch. Path-level
+   `git add -- <path>` only when the whole change belongs to the task, new files
+   included. Never stage `WORKTREE-README.md`. Check `git diff --cached`,
+   `git diff --cached --check`; proceed only when the staged diff holds all
+   intended changes, nothing unrelated.
 
-3. **Verify and commit.** Run the checks appropriate to the staged change. If
-   unrelated unstaged edits would affect validation, isolate the staged snapshot
-   for checks. Fix failures caused by the task and review the staged diff again.
-   Commit with a Conventional Commits message, `<type>[optional scope]: <description>`,
-   and record the commit hash. If there are no new task changes, skip the empty
-   commit and continue with existing task commits. A failed check or commit blocks
-   merging and cleanup.
+3. **Verify and commit.** Run checks for the staged change; isolate the staged
+   snapshot if unrelated unstaged edits affect validation. Fix task-caused
+   failures, review the staged diff again. Commit with a Conventional Commits
+   message, `<type>[optional scope]: <description>`; record the hash. No new task
+   changes: skip the empty commit, keep existing task commits. A failed check or
+   commit blocks merge and cleanup.
 
-4. **Merge into the base branch.** Use a clean checkout of `<base-branch>`; locate
-   its existing worktree or create a temporary checkout if it has none. Preserve
-   unrelated changes in a dirty base checkout and report the blocker. Merge with
-   `git -C <base-checkout> merge -m "chore: merge <branch>" <branch>`; no rebase is required.
-   Resolve conflicts when task intent is clear, then run relevant checks on the
-   merged result. If resolution needs user input or checks fail, report the state
-   and keep the task worktree. Continue only after checks pass and
-   `git merge-base --is-ancestor <branch> <base-branch>` succeeds. Finish is local;
-   it does not authorize pushing.
+4. **Rebase the task branch onto the base branch.** Run
+   `git -C .worktrees/<branch> rebase <base-branch>` before touching the base
+   branch: a task branch not descending from `<base-branch>` is what turns the
+   merge into a merge commit. Resolve conflicts where task intent is clear,
+   re-run checks on the result. Conflict needing user input, or failed checks:
+   `git -C .worktrees/<branch> rebase --abort` restores the pre-rebase state;
+   keep the worktree, report the blocker. Confirm the rebase landed:
+   `git merge-base --is-ancestor <base-branch> <branch>` succeeds,
+   `git log -1 --format=%p <branch>` shows one parent. Rebase rewrites the task
+   commits: report the post-rebase hash from
+   `git -C .worktrees/<branch> log -1 --format=%H`.
 
-5. **Remove the completed worktree.** Inspect tracked, untracked, and ignored
-   files before removal. If unrelated edits or files remain, keep the worktree
-   and report that cleanup is blocked; do not discard or stash them automatically.
-   Remove only the task's untracked `WORKTREE-README.md` and known disposable
-   generated outputs. Run `git worktree remove <worktree-path>` from outside that
-   worktree, without `--force`. Remove a temporary base checkout created above
-   once it is clean. Verify the target is absent from `git worktree list`.
-   Finish does not require deleting the branch. Report the commit hash, base
-   branch, validation result, and whether worktree removal completed.
+5. **Fast-forward the base branch.** Clean checkout of `<base-branch>`: its
+   existing worktree, else a temporary checkout. Dirty base checkout: preserve
+   unrelated changes, report the blocker. Then
+   `git -C <base-checkout> merge --ff-only <branch>`. Plain `git merge`,
+   `git merge -m`, `--no-ff` forbidden here — they produce the extra merge
+   commit. `--ff-only` refused: base advanced after the rebase, or step 4 was
+   skipped — redo the rebase, retry; never fall back to a merge commit. Continue
+   only when checks pass and three proofs hold:
+   `git merge-base --is-ancestor <branch> <base-branch>`,
+   `git -C <base-checkout> log -1 --format=%p` printing one hash,
+   `git rev-list --count <branch>..<base-branch>` printing `0`. Finish is local;
+   no push.
+
+6. **Remove the completed worktree.** Inspect tracked, untracked, ignored files
+   first. Unrelated edits or files remain: keep the worktree, report cleanup
+   blocked; no automatic discard or stash. Remove only the task's untracked
+   `WORKTREE-README.md` and known disposable generated outputs, via
+   `git worktree remove <worktree-path>` from outside that worktree, no `--force`.
+   Remove a temporary base checkout created above once clean. Verify the target is
+   gone from `git worktree list`. Finish need not delete the branch. Report the
+   post-rebase commit hash, base branch, validation result, whether worktree
+   removal completed.
 
 ## Rules
 
 - Never stage or commit by default; an explicit user request is required.
+- Merging a task branch never creates a merge commit: rebase onto the base branch
+  first, then `git merge --ff-only`. Plain `git merge`, `-m`, `--no-ff` not
+  allowed. An `ort`/`Merge made by` reflog entry means the rebase was skipped.
 - One branch cannot be checked out in two worktrees at once.
 - Untracked and ignored files do not transfer: build outputs, `node_modules`,
   venv are per-worktree; recreate them.
