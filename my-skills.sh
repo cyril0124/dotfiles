@@ -44,6 +44,7 @@ LOCAL_SKILLS=(
   "sanitize-artifacts"
   "worktree-dev"
   "xpra-web"
+  "explain-by-questions"
 )
 
 REMOTE_SKILLS=(
