@@ -7,18 +7,25 @@ description: Use whenever writing, modifying, or reviewing code, including namin
 
 Optimize for a maintainer reading and changing the code: someone arriving with no memory of how it was written. Prefer spacious, explicit code over compact code. Apply this within the requested scope, following language idioms and project conventions.
 
+A repository's own style document (`CODE_STYLE.md`, `AGENTS.md`, `CONTRIBUTING.md`) states the same rules at project granularity, so it outranks this skill. Read it before editing, and let it settle any point the two describe differently.
+
 ## Naming
 
 - Use names that state the domain meaning, the action, and the unit.
+- Prefer the term the domain and its ecosystem already use over one you coin. A coined name has to be learned; a conventional name is already known.
 - Give complex conditions and intermediate results meaningful names.
 - Treat a misleading name as a defect: rename it rather than documenting around it. A name that needs a sentence of comment to be understood is the wrong name.
 - Give parallel operations parallel names. Similar behavior under different names reads as different behavior, and sends the reader looking for a difference that is not there.
+- Keep one concept, one name. Two routines that cover the same concept under different names are one routine and one deletion.
+- Write equivalent values in the same form. Mixed styles for the same kind of value read as if they meant something different.
+- Spell out an abbreviation at first use, then use the short form.
 
 ## Structure
 
 - Write straightforward control flow. Expand nested ternaries, dense chains, and multi-action expressions into clear steps. Keep state changes and failure paths visible; use guard clauses where they reduce nesting.
 - Keep one coherent responsibility per function. Extract helpers for meaningful operations, not to meet an arbitrary line limit.
 - Call the primitive directly. A helper that only forwards arguments, or that renames a framework call, adds a name to learn without adding a capability.
+- Reuse before adding. Extend an existing routine with a parameter instead of writing a near-identical second one; two entry points for one behavior drift apart.
 - Keep related logic together, and introduce abstractions only for current needs.
 - Use spacious layout: separate distinct operations onto their own lines, and separate logical phases with blank lines. Line count is not the cost you are minimizing; the reader's scan is. Use consistent structure for similar branches and the project's formatter for layout details.
 
@@ -31,6 +38,8 @@ Optimize for a maintainer reading and changing the code: someone arriving with n
 
 - Add comments before non-obvious logic explaining intent, assumptions, invariants, units, or tradeoffs. For multi-phase routines, add short section comments explaining each phase's purpose; explain complex algorithms when names alone are insufficient.
 - Delete comments that restate the code or expose internal mechanics the reader does not need. A test case's comment describes the scenario it verifies, not the logic that makes the check pass.
+- State the observable behavior the code relies on. A comment that justifies a check with internal state, a mask, a buffer, or an upstream source file and line number describes the implementation, not the protocol-level or interface-level fact a reader can see.
+- Write counts, sizes, offsets, and indexes as digits, in comments and in prose. Digits read as the value they are; spelled-out numbers read as prose and drift from the code they describe.
 - Skip decorative markers that carry no information: "Part 1", "Step 2", a file header listing the obvious.
 - Annotate types at callable boundaries wherever the language supports it, naming the concrete domain type rather than a generic container.
 - Document callable interfaces whose contracts are not evident from their signatures, including relevant side effects and failure behavior.
