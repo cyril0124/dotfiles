@@ -106,7 +106,7 @@ GREEN needs every item PASS, or ADAPTED with its reason and a run showing the re
 
 Re-check every FAIL yourself against the code and re-run its command. New findings become items, each carrying an added `added: round N` line. Never relabel a FAIL as ADAPTED on your own judgement.
 
-After any fix, verify again with new agents, never the ones behind the previous verdict. Cap at 3 rounds; a red left then is reported as red.
+After any fix, verify again with new agents, never the ones behind the previous verdict. Cap at 5 rounds; a red left then is reported as red.
 
 Append each round to `verification.md`: lenses, each verdict with the command and output behind it, new items, regressions.
 
@@ -148,7 +148,7 @@ Artifacts stay under `<target>/.sync-feature/<slug>/` and uncommitted; add `.syn
 - [ ] The feature is reachable from a real entry point, not dead code
 - [ ] Every PASS names a command actually run; every cost claim, numbers
 - [ ] Every item with a visible surface has screenshots that were opened and confirmed, or is UNVERIFIED
-- [ ] Re-verify rounds used fresh agents; 3 rounds at most
+- [ ] Re-verify rounds used fresh agents; 5 rounds at most
 - [ ] Green only when every item is PASS or ADAPTED and no verifier failed to run
 - [ ] Nothing committed, pushed, or deleted; no secret left unredacted
 - [ ] The added code carries no trace of the port: no source names, no port narrative, no session residue
