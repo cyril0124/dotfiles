@@ -43,6 +43,7 @@ LOCAL_SKILLS=(
   "doc-standards"
   "sanitize-artifacts"
   "worktree-dev"
+  "sync-feature"
   "xpra-web"
   "explain-by-questions"
 )
