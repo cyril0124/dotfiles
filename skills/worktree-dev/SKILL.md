@@ -99,20 +99,23 @@ commit, sync, merge, or cleanup unless the user explicitly asks.
    must belong to the requested task. Stop on an unfinished merge/rebase or
    unrelated staged changes: preserve them, report the blocker.
 
-2. **Stage related hunks.** `git add -p -- <paths>` for task-related hunks only;
-   split mixed hunks. No interactive terminal: build a patch of the selected
-   changes, `git apply --cached`, delete the temp patch. Path-level
-   `git add -- <path>` only when the whole change belongs to the task, new files
-   included. Never stage `WORKTREE-README.md`. Check `git diff --cached`,
+2. **Stage related hunks.** Staging stays here: the `commit-stage` skill
+   reviews an already-staged diff and never stages. `git add -p -- <paths>` for
+   task-related hunks only; split mixed hunks. No interactive terminal: build a
+   patch of the selected changes, `git apply --cached`, delete the temp patch.
+   Path-level `git add -- <path>` only when the whole change belongs to the task,
+   new files included. Never stage `WORKTREE-README.md`. Check `git diff --cached`,
    `git diff --cached --check`; proceed only when the staged diff holds all
    intended changes, nothing unrelated.
 
-3. **Verify and commit.** Run checks for the staged change; isolate the staged
+3. **Verify and commit.** When a `commit-stage` skill is available, run it for
+   this step: it reviews the staged diff and commits, or stops with a report, and
+   a stopped commit blocks merge and cleanup like a failed check. Otherwise run
+   the inline procedure: run checks for the staged change; isolate the staged
    snapshot if unrelated unstaged edits affect validation. Fix task-caused
    failures, review the staged diff again. Commit with a Conventional Commits
    message, `<type>[optional scope]: <description>`; record the hash. No new task
-   changes: skip the empty commit, keep existing task commits. A failed check or
-   commit blocks merge and cleanup.
+   changes: skip the empty commit, keep existing task commits.
 
 4. **Rebase the task branch onto the base branch.** Run
    `git -C .worktrees/<branch> rebase <base-branch>` before touching the base
