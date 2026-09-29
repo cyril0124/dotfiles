@@ -14,7 +14,7 @@ Rules are numbered so a review comment can cite one directly (`violates 20`). Ea
 ## Naming
 
 1. Names state domain meaning, action, unit. The reader infers the value or the effect from the name without opening the definition.
-2. Prefer domain + ecosystem term over a coined one: coined names must be learned, conventional ones are already known.
+2. Use the term the current domain already uses. A coined name must be learned, and a term imported from another domain arrives carrying that domain's meaning, so the reader applies the wrong mental model. When the domain has no word for the concept, extend an existing term with a qualifier; take a foreign term only when the domain itself has adopted it.
 3. Give complex conditions + intermediate results meaningful names.
 4. Prefix a name only where it competes for a shared namespace: file names, exported symbols, macros, module-level constants. Members, parameters, and locals are already separated by their container and take no prefix. A prefix there repeats the scope, and the reader strips it back off to find the name.
 5. Misleading name = defect: rename it, do not document around it. A name needing a sentence of comment is the wrong name.
