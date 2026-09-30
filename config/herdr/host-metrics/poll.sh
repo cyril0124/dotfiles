@@ -168,12 +168,21 @@ cmd_spawn() {
   mkdir -p "$STATE_DIR"
   # Always refresh once (works even when a poller is already up).
   push_once || true
+  # Check pidfile in current STATE_DIR first.
   if [ -f "$PIDFILE" ]; then
     pid=$(cat "$PIDFILE" 2>/dev/null || true)
     if [ -n "${pid:-}" ] && kill -0 "$pid" 2>/dev/null; then
       log "spawn skipped; already running pid=$pid"
       exit 0
     fi
+  fi
+  # Fallback: detect orphaned instances from previous sessions that wrote their
+  # pidfile to a different STATE_DIR (e.g. after a herdr handoff changes
+  # HERDR_PLUGIN_STATE_DIR). Any live poll.sh --run for this script counts.
+  existing=$(pgrep -f "${SCRIPT_DIR}/poll.sh --run" 2>/dev/null | head -1 || true)
+  if [ -n "${existing:-}" ]; then
+    log "spawn skipped; found existing instance from previous session pid=$existing"
+    exit 0
   fi
   nohup bash "$SCRIPT_DIR/poll.sh" --run >>"$LOGFILE" 2>&1 &
   log "spawned pid=$!"
