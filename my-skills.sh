@@ -28,6 +28,7 @@ LOCAL_SKILLS=(
   "git-add-hunk"
   "self-improve"
   "handoff"
+  "use-skill"
   "plain-speak"
   "ascii-visual"
   "visual-comment"
