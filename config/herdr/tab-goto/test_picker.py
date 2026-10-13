@@ -1,6 +1,6 @@
 """Exercise picker keyboard input through a real pseudo-terminal.
 
-Set TAB_GOTO_RS_BIN or TAB_GOTO_CPP_BIN to also test a compiled picker.
+Set TAB_GOTO_CPP_BIN to also test the compiled C++ picker.
 """
 
 import fcntl
@@ -22,7 +22,7 @@ class PickerKeysTests(unittest.TestCase):
     def picker_commands(self):
         """The Python picker plus any compiled picker passed via the env."""
         commands = [[sys.executable, "-S", "-m", "picker"]]
-        for variable in ("TAB_GOTO_RS_BIN", "TAB_GOTO_CPP_BIN"):
+        for variable in ("TAB_GOTO_CPP_BIN",):
             if binary := os.environ.get(variable):
                 commands.append([str(Path(binary).resolve()), "picker"])
         return commands

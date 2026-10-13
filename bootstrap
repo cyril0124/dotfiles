@@ -220,24 +220,6 @@ install_dotfiles () {
     install_herdr_plugins
 }
 
-# Build the Rust tab-goto picker when a toolchain exists; without cargo the
-# plugin's run.sh falls back to the Python version.
-build_tab_goto_rs () {
-    local dir="$DOTFILES_ROOT/config/herdr/tab-goto-rs"
-    [ -d "$dir" ] || return 0
-
-    if ! command -v cargo >/dev/null 2>&1; then
-        info 'cargo not found; herdr tab-goto will fall back to python'
-        return 0
-    fi
-
-    if (cd "$dir" && cargo build --release --quiet && cp target/release/tab-goto tab-goto); then
-        success 'built herdr tab-goto (rust)'
-    else
-        info 'cargo build failed; herdr tab-goto will fall back to python'
-    fi
-}
-
 # Build the C++ tab-goto picker when a compiler exists; without one the
 # plugin's run.sh falls back to the Python version.
 build_tab_goto_cpp () {
@@ -262,7 +244,6 @@ install_herdr_plugins () {
         return 0
     fi
 
-    build_tab_goto_rs
     build_tab_goto_cpp
 
     info 'installing herdr plugins from config/herdr/plugins.txt'
