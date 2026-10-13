@@ -1,6 +1,7 @@
 ---
 name: simple-plan
 description: 'Use for implementation planning requests or planning controls: revise, ask, run, run-verify. Excludes editing this skill.'
+disable-model-invocation: true
 ---
 
 # Simple plan

@@ -1,6 +1,7 @@
 ---
 name: review
 description: Use when asked to review code, diffs, documents, plans, or pasted content.
+disable-model-invocation: true
 ---
 
 # Review

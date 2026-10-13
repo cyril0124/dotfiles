@@ -1,6 +1,7 @@
 ---
 name: ascii-visual
 description: Use when creating ASCII diagrams, terminal layouts, or diagrams requiring CJK alignment.
+disable-model-invocation: true
 ---
 
 # ASCII Visual
