@@ -1,6 +1,7 @@
 ---
 name: cross-check
 description: Use when asked to cross-check changes just made by the current agent.
+disable-model-invocation: true
 ---
 
 # Cross-Check

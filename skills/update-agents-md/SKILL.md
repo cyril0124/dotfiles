@@ -1,6 +1,7 @@
 ---
 name: update-agents-md
 description: 'Use only on explicit update-agents-md or c=<N> invocation, or replies to its pending proposal.'
+disable-model-invocation: true
 ---
 
 # Update AGENTS.md

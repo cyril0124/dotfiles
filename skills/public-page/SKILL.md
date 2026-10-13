@@ -1,6 +1,7 @@
 ---
 name: public-page
 description: Use when asked to publish static HTML or a static site at a temporary public URL.
+disable-model-invocation: true
 ---
 
 # Public Page
