@@ -101,6 +101,12 @@ command = "local.action-palette.open"
 description = "command palette (plugin actions)"
 
 [[keys.command]]
+key = "prefix+e"
+type = "plugin_action"
+command = "herdr-sidebar.open-sidebar"
+description = "sidebar (explorer + git)"
+
+[[keys.command]]
 key = "prefix+t"
 type = "popup"
 command = "exec \"${SHELL:-sh}\""
