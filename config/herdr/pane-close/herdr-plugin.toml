@@ -9,8 +9,8 @@ platforms = ["linux", "macos"]
 id = "confirm"
 title = "close"
 placement = "popup"
-width = 34
-height = 9
+width = 36
+height = 11
 command = ["python3", "confirm.py"]
 
 [[actions]]

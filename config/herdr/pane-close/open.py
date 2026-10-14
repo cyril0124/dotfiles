@@ -36,9 +36,9 @@ def main() -> int:
             "--placement",
             "popup",
             "--width",
-            "34",
+            "36",
             "--height",
-            "9",
+            "11",
             "--focus",
         ],
     )

@@ -82,27 +82,50 @@ def dialog(stdscr: curses.window, title: str, subtitle: str) -> bool:
     while True:
         stdscr.erase()
         h, w = stdscr.getmaxyx()
-        # Reserve last row for hints; center the rest above it.
-        body_h = max(1, h - 1)
-        # title, blank, id, blank, buttons  → 5 rows
-        block = 5
-        y0 = max(0, (body_h - block) // 2)
+
+        # Rounded border: top, bottom, sides.
+        inner = "─" * max(0, w - 2)
+        try:
+            stdscr.addstr(0, 0, "╭" + inner + "╮")
+        except curses.error:
+            pass
+        try:
+            stdscr.addstr(h - 1, 0, "╰" + inner)
+            stdscr.insstr(h - 1, w - 1, "╯")
+        except curses.error:
+            pass
+        for _row in range(1, h - 1):
+            put(stdscr, _row, 0, "│")
+            try:
+                stdscr.insstr(_row, w - 1, "│")
+            except curses.error:
+                pass
+
+        # Content block: title, separator, blank, id, blank, buttons → 6 rows.
+        # Hints pinned to h-2 (last row inside border); center block in rows 1..h-3.
+        body_h = max(1, h - 3)
+        block = 6
+        y0 = 1 + max(0, (body_h - block) // 2)
 
         put(stdscr, y0, center_x(w, title), title, curses.A_BOLD)
+
+        sep = "─" * len(title)
+        put(stdscr, y0 + 1, center_x(w, sep), sep, curses.A_DIM)
+
         put(
             stdscr,
-            y0 + 2,
+            y0 + 3,
             center_x(w, subtitle),
             subtitle,
             curses.color_pair(2) | curses.A_BOLD if curses.has_colors() else curses.A_BOLD,
         )
 
-        yes = "  Yes  "
-        no = "  No  "
+        yes = "[ Yes ]"
+        no = "[ No  ]"
         gap = 3
         total = len(yes) + gap + len(no)
         x0 = center_x(w, " " * total)
-        btn_y = y0 + 4
+        btn_y = y0 + 5
         yes_x0, yes_x1 = x0, x0 + len(yes)
         no_x0, no_x1 = x0 + len(yes) + gap, x0 + len(yes) + gap + len(no)
 
@@ -119,9 +142,9 @@ def dialog(stdscr: curses.window, title: str, subtitle: str) -> bool:
         put(stdscr, btn_y, yes_x0, yes, yes_attr)
         put(stdscr, btn_y, no_x0, no, no_attr)
 
-        # Always pin hints to the bottom row of the popup.
-        hint = "y/n  ·  click  ·  enter"
-        put(stdscr, h - 1, center_x(w, hint), hint, curses.A_DIM)
+        # Hints pinned to the last row inside the border.
+        hint = "y/n · tab · enter"
+        put(stdscr, h - 2, center_x(w, hint), hint, curses.A_DIM)
 
         stdscr.refresh()
         ch = stdscr.getch()
