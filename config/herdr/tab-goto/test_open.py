@@ -14,11 +14,11 @@ def tabs(count: int, groups: int) -> list[dict[str, str]]:
 
 class PopupSizeTests(unittest.TestCase):
     def test_fits_tabs_and_workspace_headers_on_tall_terminal(self):
-        self.assertEqual(content_size(tabs(40, 8), 200, 65)[1], 54)
+        self.assertEqual(content_size(tabs(40, 8), 200, 65)[1], 64)
 
     def test_uses_available_height_before_scrolling(self):
         rows = tabs(55, 2)
-        self.assertEqual(content_size(rows, 200, 65)[1], 63)
+        self.assertEqual(content_size(rows, 200, 65)[1], 65)
         self.assertEqual(content_size(rows, 200, 30)[1], 30)
 
     def test_stays_inside_small_terminal(self):

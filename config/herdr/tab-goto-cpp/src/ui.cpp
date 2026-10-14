@@ -7,6 +7,7 @@
 
 #include <algorithm>
 #include <cerrno>
+#include <chrono>
 #include <cstdio>
 #include <cstring>
 #include <map>
@@ -15,20 +16,33 @@
 namespace tabgoto {
 namespace {
 
-// ANSI SGR foreground/background codes.
+// Nord palette, encoded as RGB for ANSI true-color runs.
+constexpr int kText = 0xD8DEE9;
+constexpr int kBrightText = 0xECEFF4;
+constexpr int kMuted = 0x7B88A1;
+constexpr int kDivider = 0x4C566A;
+// Standard ANSI colors preserve the original high-contrast selection.
+constexpr int kSelection = 46;
 constexpr int kBlack = 30;
-constexpr int kRed = 31;
-constexpr int kGreen = 32;
-constexpr int kYellow = 33;
-constexpr int kBlue = 34;
-constexpr int kMagenta = 35;
-constexpr int kCyan = 36;
-constexpr int kWhite = 37;
-constexpr int kCyanBackground = 46;
+constexpr int kRed = 0xBF616A;
+constexpr int kGreen = 0xA3BE8C;
+constexpr int kYellow = 0xEBCB8B;
+constexpr int kMagenta = 0xB48EAD;
+constexpr int kCyan = 0x88C0D0;
 
 // Bare Escape is ambiguous with the start of an escape sequence, so wait a
 // short moment for a following byte before treating it as a key press.
 constexpr int kEscapeDelayMs = 25;
+constexpr int kSpinnerIntervalMs = 120;
+constexpr char kTabShortcuts[] = "1234567890abcde";
+
+// Both pickers use 1-cell braille frames and the same monotonic cadence.
+const char* spinner_frame() {
+    static const char* frames[] = {"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"};
+    const auto milliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::steady_clock::now().time_since_epoch()).count();
+    return frames[(milliseconds / kSpinnerIntervalMs) % 10];
+}
 
 struct Size {
     int width;
@@ -51,33 +65,49 @@ struct Style {
         : fg(foreground), bg(background), bold(is_bold), dim(is_dim) {}
 };
 
-Style bold_style() { return Style{-1, -1, true, false}; }
-Style dim_style() { return Style{-1, -1, false, true}; }
-Style selected_style() { return Style{kBlack, kCyanBackground, true, false}; }
-Style tree_style() { return Style{kWhite, -1, false, true}; }
-Style tree_selected_style() { return Style{kBlack, kCyanBackground, false, true}; }
-Style current_style() { return Style{kCyan, -1, true, false}; }
-Style last_style() { return Style{kYellow, -1, true, false}; }
+Style bold_style() { return Style{kBrightText, -1, true, false}; }
+Style dim_style() { return Style{kMuted, -1, false, false}; }
+Style selected_style() { return Style{kBlack, kSelection, true, false}; }
+Style current_style() { return Style{kCyan, -1, false, false}; }
 
 Style badge_style(StatusKind kind, bool selected) {
-    int fg = kWhite;
+    int fg = kMuted;
     switch (kind) {
         case StatusKind::Working: fg = kYellow; break;
         case StatusKind::Idle: fg = kGreen; break;
-        case StatusKind::Done: fg = selected ? kBlue : kCyan; break;
+        case StatusKind::Done: fg = kCyan; break;
         case StatusKind::Blocked: fg = kRed; break;
         case StatusKind::Unknown: fg = kMagenta; break;
-        case StatusKind::Other: fg = selected ? kBlack : kWhite; break;
+        case StatusKind::Other: break;
     }
-    return Style{fg, selected ? kCyanBackground : -1, true, false};
+    if (selected) {
+        switch (kind) {
+            case StatusKind::Working: fg = 33; break;
+            case StatusKind::Idle: fg = 32; break;
+            case StatusKind::Done: fg = 34; break;
+            case StatusKind::Blocked: fg = 31; break;
+            case StatusKind::Unknown: fg = 35; break;
+            case StatusKind::Other: fg = kBlack; break;
+        }
+    }
+    return Style{fg, selected ? kSelection : -1, selected, false};
 }
 
 std::string sgr(const Style& style) {
     std::string code = "\x1b[0";
     if (style.bold) code += ";1";
     if (style.dim) code += ";2";
-    if (style.fg >= 0) code += ";" + std::to_string(style.fg);
-    if (style.bg >= 0) code += ";" + std::to_string(style.bg);
+    for (int channel = 0; channel < 2; ++channel) {
+        const int color = channel == 0 ? style.fg : style.bg;
+        if (color >= 0 && color < 256) {
+            code += ";" + std::to_string(color);
+        } else if (color >= 256) {
+            code += channel == 0 ? ";38;2;" : ";48;2;";
+            code += std::to_string((color >> 16) & 255) + ";" +
+                    std::to_string((color >> 8) & 255) + ";" +
+                    std::to_string(color & 255);
+        }
+    }
     code += "m";
     return code;
 }
@@ -166,7 +196,7 @@ private:
     bool active_ = false;
 };
 
-enum class Key { Char, Up, Down, Left, Right, Enter, Escape, Backspace, CtrlU, Ignore };
+enum class Key { Char, Up, Down, Left, Right, Enter, Escape, Backspace, CtrlU, Tick, Ignore };
 
 struct Event {
     enum class Kind { Key, Mouse };
@@ -185,11 +215,22 @@ class Input {
 public:
     explicit Input(int fd) : fd_(fd) {}
 
-    // Blocks until one complete event is available; false on EOF.
-    bool next(Event& event) {
+    // Waits for an event or animation tick; false on EOF or an input error.
+    bool next(Event& event, int timeout_ms = -1) {
         while (true) {
             if (parse(event) == ParseResult::Event) {
                 return true;
+            }
+            // Finish partial key/mouse sequences before scheduling another tick.
+            if (buffer_.empty() && timeout_ms >= 0) {
+                struct pollfd descriptor {fd_, POLLIN, 0};
+                const int ready = poll(&descriptor, 1, timeout_ms);
+                if (ready == 0 || (ready < 0 && errno == EINTR)) {
+                    event = Event{};
+                    event.key = Key::Tick;
+                    return true;
+                }
+                if (ready < 0) return false;
             }
             if (!fill(-1)) {
                 return false;
@@ -383,6 +424,24 @@ int scroll_top(int cursor, int view_h) {
     return top;
 }
 
+// Shared by rendering and hit testing so compact windows keep matching rows.
+struct Layout {
+    int inner;
+    int search_row;
+    int list_top;
+    int separator_bottom;
+    int footer_rows;
+    int view_h;
+
+    explicit Layout(const Size& size)
+        : inner(size.width - 1),
+          search_row(size.height >= 12 ? 2 : 1),
+          list_top(search_row + 2),
+          separator_bottom(size.height - (size.width >= 60 && size.height >= 10 ? 2 : 1) - 1),
+          footer_rows(size.height - separator_bottom - 1),
+          view_h(std::max(1, separator_bottom - list_top)) {}
+};
+
 class Picker {
 public:
     Picker(const std::vector<Row>& rows, int start, Optional<std::string> last_id)
@@ -412,7 +471,7 @@ public:
             rebuild();
             const Size size = terminal_size();
 
-            if (size.height < 4 || size.width < 16) {
+            if (size.height < 6 || size.width < 24) {
                 std::string frame;
                 put(frame, size.width, 0, 0, "window too small", bold_style());
                 write_all(frame);
@@ -430,11 +489,26 @@ public:
             }
 
             write_all(render(size));
-            Event event;
-            if (!input.next(event)) {
-                return Optional<int>();
+            const bool animating = std::any_of(entries_.begin(), entries_.end(), [&](const Entry& entry) {
+                return entry.kind == EntryKind::Tab &&
+                    status_kind(rows_[static_cast<size_t>(entry.tab_index)].status) == StatusKind::Working;
+            });
+            while (true) {
+                Event event;
+                if (!input.next(event, animating ? kSpinnerIntervalMs : -1)) {
+                    return Optional<int>();
+                }
+                if (event.kind == Event::Kind::Key && event.key == Key::Tick) {
+                    const Size current_size = terminal_size();
+                    if (current_size.width != size.width || current_size.height != size.height) {
+                        break;
+                    }
+                    write_all(render_spinners(size));
+                    continue;
+                }
+                handle(event, size);
+                break;
             }
-            handle(event, size);
         }
         return result_;
     }
@@ -463,158 +537,190 @@ private:
         cursor_ = std::max(0, std::min(cursor_, static_cast<int>(entries.size()) - 1));
     }
 
+    // Add workspace spacing only when the whole list fits without scrolling.
+    std::vector<int> visible_entries(int view_h) const {
+        int groups = 0;
+        for (const Entry& entry : entries_) {
+            if (entry.kind == EntryKind::Workspace) ++groups;
+        }
+        const bool spaced = static_cast<int>(entries_.size()) + std::max(0, groups - 1) <= view_h;
+        const int top = spaced ? 0 : scroll_top(cursor_, view_h);
+        std::vector<int> visible;
+        for (int i = top; i < static_cast<int>(entries_.size()) &&
+                          static_cast<int>(visible.size()) < view_h; ++i) {
+            if (spaced && i > 0 && entries_[i].kind == EntryKind::Workspace) {
+                visible.push_back(-1);
+            }
+            visible.push_back(i);
+        }
+        return visible;
+    }
+
+    // Animation ticks update only spinner cells, preserving the rest of the popup.
+    std::string render_spinners(const Size& size) const {
+        std::string frame;
+        const Layout layout(size);
+        const std::vector<int> visible = visible_entries(layout.view_h);
+        const char* spinner = spinner_frame();
+        for (size_t i = 0; i < visible.size(); ++i) {
+            const int index = visible[i];
+            if (index < 0) continue;
+            const Entry& entry = entries_[static_cast<size_t>(index)];
+            if (entry.kind != EntryKind::Tab) continue;
+            const Row& row = rows_[static_cast<size_t>(entry.tab_index)];
+            if (status_kind(row.status) != StatusKind::Working) continue;
+            put(frame, size.width, layout.list_top + static_cast<int>(i), layout.inner - 10,
+                spinner, badge_style(StatusKind::Working, index == cursor_));
+        }
+        return frame;
+    }
+
     std::string render(const Size& size) const {
         std::string frame;
-        const int inner = std::max(0, size.width - 1);
+        const Layout layout(size);
+        const int inner = layout.inner;
+        const int right = inner - 1;
+        const std::vector<int> matching_tabs = filtered_tab_indices(rows_, filter_on_, query_);
+        std::set<std::string> workspaces;
+        for (const Row& row : rows_) workspaces.insert(row.workspace_id);
 
-        const std::string help =
-            query_mode_ ? "/" + query_ + "█  arrows move  esc done  ^u clear"
-                        : "j/k · gg/G · 1-9 · n last · / filter · click · h/l fold · enter/space · f · esc";
-        put(frame, size.width, 0, 1, fit(help, std::max(0, inner - 1)), dim_style());
+        std::string summary;
+        if (filter_on_ || !query_.empty()) {
+            summary = std::to_string(matching_tabs.size()) + " / " +
+                      std::to_string(rows_.size()) + " matches";
+        } else {
+            summary = std::to_string(rows_.size()) + " tabs / " +
+                      std::to_string(workspaces.size()) + " spaces";
+        }
+        if (inner < 42) {
+            summary = std::to_string(matching_tabs.size()) + "/" + std::to_string(rows_.size());
+        }
+        put(frame, size.width, 0, 1, "TAB GOTO", bold_style());
+        put(frame, size.width, 0, right - static_cast<int>(summary.size()), summary, dim_style());
 
-        std::string flags;
-        if (filter_on_) flags += "F";
-        if (!query_.empty()) flags += "/";
-        if (!flags.empty()) {
-            put(frame, size.width, 0, std::max(0, inner - static_cast<int>(flags.size()) - 1), flags,
-                bold_style());
+        const std::string filter_label = filter_on_ ? "[status]" : "";
+        const int search_width = right - 3 - static_cast<int>(filter_label.size()) -
+                                 (filter_on_ ? 2 : 0);
+        std::string search = query_;
+        if (query_mode_) {
+            search += "█";
+        } else if (search.empty()) {
+            search = "Search tabs...";
+        }
+        put(frame, size.width, layout.search_row, 1, "/", current_style());
+        put(frame, size.width, layout.search_row, 3, fit(search, search_width),
+            query_mode_ ? current_style() : dim_style());
+        if (filter_on_) {
+            put(frame, size.width, layout.search_row,
+                right - static_cast<int>(filter_label.size()), filter_label, current_style());
+        }
+        const std::string separator = repeat("─", std::max(0, inner - 2));
+        const Style divider{kDivider, -1, false, false};
+        put(frame, size.width, layout.search_row + 1, 1, separator, divider);
+
+        // Shortcut numbers follow expanded tabs, including entries outside the viewport.
+        std::map<int, char> tab_ordinal;
+        int ordinal = 0;
+        for (size_t i = 0; i < entries_.size(); ++i) {
+            if (entries_[i].kind == EntryKind::Tab && ++ordinal <= 15) {
+                tab_ordinal[static_cast<int>(i)] = kTabShortcuts[ordinal - 1];
+            }
         }
 
-        const std::pair<int, int> widths = tree_tab_width(inner);
-        const int name_width = widths.first;
-        const int status_width = widths.second;
-        const std::string separator = " " + repeat("─", std::max(0, inner - 2));
-        put(frame, size.width, 1, 0, fit(separator, inner), dim_style());
+        if (entries_.empty()) {
+            const std::string message = query_.empty() ? "No matches. f: reset status" :
+                                                        "No matches. /: edit search";
+            put(frame, size.width, layout.list_top, 2, fit(message, inner - 3), dim_style());
+        }
 
-        const int list_top = 2;
-        const int footer_row = size.height - 1;
-        const int separator_bottom = size.height - 2;
-        const int view_h = std::max(1, separator_bottom - list_top);
+        const std::vector<int> visible = visible_entries(layout.view_h);
+        for (size_t row_i = 0; row_i < visible.size(); ++row_i) {
+            const int entry_index = visible[row_i];
+            if (entry_index < 0) continue;
+            const Entry& entry = entries_[static_cast<size_t>(entry_index)];
+            const bool selected = entry_index == cursor_;
+            const int y = layout.list_top + static_cast<int>(row_i);
+            const int background = selected ? kSelection : -1;
+            const Style base{selected ? kBlack : kText, background, selected, false};
+            const Style muted{selected ? kBlack : kMuted, background, false, false};
+            const Style accent{selected ? kBlack : kCyan, background, true, false};
 
-        // 1-9 jump numbers over the visible tab entries.
-        std::map<int, int> tab_ordinal;
-        int visible_tabs = 0;
-        for (size_t i = 0; i < entries_.size(); ++i) {
-            if (entries_[i].kind != EntryKind::Tab) {
+            if (selected) {
+                put(frame, size.width, y, 0, repeat(" ", inner), selected_style());
+            }
+            if (entry.kind == EntryKind::Workspace) {
+                const std::string count = std::to_string(entry.count) +
+                                          (entry.count == 1 ? " tab" : " tabs");
+                const int count_at = right - static_cast<int>(count.size());
+                put(frame, size.width, y, 1, entry.expanded ? "▾" : "▸", accent);
+                put(frame, size.width, y, 3, fit(entry.label, count_at - 5),
+                    Style{selected ? kBlack : kBrightText, background, true, false});
+                put(frame, size.width, y, count_at, count, muted);
                 continue;
             }
-            ++visible_tabs;
-            if (visible_tabs <= 9) {
-                tab_ordinal[static_cast<int>(i)] = visible_tabs;
+
+            const Row& row = rows_[static_cast<size_t>(entry.tab_index)];
+            const int name_at = 10;
+            const int status_at = right - 7;
+            const int name_width = status_at - name_at - 4;
+            if (selected) put(frame, size.width, y, 1, ">", accent);
+            const auto number = tab_ordinal.find(entry_index);
+            if (number != tab_ordinal.end()) {
+                put(frame, size.width, y, 3, std::string(1, number->second),
+                    selected ? accent : muted);
             }
+            put(frame, size.width, y, name_at, fit(strip_num_prefix(row.tab), name_width),
+                base);
+            if (row.focused) {
+                put(frame, size.width, y, 6, "●",
+                    Style{selected ? kBlack : 36, background, true, false});
+            } else if (last_id_.has_value() && *last_id_ == row.tab_id) {
+                put(frame, size.width, y, 8, "○",
+                    Style{selected ? kBlack : 33, background, true, false});
+            }
+            put(frame, size.width, y, status_at, status_badge(row.status),
+                badge_style(status_kind(row.status), selected));
         }
 
-        if (entries_.empty()) {
-            std::string message = "no matches";
-            if (!query_.empty()) {
-                message += " — edit / or ^u clear";
-            } else if (filter_on_) {
-                message += " — press f";
-            }
-            put(frame, size.width, list_top, 1, fit(message, std::max(0, inner - 1)), dim_style());
+        put(frame, size.width, layout.separator_bottom, 1, separator, divider);
+        const int footer_row = layout.separator_bottom + 1;
+        const bool workspace_selected = !entries_.empty() &&
+            entries_[static_cast<size_t>(cursor_)].kind == EntryKind::Workspace;
+        const std::string enter_hint = workspace_selected ? "Enter fold" : "Enter switch";
+        const std::string escape_hint = query_mode_ ? "Esc done" :
+                                       (query_.empty() ? "Esc close" : "Esc clear");
+        std::string help;
+        std::string extra;
+        if (query_mode_) {
+            help = "Up/Down move   " + enter_hint;
+            extra = "Ctrl-U clear   Esc leave input";
         } else {
-            const int top = scroll_top(cursor_, view_h);
-            for (int row_i = 0; row_i < view_h; ++row_i) {
-                const int entry_index = top + row_i;
-                if (entry_index >= static_cast<int>(entries_.size())) {
-                    break;
-                }
-                const Entry& entry = entries_[entry_index];
-                const bool selected = entry_index == cursor_;
-                const int y = list_top + row_i;
-
-                Style base = bold_style();
-                Style tree = tree_style();
-                if (selected) {
-                    base = selected_style();
-                    tree = tree_selected_style();
-                    put(frame, size.width, y, 0, repeat(" ", inner), base);
-                }
-
-                if (entry.kind == EntryKind::Workspace) {
-                    const bool open = entry.expanded;
-                    std::string label = entry.label;
-                    if (!open) {
-                        label += "  (" + std::to_string(entry.count) + ")";
-                    }
-                    put(frame, size.width, y, 1, open ? "▾ " : "▸ ", tree);
-                    put(frame, size.width, y, 3, fit(label, std::max(0, inner - 3)), base);
-                    continue;
-                }
-
-                const Row& row = rows_[static_cast<size_t>(entry.tab_index)];
-                const bool is_current = row.focused;
-                const bool is_last =
-                    last_id_.has_value() && *last_id_ == row.tab_id && !is_current;
-                const std::string name = strip_num_prefix(row.tab);
-                // Columns: 1 branch(3) | 4 num(2) | 6 cur(2) | 8 last(2) | 10 name | badge
-                const int leaf_name_width =
-                    std::max(8, std::min(name_width, inner - 10 - 2 - status_width));
-                const int badge_at = 10 + leaf_name_width + 2;
-
-                put(frame, size.width, y, 1, entry.is_last_child ? "└─ " : "├─ ", tree);
-
-                const auto ordinal = tab_ordinal.find(entry_index);
-                put(frame, size.width, y, 4,
-                    ordinal == tab_ordinal.end() ? "  " : std::to_string(ordinal->second) + " ",
-                    selected ? base : tree);
-
-                put(frame, size.width, y, 6, is_current ? "● " : "  ",
-                    is_current ? (selected ? base : current_style()) : tree);
-                put(frame, size.width, y, 8, is_last ? "○ " : "  ",
-                    is_last ? (selected ? base : last_style()) : tree);
-                put(frame, size.width, y, 10, fit(name, leaf_name_width), base);
-
-                if (badge_at < inner) {
-                    put(frame, size.width, y, badge_at,
-                        fit(status_badge(row.status),
-                            std::min(status_width, std::max(0, inner - badge_at))),
-                        badge_style(status_kind(row.status), selected));
-                }
-            }
+            help = "j/k move   " + enter_hint + "   / search   f status";
+            extra = "1-9,0,a-e jump   n last   h/l fold   " + escape_hint;
         }
-
-        put(frame, size.width, separator_bottom, 0, separator, dim_style());
-
-        std::string footer;
-        if (entries_.empty()) {
-            footer = "0/0";
-            if (!query_.empty()) {
-                footer += " /" + query_;
-            }
+        if (layout.footer_rows == 2) {
+            put(frame, size.width, footer_row, 1, fit(help, inner - 2), dim_style());
+            put(frame, size.width, footer_row + 1, 1, fit(extra, inner - 2), dim_style());
         } else {
-            footer = std::to_string(cursor_ + 1) + "/" + std::to_string(entries_.size());
-            if (filter_on_) footer += " F";
-            if (!query_.empty()) footer += " /" + query_;
-            if (entries_[cursor_].kind == EntryKind::Workspace) {
-                const bool open = entries_[cursor_].expanded;
-                if (query_mode_) {
-                    footer += open ? " ← fold" : " → open";
-                } else {
-                    footer += open ? " h fold" : " l open";
-                }
+            help = enter_hint + (query_mode_ ? "  " : "  / search  ") + escape_hint;
+            if (inner < 34) {
+                help = workspace_selected ? "Enter fold" : "Enter pick";
+                help += query_mode_ ? "  Esc done" : "  / search";
             }
+            put(frame, size.width, footer_row, 1, fit(help, inner - 2), dim_style());
         }
-        put(frame, size.width, footer_row, 0, fit(footer, inner), dim_style());
-
-        return "\x1b[2J" + frame;
+        return "\x1b[2J" + frame + render_spinners(size);
     }
 
     void handle(const Event& event, const Size& size) {
         if (event.kind == Event::Kind::Mouse) {
             pending_g_ = false;
-            const int list_top = 2;
-            const int view_h = std::max(1, (size.height - 2) - list_top);
-            const int top = scroll_top(cursor_, view_h);
+            const Layout layout(size);
+            const std::vector<int> visible = visible_entries(layout.view_h);
             const int my = event.y;
-            const bool in_list =
-                my >= list_top && my < list_top + view_h && !entries_.empty();
             int target = -1;
-            if (in_list) {
-                target = top + (my - list_top);
-                if (target >= static_cast<int>(entries_.size())) {
-                    target = -1;
-                }
+            if (my >= layout.list_top && my < layout.list_top + static_cast<int>(visible.size())) {
+                target = visible[static_cast<size_t>(my - layout.list_top)];
             }
 
             // Hovering moves the highlight; pressing activates the row.
@@ -702,8 +808,9 @@ private:
             case 'n': pick_last_tab(); return;
             default: break;
         }
-        if (ch >= '1' && ch <= '9') {
-            jump_to_visible_tab(ch - '0');
+        const char* shortcut = std::strchr(kTabShortcuts, ch);
+        if (shortcut != nullptr) {
+            jump_to_visible_tab(static_cast<int>(shortcut - kTabShortcuts) + 1);
         }
     }
 

@@ -27,7 +27,7 @@ class PickerKeysTests(unittest.TestCase):
                 commands.append([str(Path(binary).resolve()), "picker"])
         return commands
 
-    def check_keys(self, keys, expected_tab, activate=b"\r"):
+    def check_keys(self, keys, expected_tab, activate=b"\r", tab_count=4):
         picker_dir = Path(__file__).resolve().parent
 
         for command in self.picker_commands():
@@ -37,7 +37,7 @@ class PickerKeysTests(unittest.TestCase):
                     {"tab_id": f"t{i}", "workspace_id": f"w{i // 2}",
                      "label": f"gG tab {i}", "agent_status": "working",
                      "focused": i == 1}
-                    for i in range(4)
+                    for i in range(tab_count)
                 ]
                 fixture = root / "tabs.json"
                 fixture.write_text(json.dumps({"tabs": tabs}))
@@ -63,7 +63,7 @@ class PickerKeysTests(unittest.TestCase):
                 )
                 os.close(slave)
                 try:
-                    self.wait_for(master, b"3/6")
+                    self.wait_for(master, b"TAB GOTO")
                     # Separate Escape from the next key so it is not decoded as Alt.
                     # Drain incremental curses output instead of assuming full redraws.
                     for key in keys:
@@ -96,6 +96,41 @@ class PickerKeysTests(unittest.TestCase):
             if expected in output:
                 return
         self.fail(f"Missing {expected!r} in terminal output: {output!r}")
+
+    def test_letters_jump_to_tabs_eleven_through_fifteen(self):
+        for key, expected in zip(b"abcde", range(10, 15)):
+            with self.subTest(key=chr(key)):
+                self.check_keys(b"", f"t{expected}", activate=bytes([key]), tab_count=20)
+
+    def test_letter_counts_only_expanded_tabs(self):
+        self.check_keys(b"h", "t16", activate=b"e", tab_count=20)
+
+    def test_letter_jumps_with_search_filter(self):
+        self.check_keys(b"/gG tab\x1b", "t14", activate=b"e", tab_count=20)
+
+    def test_letter_is_text_in_search_mode(self):
+        self.check_keys(b"/e\x1b\x1bG", "t19", tab_count=20)
+
+    def test_letter_ignores_fewer_than_fifteen_tabs(self):
+        self.check_keys(b"eG", "t3")
+
+    def test_f_remains_status_filter(self):
+        self.check_keys(b"fG", "t19", tab_count=20)
+
+    def test_zero_jumps_to_tenth_tab_across_workspaces(self):
+        self.check_keys(b"", "t9", activate=b"0", tab_count=16)
+
+    def test_zero_counts_only_expanded_tabs(self):
+        self.check_keys(b"h", "t11", activate=b"0", tab_count=16)
+
+    def test_zero_jumps_with_search_filter(self):
+        self.check_keys(b"/gG tab\x1b", "t9", activate=b"0", tab_count=16)
+
+    def test_zero_is_text_in_search_mode(self):
+        self.check_keys(b"/tab 10", "t10", tab_count=16)
+
+    def test_zero_ignores_fewer_than_ten_tabs(self):
+        self.check_keys(b"0G", "t3")
 
     def test_space_activates(self):
         self.check_keys(b"G", "t3", activate=b" ")

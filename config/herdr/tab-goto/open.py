@@ -8,22 +8,21 @@ import os
 import socket
 import sys
 
-from picker import herdr_bin, herdr_json, load_tabs
+from picker import _TAB_NUM_PREFIX, herdr_bin, herdr_json, load_tabs
 
 
 def content_size(rows: list[dict[str, str]], cols: int, lines: int) -> tuple[int, int]:
     groups = len({row["workspace_id"] for row in rows})
-    # Four picker chrome rows plus the two outer border rows.
-    height = min(max(len(rows) + groups + 6, 10), lines)
+    # 7 chrome rows, 2 outer border rows, and optional workspace spacing.
+    wanted = len(rows) + groups + max(0, groups - 1) + 9
+    height = min(max(wanted, 12), lines)
     max_line = max(
-        (
-            2 + len(row["tab"]) + 2 + len(row["workspace"])
-            + 2 + max(4, len(row["status"]))
-            for row in rows
-        ),
-        default=21,
+        (max(len(_TAB_NUM_PREFIX.sub("", row["tab"]) or row["tab"]), len(row["workspace"]))
+         for row in rows),
+        default=0,
     )
-    width = min(max(max_line + 14, 48), cols * 92 // 100)
+    # Indentation, gaps, current/last, status, and outer popup borders.
+    width = min(max(max_line + 27, 68), cols * 92 // 100)
     return width, height
 
 

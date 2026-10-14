@@ -10,18 +10,22 @@ import os
 import re
 import subprocess
 import sys
+import time
 from typing import Any
 
 _TAB_NUM_PREFIX = re.compile(r"^\d+\s+")
+SPINNER_FRAMES = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"
+SPINNER_INTERVAL_MS = 120
+TAB_SHORTCUTS = "1234567890abcde"
 
 
 # Display badge + color pair id (base / selected-on-highlight)
 # badge text is fixed width 7 for column alignment
 STATUS_META: dict[str, tuple[str, int, int]] = {
-    "working": ("working", 10, 20),
-    "idle": ("idle   ", 11, 21),
-    "done": ("done   ", 12, 22),
-    "blocked": ("blocked", 13, 23),
+    "working": ("WORKING", 10, 20),
+    "idle": ("IDLE   ", 11, 21),
+    "done": ("DONE   ", 12, 22),
+    "blocked": ("BLOCKED", 13, 23),
     "unknown": ("?      ", 14, 24),
 }
 
@@ -150,18 +154,8 @@ def _status_badge(status: str) -> str:
     key = (status or "").strip().lower()
     if key in STATUS_META:
         return STATUS_META[key][0]
-    raw = (status or "?")[:7]
+    raw = (status or "--")[:7]
     return raw.ljust(7)
-
-
-def _tree_tab_width(inner: int) -> tuple[int, int]:
-    """Return (tab_name_width, status_width) for tree leaves.
-
-    Layout: pad(1)+branch(3)+num(2)+cur(2)+last(2)+name+gap(2)+status(7) ≈ 19 fixed.
-    """
-    w_st = 7
-    w_tab = max(12, inner - 19)
-    return w_tab, w_st
 
 
 def _put(stdscr: curses.window, y: int, x: int, text: str, attr: int = 0) -> int:
@@ -181,46 +175,73 @@ def _put(stdscr: curses.window, y: int, x: int, text: str, attr: int = 0) -> int
 
 
 def _init_colors() -> None:
+    """Initialize Nord colors, falling back to indexed or basic terminal colors."""
     if not curses.has_colors():
         return
     curses.start_color()
     curses.use_default_colors()
-    # 1 selected row soft highlight (content on cyan)
-    curses.init_pair(1, curses.COLOR_BLACK, curses.COLOR_CYAN)
-    # 2 dim text
-    curses.init_pair(2, curses.COLOR_WHITE, -1)
-    # status on default bg
-    curses.init_pair(10, curses.COLOR_YELLOW, -1)   # working
-    curses.init_pair(11, curses.COLOR_GREEN, -1)    # idle
-    curses.init_pair(12, curses.COLOR_CYAN, -1)     # done
-    curses.init_pair(13, curses.COLOR_RED, -1)      # blocked
-    curses.init_pair(14, curses.COLOR_MAGENTA, -1)  # unknown
-    curses.init_pair(15, curses.COLOR_WHITE, -1)    # other
-    # status on selected cyan bg
-    curses.init_pair(20, curses.COLOR_YELLOW, curses.COLOR_CYAN)
-    curses.init_pair(21, curses.COLOR_GREEN, curses.COLOR_CYAN)
-    curses.init_pair(22, curses.COLOR_BLUE, curses.COLOR_CYAN)
-    curses.init_pair(23, curses.COLOR_RED, curses.COLOR_CYAN)
-    curses.init_pair(24, curses.COLOR_MAGENTA, curses.COLOR_CYAN)
-    curses.init_pair(25, curses.COLOR_BLACK, curses.COLOR_CYAN)
-    # current marker
-    curses.init_pair(3, curses.COLOR_CYAN, -1)
-    # tree chrome (branches / fold icons) — always quieter than labels
-    curses.init_pair(5, curses.COLOR_WHITE, -1)
-    curses.init_pair(6, curses.COLOR_BLACK, curses.COLOR_CYAN)  # tree on selected row
-    curses.init_pair(7, curses.COLOR_YELLOW, -1)  # last-tab mark
+    # RGB, nearest xterm-256 color, and basic terminal fallback.
+    palette = {
+        "text": (0xD8DEE9, 253, curses.COLOR_WHITE),
+        "bright": (0xECEFF4, 255, curses.COLOR_WHITE),
+        "muted": (0x7B88A1, 103, curses.COLOR_WHITE),
+        "divider": (0x4C566A, 240, curses.COLOR_WHITE),
+        "red": (0xBF616A, 131, curses.COLOR_RED),
+        "green": (0xA3BE8C, 150, curses.COLOR_GREEN),
+        "yellow": (0xEBCB8B, 222, curses.COLOR_YELLOW),
+        "magenta": (0xB48EAD, 139, curses.COLOR_MAGENTA),
+        "cyan": (0x88C0D0, 109, curses.COLOR_CYAN),
+    }
+    colors: dict[str, int] = {}
+    for slot, (name, (rgb, indexed, basic)) in enumerate(palette.items(), start=240):
+        color = indexed if curses.COLORS >= 256 else basic
+        if curses.COLORS >= 256 and curses.can_change_color():
+            try:
+                channels = [round(((rgb >> shift) & 255) * 1000 / 255) for shift in (16, 8, 0)]
+                curses.init_color(slot, *channels)
+                color = slot
+            except curses.error:
+                pass
+        colors[name] = color
+
+    # Keep the original ANSI selection and current/last marker colors.
+    colors["selection"] = curses.COLOR_CYAN
+    colors["black"] = curses.COLOR_BLACK
+    colors["marker_current"] = curses.COLOR_CYAN
+    colors["marker_last"] = curses.COLOR_YELLOW
+    pairs = {
+        1: ("black", "selection"), 2: ("muted", None),
+        3: ("cyan", None), 4: ("text", None), 5: ("divider", None),
+        6: ("black", "selection"), 7: ("marker_last", None),
+        8: ("bright", None), 9: ("black", "selection"),
+        16: ("marker_current", None),
+    }
+    for offset, name in enumerate(("yellow", "green", "cyan", "red", "magenta", "muted")):
+        pairs[10 + offset] = (name, None)
+    for pair, (foreground, background) in pairs.items():
+        curses.init_pair(pair, colors[foreground], colors[background] if background else -1)
+    for offset, color in enumerate((curses.COLOR_YELLOW, curses.COLOR_GREEN, curses.COLOR_BLUE,
+                                    curses.COLOR_RED, curses.COLOR_MAGENTA, curses.COLOR_BLACK)):
+        curses.init_pair(20 + offset, color, curses.COLOR_CYAN)
+
+
+def _color_attr(pair: int, selected: bool = False, bold: bool = False) -> int:
+    """Return a color attribute, keeping selection visible on monochrome terminals."""
+    if curses.has_colors():
+        attr = curses.color_pair(pair)
+    else:
+        attr = curses.A_REVERSE if selected else curses.A_NORMAL
+    return attr | curses.A_BOLD if bold else attr
 
 
 def _status_pair(status: str, selected: bool) -> int:
     key = (status or "").strip().lower()
     meta = STATUS_META.get(key)
-    if not curses.has_colors():
-        return curses.A_BOLD if selected else curses.A_NORMAL
     if meta:
         pair = meta[2] if selected else meta[1]
     else:
         pair = 25 if selected else 15
-    return curses.color_pair(pair) | curses.A_BOLD
+    return _color_attr(pair, selected, bold=selected)
 
 
 def _is_interesting_status(status: str) -> bool:
@@ -277,7 +298,7 @@ def _build_entries(
         indices = by_ws.get(wid) or []
         if not indices:
             continue
-        # Expanded set is authoritative (current ws starts expanded in pick_index).
+        # The expanded set preserves folding while filters change.
         is_open = wid in expanded
         entries.append(
             {
@@ -289,16 +310,30 @@ def _build_entries(
             }
         )
         if is_open:
-            for n, i in enumerate(indices):
+            for i in indices:
                 entries.append(
                     {
                         "kind": "tab",
                         "idx": i,
                         "workspace_id": wid,
-                        "is_last": n == len(indices) - 1,
                     }
                 )
     return entries
+
+
+def _visible_entries(entries: list[dict[str, Any]], cursor: int, view_h: int) -> list[int | None]:
+    """Map screen rows to entries, spacing workspaces only when the whole list fits."""
+    groups = sum(entry["kind"] == "ws" for entry in entries)
+    spaced = len(entries) + max(0, groups - 1) <= view_h
+    top = 0 if spaced else max(0, cursor - view_h + 1)
+    visible: list[int | None] = []
+    for index in range(top, len(entries)):
+        if len(visible) >= view_h:
+            break
+        if spaced and index > 0 and entries[index]["kind"] == "ws":
+            visible.append(None)
+        visible.append(index)
+    return visible
 
 
 def pick_index(
@@ -307,20 +342,16 @@ def pick_index(
     last_id: str | None = None,
 ) -> int | None:
     def _ui(stdscr: curses.window) -> int | None:
-        curses.curs_set(0)
+        try:
+            curses.curs_set(0)
+        except curses.error:
+            pass  # Some monochrome terminals cannot change cursor visibility.
         _init_colors()
         try:
             curses.mousemask(curses.ALL_MOUSE_EVENTS | curses.REPORT_MOUSE_POSITION)
             curses.mouseinterval(0)
         except curses.error:
             pass
-
-        # Unicode tree (width-1 box marks). Locale is set in main().
-        branch, branch_last = "├─ ", "└─ "
-        open_icon, shut_icon = "▾ ", "▸ "
-        cur_mark = "●"
-        last_mark = "○"
-        sep_char = "─"
 
         filter_on = False
         query = ""
@@ -368,179 +399,141 @@ def pick_index(
             entries = rebuild()
             stdscr.erase()
             height, width = stdscr.getmaxyx()
-            if height < 4 or width < 16:
+            if height < 6 or width < 24:
                 _put(stdscr, 0, 0, "window too small", curses.A_BOLD)
                 stdscr.refresh()
                 pending_g = False
+                stdscr.timeout(-1)
                 ch = stdscr.getch()
                 if ch in (27, ord("q")):
                     return None
                 continue
 
-            inner = max(0, width - 1)
-            if query_mode:
-                caret = "█"
-                help_l = f"/{query}{caret}  arrows move  esc done  ^u clear"
-            else:
-                help_l = "j/k · gg/G · 1-9 · n last · / filter · click · h/l fold · enter/space · f · esc"
-            _put(stdscr, 0, 1, _fit(help_l, max(0, inner - 1)), curses.A_DIM)
-            flags: list[str] = []
-            if filter_on:
-                flags.append("F")
-            if query:
-                flags.append("/")
-            if flags:
-                flag = "".join(flags)
-                _put(stdscr, 0, max(0, inner - len(flag) - 1), flag, curses.A_BOLD)
-
-            w_tab, w_st = _tree_tab_width(inner)
-            sep = " " + (sep_char * max(0, inner - 2))
-            _put(stdscr, 1, 0, _fit(sep, inner), curses.A_DIM)
-
-            list_top = 2
-            footer_row = height - 1
-            sep_bottom = height - 2
+            inner = width - 1
+            right = inner - 1
+            search_row = 2 if height >= 12 else 1
+            list_top = search_row + 2
+            footer_rows = 2 if width >= 60 and height >= 10 else 1
+            sep_bottom = height - footer_rows - 1
             view_h = max(1, sep_bottom - list_top)
+            visible = _visible_entries(entries, cursor, view_h)
+            animating = any(
+                entry["kind"] == "tab" and rows[int(entry["idx"])]["status"].strip().lower() == "working"
+                for entry in entries
+            )
+            stdscr.timeout(SPINNER_INTERVAL_MS if animating else -1)
+            spinner = SPINNER_FRAMES[
+                (time.monotonic_ns() // (SPINNER_INTERVAL_MS * 1_000_000)) % len(SPINNER_FRAMES)
+            ]
 
-            tab_ord: dict[int, int] = {}
-            n_vis = 0
-            for e_i, ent in enumerate(entries):
-                if ent.get("kind") == "tab":
-                    n_vis += 1
-                    if n_vis <= 9:
-                        tab_ord[e_i] = n_vis
+            matching_tabs = _filtered_tab_indices(rows, filter_on, query)
+            workspaces = {row["workspace_id"] for row in rows}
+            if filter_on or query:
+                summary = f"{len(matching_tabs)} / {len(rows)} matches"
+            else:
+                summary = f"{len(rows)} tabs / {len(workspaces)} spaces"
+            if inner < 42:
+                summary = f"{len(matching_tabs)}/{len(rows)}"
+            _put(stdscr, 0, 1, "TAB GOTO", _color_attr(8, bold=True))
+            _put(stdscr, 0, right - len(summary), summary, _color_attr(2))
+
+            filter_label = "[status]" if filter_on else ""
+            search_width = right - 3 - len(filter_label) - (2 if filter_on else 0)
+            search = query
+            if query_mode:
+                search += "█"
+            elif not search:
+                search = "Search tabs..."
+            _put(stdscr, search_row, 1, "/", _color_attr(3))
+            _put(stdscr, search_row, 3, _fit(search, search_width),
+                 _color_attr(3 if query_mode else 2))
+            if filter_on:
+                _put(stdscr, search_row, right - len(filter_label), filter_label, _color_attr(3))
+            separator = "─" * max(0, inner - 2)
+            _put(stdscr, search_row + 1, 1, separator, _color_attr(5))
+
+            # Numbers follow expanded tabs, including entries outside the viewport.
+            tab_ord: dict[int, str] = {}
+            ordinal = 0
+            for entry_index, ent in enumerate(entries):
+                if ent["kind"] == "tab":
+                    ordinal += 1
+                    if ordinal <= len(TAB_SHORTCUTS):
+                        tab_ord[entry_index] = TAB_SHORTCUTS[ordinal - 1]
 
             if not entries:
-                empty_msg = "no matches"
-                if query:
-                    empty_msg += " — edit / or ^u clear"
-                elif filter_on:
-                    empty_msg += " — press f"
-                _put(stdscr, list_top, 1, _fit(empty_msg, max(0, inner - 1)), curses.A_DIM)
-            else:
-                top = 0
-                if cursor >= top + view_h:
-                    top = cursor - view_h + 1
-                if cursor < top:
-                    top = cursor
+                message = "No matches. /: edit search" if query else "No matches. f: reset status"
+                _put(stdscr, list_top, 2, _fit(message, inner - 3), _color_attr(2))
 
-                for row_i in range(view_h):
-                    e_i = top + row_i
-                    if e_i >= len(entries):
-                        break
-                    ent = entries[e_i]
-                    selected = e_i == cursor
-                    y = list_top + row_i
+            for row_index, entry_index in enumerate(visible):
+                if entry_index is None:
+                    continue
+                ent = entries[entry_index]
+                selected = entry_index == cursor
+                y = list_top + row_index
+                base = _color_attr(1 if selected else 4, selected, bold=selected)
+                muted = _color_attr(6 if selected else 2, selected)
+                accent = _color_attr(9 if selected else 3, selected, bold=True)
+                bright = _color_attr(1 if selected else 8, selected, bold=True)
+                if selected:
+                    _put(stdscr, y, 0, " " * inner, base)
 
-                    if selected:
-                        base = (
-                            curses.color_pair(1) | curses.A_BOLD
-                            if curses.has_colors()
-                            else curses.A_REVERSE | curses.A_BOLD
-                        )
-                        # Branches/icons stay dimmer than the label even when selected.
-                        tree = (
-                            curses.color_pair(6) | curses.A_DIM
-                            if curses.has_colors()
-                            else curses.A_REVERSE | curses.A_DIM
-                        )
-                        _put(stdscr, y, 0, " " * inner, base)
-                    else:
-                        base = curses.A_BOLD
-                        tree = (
-                            curses.color_pair(5) | curses.A_DIM
-                            if curses.has_colors()
-                            else curses.A_DIM
-                        )
-
-                    if ent["kind"] == "ws":
-                        icon = open_icon if ent["expanded"] else shut_icon
-                        label = ent["workspace"]
-                        if not ent["expanded"]:
-                            label += f"  ({ent['count']})"
-                        # Fold/tree icon dim; workspace name stronger.
-                        _put(stdscr, y, 1, icon, tree)
-                        _put(
-                            stdscr,
-                            y,
-                            1 + len(icon),
-                            _fit(label, max(0, inner - 1 - len(icon))),
-                            base,
-                        )
-                        continue
-
-                    item_i = int(ent["idx"])
-                    row = rows[item_i]
-                    is_current = row.get("focused") == "1"
-                    is_last = bool(last_id) and row.get("tab_id") == last_id and not is_current
-                    twig = branch_last if ent.get("is_last") else branch
-                    # Drop herdr's own "1 foo" numbering; 1-9 jump keys are the only numbers shown.
-                    name = _TAB_NUM_PREFIX.sub("", row["tab"]) or row["tab"]
-                    badge = _status_badge(row["status"])
-                    # cols: 1 branch(3) | 4 num(2) | 6 cur(2) | 8 last(2) | 10 name
-                    name_w = max(8, min(w_tab, inner - 10 - 2 - w_st))
-                    badge_at = 10 + name_w + 2
-                    _put(stdscr, y, 1, twig, tree)
-                    num = tab_ord.get(e_i)
-                    num_cell = f"{num} " if num else "  "
-                    _put(stdscr, y, 4, num_cell, tree if not selected else base)
-                    cur_cell = f"{cur_mark} " if is_current else "  "
-                    if is_current and curses.has_colors():
-                        cur_attr = (
-                            (curses.color_pair(1) | curses.A_BOLD)
-                            if selected
-                            else (curses.color_pair(3) | curses.A_BOLD)
-                        )
-                    elif is_current:
-                        cur_attr = base
-                    else:
-                        cur_attr = tree
-                    last_cell = f"{last_mark} " if is_last else "  "
-                    if is_last and curses.has_colors():
-                        last_attr = (
-                            (curses.color_pair(1) | curses.A_BOLD)
-                            if selected
-                            else (curses.color_pair(7) | curses.A_BOLD)
-                        )
-                    elif is_last:
-                        last_attr = base
-                    else:
-                        last_attr = tree
-                    _put(stdscr, y, 6, cur_cell, cur_attr)
-                    _put(stdscr, y, 8, last_cell, last_attr)
-                    _put(stdscr, y, 10, _fit(name, name_w), base)
-                    if badge_at < inner:
-                        _put(
-                            stdscr,
-                            y,
-                            badge_at,
-                            _fit(badge, min(w_st, max(0, inner - badge_at))),
-                            _status_pair(row["status"], selected),
-                        )
-
-            _put(stdscr, sep_bottom, 0, sep, curses.A_DIM)
-
-            if entries:
-                footer = f"{cursor + 1}/{len(entries)}"
-                if filter_on:
-                    footer += " F"
-                if query:
-                    footer += f" /{query}"
-                ent = entries[cursor]
                 if ent["kind"] == "ws":
-                    if query_mode:
-                        footer += " ← fold" if ent["expanded"] else " → open"
-                    else:
-                        footer += " h fold" if ent["expanded"] else " l open"
+                    count = f"{ent['count']} tab" + ("" if ent["count"] == 1 else "s")
+                    count_at = right - len(count)
+                    _put(stdscr, y, 1, "▾" if ent["expanded"] else "▸", accent)
+                    _put(stdscr, y, 3, _fit(ent["workspace"], count_at - 5), bright)
+                    _put(stdscr, y, count_at, count, muted)
+                    continue
+
+                row = rows[int(ent["idx"])]
+                name_at = 10
+                status_at = right - 7
+                name_width = status_at - name_at - 4
+                if selected:
+                    _put(stdscr, y, 1, ">", accent)
+                number = tab_ord.get(entry_index)
+                if number is not None:
+                    _put(stdscr, y, 3, str(number), accent if selected else muted)
+                name = _TAB_NUM_PREFIX.sub("", row["tab"]) or row["tab"]
+                _put(stdscr, y, name_at, _fit(name, name_width), bright if selected else base)
+                if row.get("focused") == "1":
+                    _put(stdscr, y, 6, "●", _color_attr(1 if selected else 16, selected, bold=True))
+                elif last_id and row["tab_id"] == last_id:
+                    _put(stdscr, y, 8, "○", _color_attr(1 if selected else 7, selected, bold=True))
+                status_attr = _status_pair(row["status"], selected)
+                if row["status"].strip().lower() == "working":
+                    _put(stdscr, y, status_at - 2, spinner, status_attr)
+                _put(stdscr, y, status_at, _status_badge(row["status"]), status_attr)
+
+            _put(stdscr, sep_bottom, 1, separator, _color_attr(5))
+            footer_row = sep_bottom + 1
+            workspace_selected = bool(entries) and entries[cursor]["kind"] == "ws"
+            enter_hint = "Enter fold" if workspace_selected else "Enter switch"
+            if query_mode:
+                escape_hint = "Esc done"
+                help_text = f"Up/Down move   {enter_hint}"
+                extra = "Ctrl-U clear   Esc leave input"
             else:
-                footer = "0/0"
-                if query:
-                    footer += f" /{query}"
-            _put(stdscr, footer_row, 0, _fit(footer, inner), curses.A_DIM)
+                escape_hint = "Esc clear" if query else "Esc close"
+                help_text = f"j/k move   {enter_hint}   / search   f status"
+                extra = f"1-9,0,a-e jump   n last   h/l fold   {escape_hint}"
+            if footer_rows == 2:
+                _put(stdscr, footer_row, 1, _fit(help_text, inner - 2), _color_attr(2))
+                _put(stdscr, footer_row + 1, 1, _fit(extra, inner - 2), _color_attr(2))
+            else:
+                middle = "  " if query_mode else "  / search  "
+                help_text = enter_hint + middle + escape_hint
+                if inner < 34:
+                    help_text = "Enter fold" if workspace_selected else "Enter pick"
+                    help_text += "  Esc done" if query_mode else "  / search"
+                _put(stdscr, footer_row, 1, _fit(help_text, inner - 2), _color_attr(2))
 
             stdscr.refresh()
 
             ch = stdscr.getch()
+            if ch == -1:
+                continue  # Animation ticks must preserve pending keyboard prefixes.
 
             def move_down() -> None:
                 nonlocal cursor
@@ -602,18 +595,10 @@ def pick_index(
                     return None
                 if not entries:
                     return None
-                list_top_m = 2
-                sep_bottom_m = height - 2
-                view_h_m = max(1, sep_bottom_m - list_top_m)
-                top_m = 0
-                if cursor >= top_m + view_h_m:
-                    top_m = cursor - view_h_m + 1
-                if cursor < top_m:
-                    top_m = cursor
-                if my < list_top_m or my >= list_top_m + view_h_m:
+                if my < list_top or my >= list_top + len(visible):
                     return None
-                e_i = top_m + (my - list_top_m)
-                if e_i < 0 or e_i >= len(entries):
+                e_i = visible[my - list_top]
+                if e_i is None:
                     return None
                 ent = entries[e_i]
                 cursor = e_i
@@ -687,9 +672,9 @@ def pick_index(
                     for i, row in enumerate(rows):
                         if row.get("tab_id") == last_id:
                             return i
-            elif ord("1") <= ch <= ord("9"):
-                # 1-9: immediately focus the Nth visible tab (ignore if fewer).
-                want = ch - ord("0")
+            elif 0 <= ch < 128 and chr(ch) in TAB_SHORTCUTS:
+                # Shortcuts count expanded tabs; ignore keys beyond the list.
+                want = TAB_SHORTCUTS.index(chr(ch)) + 1
                 seen = 0
                 for ent in entries:
                     if ent.get("kind") != "tab":

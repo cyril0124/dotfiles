@@ -34,7 +34,6 @@ struct Entry {
     bool expanded = false;
     // Tab entries only: index into the row list.
     int tab_index = 0;
-    bool is_last_child = false;
 };
 
 enum class StatusKind { Working, Idle, Done, Blocked, Unknown, Other };
@@ -67,8 +66,5 @@ std::vector<Entry> build_entries(const std::vector<Row>& rows,
 
 // Popup size for a tab list, clamped to the terminal area.
 std::pair<int, int> content_size(const std::vector<Row>& rows, int cols, int lines);
-
-// Column widths for a tab leaf: (name width, status badge width).
-std::pair<int, int> tree_tab_width(int inner);
 
 }  // namespace tabgoto

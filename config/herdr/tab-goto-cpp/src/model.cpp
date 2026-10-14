@@ -9,14 +9,10 @@ namespace {
 
 // Popup floor and trailing slack: the picker stays comfortably wider than its
 // content so tab names are not cramped, even in a session with short labels.
-constexpr int kMinPopupWidth = 60;
-constexpr int kPopupWidthPadding = 14;
-
-// Layout of a tab leaf:
-//   pad(1) + branch(3) + num(2) + cur(2) + last(2) + name + gap(2) + status(7)
-constexpr int kFixedLeafColumns = 19;
+constexpr int kMinPopupWidth = 68;
+// Tab indentation, gaps, current/last column, status, and popup borders.
+constexpr int kPopupWidthPadding = 27;
 constexpr int kStatusWidth = 7;
-constexpr int kMinNameWidth = 12;
 
 bool is_space(char c) {
     return c == ' ' || c == '\t' || c == '\n' || c == '\r' || c == '\f' || c == '\v';
@@ -117,14 +113,14 @@ StatusKind status_kind(StringView status) {
 
 std::string status_badge(StringView status) {
     switch (status_kind(status)) {
-        case StatusKind::Working: return "working";
-        case StatusKind::Idle: return "idle   ";
-        case StatusKind::Done: return "done   ";
-        case StatusKind::Blocked: return "blocked";
+        case StatusKind::Working: return "WORKING";
+        case StatusKind::Idle: return "IDLE   ";
+        case StatusKind::Done: return "DONE   ";
+        case StatusKind::Blocked: return "BLOCKED";
         case StatusKind::Unknown: return "?      ";
         case StatusKind::Other: break;
     }
-    const std::string raw = status.empty() ? "?" : to_string(status);
+    const std::string raw = status.empty() ? "--" : to_string(status);
     return fit(utf8_prefix(raw, kStatusWidth), kStatusWidth);
 }
 
@@ -256,7 +252,6 @@ std::vector<Entry> build_entries(const std::vector<Row>& rows,
             leaf.kind = EntryKind::Tab;
             leaf.workspace_id = wid;
             leaf.tab_index = indices[n];
-            leaf.is_last_child = n + 1 == indices.size();
             entries.push_back(std::move(leaf));
         }
     }
@@ -268,25 +263,19 @@ std::pair<int, int> content_size(const std::vector<Row>& rows, int cols, int lin
     for (const Row& row : rows) {
         groups.insert(row.workspace_id);
     }
-    // Four picker chrome rows plus the two outer border rows.
-    const int wanted = static_cast<int>(rows.size()) + static_cast<int>(groups.size()) + 6;
-    const int height = std::min(std::max(wanted, 10), lines);
+    // 7 chrome rows, 2 outer border rows, and optional workspace spacing.
+    const int wanted = static_cast<int>(rows.size()) + static_cast<int>(groups.size()) +
+                       std::max(0, static_cast<int>(groups.size()) - 1) + 9;
+    const int height = std::min(std::max(wanted, 12), lines);
 
-    int max_line = 21;
+    int max_line = 0;
     for (const Row& row : rows) {
-        const int line = 2 + static_cast<int>(utf8_length(row.tab)) + 2 +
-                         static_cast<int>(utf8_length(row.workspace)) + 2 +
-                         std::max(4, static_cast<int>(utf8_length(row.status)));
-        max_line = std::max(max_line, line);
+        max_line = std::max(max_line, static_cast<int>(utf8_length(strip_num_prefix(row.tab))));
+        max_line = std::max(max_line, static_cast<int>(utf8_length(row.workspace)));
     }
     const int width = std::min(std::max(max_line + kPopupWidthPadding, kMinPopupWidth),
                                cols * 92 / 100);
     return {width, height};
-}
-
-std::pair<int, int> tree_tab_width(int inner) {
-    const int name_width = std::max(kMinNameWidth, inner - kFixedLeafColumns);
-    return {name_width, kStatusWidth};
 }
 
 }  // namespace tabgoto
