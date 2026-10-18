@@ -42,7 +42,9 @@ Mismatch → stop and report. Do not fall back to detached `pull/N/head` unless 
 
 ## After clone
 
-Edit code as requested. **Do not** `git commit` or `git push` (or `gh pr create` / force-push) unless the user explicitly asks.
+Edit code as requested. Leave changes uncommitted.
+
+Never `git commit`, `git push`, `gh pr create`, force-push, or amend unless the user asks. Permission covers that one action only and expires when it completes — no commit or push is implied for later edits in the same session.
 
 ## Notes
 
