@@ -11,11 +11,21 @@ Repo style doc (`CODE_STYLE.md`, `AGENTS.md`, `CONTRIBUTING.md`) is more specifi
 
 Rules are numbered so a review comment can cite one directly (`violates 20`). Each rule states the observable behavior, and adds the reasoning behind it where the rule is not self-evident.
 
+## Code classes
+
+The class decides whether repetition is a defect or a specification.
+
+| Class | Examples | Default |
+|---|---|---|
+| Reusable component | library, driver, shared helper | Consolidate duplicates (11) |
+| Procedural sequence | ordered steps that carry state between them | Inline; the same shape with different constants or values is not duplication |
+| Glue or generated code | wiring, adapter, generated output | Fix defects only |
+
 ## Naming
 
 1. Names state domain meaning, action, unit. The reader infers the value or the effect from the name without opening the definition.
 2. Use the term the current domain already uses. A coined name must be learned, and a term imported from another domain arrives carrying that domain's meaning, so the reader applies the wrong mental model. When the domain has no word for the concept, extend an existing term with a qualifier; take a foreign term only when the domain itself has adopted it.
-3. Give complex conditions + intermediate results meaningful names.
+3. Give complex conditions and intermediate results meaningful names. Name a literal only where its meaning is not visible at the use site, such as an encoded value or a unit conversion; a value the surrounding expression already explains stays literal.
 4. Prefix a name only where it competes for a shared namespace: file names, exported symbols, macros, module-level constants. Members, parameters, and locals are already separated by their container and take no prefix. A prefix there repeats the scope, and the reader strips it back off to find the name.
 5. Fix misleading names directly. A comment needed to correct a name's meaning signals a naming defect; design reasons and constraints can still need explanation.
 6. One concept, one name; parallel operations take parallel names. Different names imply different meanings, sending the reader hunting a difference that is not there.
@@ -24,9 +34,9 @@ Rules are numbered so a review comment can cite one directly (`violates 20`). Ea
 ## Structure
 
 8. Straightforward control flow: expand nested ternaries, dense chains, multi-action expressions into clear steps. Keep state changes + failure paths visible; guard clauses where they cut nesting.
-9. One responsibility per function. Extract helpers for meaningful operations, not to meet a line limit.
+9. One responsibility per function. Extract helpers for meaningful operations, not to meet a line limit. A body under 10 lines, taking 3 or fewer parameters, with fewer than 4 call sites, stays inline.
 10. Call the primitive directly. A helper that only forwards arguments or renames a framework call adds a name to learn, no capability.
-11. Reuse existing behavior before adding an implementation. Consolidate duplicate or near-identical routines; choose a reuse mechanism that preserves clear responsibilities instead of requiring an extra parameter in every case.
+11. Reuse existing behavior before adding an implementation. Two blocks are duplicates only when they must change together for the same reason: variants that differ in constants, thresholds, or the message they emit stay separate, and a flag added only to merge them proves they are not the same operation.
 12. Keep related logic together; introduce abstractions only for current needs.
 13. Express pure, read-only, immutable, or asynchronous properties with declarations the language and toolchain support, so tools can check the contract. Propagate changes through callers only as required by that property's actual language and framework rules.
 14. Annotate types at callable boundaries where the language supports it: concrete domain type, not a generic container.
