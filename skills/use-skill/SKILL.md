@@ -1,21 +1,21 @@
 ---
 name: use-skill
-description: Find the skills a request needs, read them from public sources, then follow them, asking before any install.
+description: Find the skills a request needs among local and public candidates, read them where they live, then follow them, asking before any install.
 disable-model-invocation: true
 argument-hint: "What do you want done?"
 ---
 
 # Use Skill
 
-Resolve a request by delegating to existing skills. Name the need, search, read the source, follow the steps. Skills live outside this workspace and get read where they live.
+Resolve a request by delegating to existing skills. Name the need, then search both the local list and the public ecosystem, read the source, follow the steps. The local list is a cache of past installs, not the ecosystem: steps 2 and 3 run on every request, and a local match never ends the search.
 
 ## Workflow
 
 1. **Name the need.** Write one line holding a domain, a task, and a deliverable, for example `domain: pdf`, `task: extract tables`, `deliverable: csv rows`. Add what the user will do with the result and any tool or format they named. The line is done when it carries a searchable domain noun, a verb, and the output form.
 
-2. **Check local skills first.** List `~/.agents/skills/*/SKILL.md` and the project's `.agents/skills/`, and read the `description` lines in their frontmatter. A local skill sits on disk already, so it costs no fetch. Done when you hold every local candidate, or none.
+2. **Take inventory of local skills.** List `~/.agents/skills/*/SKILL.md` and the project's `.agents/skills/`, and read the `description` lines in their frontmatter. This step builds one half of the candidate list. A local match adds a candidate, it does not resolve the request. Done when you hold every local candidate, or none.
 
-3. **Search the ecosystem.** Query the skills.sh search API:
+3. **Search the ecosystem.** Run this step on every request, including ones where a local skill already fits. Query the skills.sh search API:
 
    ```bash
    curl -s --get --data-urlencode "q=<query words>" https://skills.sh/api/search | python3 -c \
@@ -24,9 +24,9 @@ Resolve a request by delegating to existing skills. Name the need, search, read 
        print(s["id"], s["installs"], s["source"])'
    ```
 
-   Run two or three keyword variants (`pdf extract`, `pdf table`, `document parsing`). Favor sources with 1K+ installs and known owners (`anthropics`, `vercel-labs`, `microsoft`). One job, one search: a request spanning writing, rendering, and publishing has a skill per job. Done when every job in the request holds 0-3 candidates, or the variants stop returning anything new.
+   Run two or three keyword variants (`pdf extract`, `pdf table`, `document parsing`). Favor sources with 1K+ installs and known owners (`anthropics`, `vercel-labs`, `microsoft`). One job, one search: a request spanning writing, rendering, and publishing has a skill per job. Done when every job in the request holds 0-3 candidates drawn from both the local inventory and these results, or the variants stop returning anything new.
 
-4. **Pick the set, then read each skill in full.** A request often needs more than one skill. Name the set before reading, one skill per job, and no more than the request needs. For each one, resolve `<owner>/<repo>` plus the skill name to its real `SKILL.md` path:
+4. **Pick the set, then read each skill in full.** A request often needs more than one skill. Name the set before reading, one skill per job, and no more than the request needs. A local winner gets read straight off disk. Every other one resolves `<owner>/<repo>` plus the skill name to its real `SKILL.md` path:
 
    ```bash
    curl -s "https://api.github.com/repos/<owner>/<repo>/git/trees/HEAD?recursive=1" \
@@ -53,12 +53,13 @@ Each run finishes with one `Skill:` line per skill used, in the order they ran, 
 ```
 Skill: <name> (<source URL, or "already installed">)
 Skill: <name> (<source URL>)
+Searched: <query variants run, with each one's top candidates and their install counts>
 Followed: <which steps ran, per skill>
 Produced: <artifact paths, or "nothing on disk">
 Skipped: <step and reason, or "none">
 ```
 
-Name every skill, including the ones already on disk. For a skill read from the web, include the URL it came from. When one skill led the work and another only informed it, say so on the line. Then stop. No offer of further work.
+Name every skill, including the ones already on disk. For a skill read from the web, include the URL it came from. The `Searched:` line is the evidence step 3 ran, and it carries the candidates that lost as well as the ones that won: a run whose `Searched:` line is empty or holds no queries did not follow this skill. When one skill led the work and another only informed it, say so on the line. Then stop. No offer of further work.
 
 ## Ask-first list
 
@@ -78,4 +79,8 @@ Say the search came up empty, list the queries you tried, then finish the reques
 
 ## Choosing between candidates
 
-Pick a set rather than always a single skill. Rank each candidate by whether it is already installed, then install count, then source reputation. Break ties by which one's steps and completion criteria fit that job. When the best match covers only part of a job, follow it for that part and finish the rest yourself. Drop any candidate that adds no step the others lack.
+Pick a set rather than always a single skill. Rank by fit to the job first: whether the candidate's steps and completion criteria produce the deliverable the request names. An installed skill earns no rank from being installed; installation only breaks ties, because it saves a fetch. Below fit, rank by install count, then source reputation. When a local candidate and an ecosystem candidate both fit, follow the better fit and name the other on the `Searched:` line. When the best match covers only part of a job, follow it for that part and finish the rest yourself. Drop any candidate that adds no step the others lack.
+
+## Failure to avoid
+
+Reaching for the local candidate and stopping. The local list holds what past sessions installed, not what the ecosystem has; a request whose best skill sits on the web runs worse when only the local list gets read. Step 3 runs on every request, and `Searched:` shows what it returned.
