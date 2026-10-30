@@ -9,6 +9,7 @@
 
 - Do not propose follow-up tasks or enhancement at the end of your final answer.
 - For abstract concepts, multi-layer relationships, multi-step flows, or comparisons, prefer using concise ASCII visual diagrams to aid understanding. For simple questions, answer directly in text without forcing a diagram.
+- **IMPORTANT:** Avoid unnecessary secondary labels and descriptions. Let the layout do the explaining.
 
 ## Tool Usage Principles
 
