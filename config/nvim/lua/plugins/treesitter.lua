@@ -5,6 +5,13 @@ local ENSURE_INSTALL = {
     'c', 'cpp', 'lua', 'python', 'rust', 'scala', 'markdown', 'markdown_inline', 'diff', 'systemverilog',
 }
 
+-- ts-install keeps parsers outside the default runtimepath. Prepending that
+-- directory at startup stops Neovim's bundled grammars from winning the first
+-- registration: they are older than the nvim-treesitter `main` queries expect
+-- (bundled lua 0.4.0 has no `operator` field), and language.add() keeps the
+-- first parser loaded for the rest of the session.
+local PARSER_DIR = vim.fs.joinpath(vim.fn.stdpath('data'), 'ts-install')
+
 local function start_highlight(buf)
     if not vim.api.nvim_buf_is_valid(buf) then
         return
@@ -24,6 +31,7 @@ return {
         init = function()
             -- Skip nvim-treesitter's own :TS* commands; ts-install owns installation.
             vim.g.loaded_nvim_treesitter = 1
+            vim.opt.runtimepath:prepend(PARSER_DIR)
         end,
     },
 
