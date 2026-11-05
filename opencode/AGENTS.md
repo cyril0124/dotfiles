@@ -50,3 +50,4 @@
 - Before finishing the task, clean up any temporary files and scripts created during this task. If they are needed for reproduction, troubleshooting, or the user explicitly asks to keep them, keep them and say so.
 - Resolve routine implementation choices using repository evidence and existing conventions. Ask only when missing information materially changes scope, user-visible behavior, or safety.
 - For implementation tasks, continue through implementation, relevant validation, and fixing failures caused by the change. Stop when the requested outcome is verified or a concrete blocker requires user input. Stay within the requested scope.
+- When opening a PR, follow the target repository's PR template.
