@@ -57,6 +57,7 @@ REMOTE_SKILLS=(
   "alchaincyf/darwin-skill@darwin-skill"
   "mattpocock/skills|writing-for-agents@writing-for-agents"
   "mattpocock/skills|teach@teach"
+  "mattpocock/skills|retro@retro"
   "https://github.com/herdrdev/herdr|herdr@herdr"
   "cursor/plugins|unslop@unslop"
   "seyedehsanhadi/sloptrim@sloptrim"
