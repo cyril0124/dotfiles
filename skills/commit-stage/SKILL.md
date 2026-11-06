@@ -53,7 +53,7 @@ If `./AGENTS.md` or `./CLAUDE.md` exists, read each one before review. The stage
 
 ### Step 2. Line-by-line review
 
-Review every staged line. Do not assume it is correct. Run these gates in order:
+Use Step 2.5 to plan coverage before reviewing. Every staged line must be reviewed by the main reviewer or an assigned reviewer, or covered by a valid reusable result. Do not assume it is correct. Run these gates in order:
 
 1. **Scope gate.** Every finding and the commit message must point at staged content only.
 2. **Project constraints gate.** If `./AGENTS.md` or `./CLAUDE.md` exists, check that every staged change follows the applicable rules in those files.
@@ -114,23 +114,22 @@ If you suspect a behavior bug, reproduce it when a focused, safe check exists. I
    - You are not sure the doc needs updating → **Unclear**. Stop the commit. Give the location and one sentence why. Do not force a diff.
 6. **Failure report label.** Start the Problem section with `Documentation drift: <file path>` so the user can tell a doc issue from a code bug.
 
-### Step 2.5. Split a large review
+### Step 2.5. Scope and delegate review
 
-Split into parallel subagents when the review would blow the current context budget, when more than 5 files are staged, or when more than 8 docs look relevant. Do not split a small review.
+Keep a cohesive change with the main reviewer. File and document counts alone do not trigger delegation. Split work only for independent behavior areas, a concrete high-risk question needing independent scrutiny, or material that exceeds the review context budget.
+
+A behavior area includes its implementation, tests, and directly related documentation. Keep brief documentation updates with that area or the main reviewer. Assign the line-by-line pass once per area; overlap needs a stated risk question.
+
+Before delegating, map the full staged diff's changed paths, hunks, and public-facing identifiers to reviewers. Include exported APIs, CLI commands/flags, configuration keys, environment variables, command paths, and changed behavior. The main reviewer retains the full diff and owns cross-area interactions and all gates in Step 2.
 
 Subagents advise. They do not edit, stage, commit, or write artifacts.
 
-**Splitting rules:**
+**Give each subagent a bounded packet:**
 
-| Dimension | Unit |
-|---|---|
-| Code review | One staged file = one subtask |
-| Documentation drift | One candidate `.md` = one subtask |
-
-**Give every subagent:**
-
-- The full staged diff (`git diff --cached`).
-- An identifier list. Before splitting, extract from the diff every public-facing identifier: exported API names, CLI commands/flags, configuration keys, environment variables, command paths, behavioral keywords. Without that list a subagent only sees one file and will miss a renamed API.
+- Its review question, assigned area diff, and staged entries (paths, modes, blob IDs).
+- The shared identifier/dependency map, including relevant callers and docs.
+- A reference to the full staged snapshot and context locations, retrieved when needed rather than copied into every prompt.
+- Available validation receipts: command, working directory, code/configuration/environment input identity, and result.
 
 **Subagent output contract:**
 
@@ -142,15 +141,26 @@ evidence: <staged diff line, markdown section, or command output>
 problem: <one-sentence>
 reason: <short explanation>
 suggested_fix: <diff block or "N/A">
+coverage: <assigned changes and identifiers examined; remaining gaps>
+checks: <matching evidence used; missing validation>
 ```
+
+A verified receipt matching the staged source and relevant check inputs is valid evidence even when another reviewer ran the check. Missing or stale evidence still blocks; a worker need not rerun a check solely to claim personal execution.
+
+**Reuse on another pass, including `fr`:**
+
+Keep a compact record of the compared base, staged entries, covered changes/identifiers, consulted rules and dependencies, findings, and validation inputs/results. Use existing task state or a temporary JSON receipt outside the repository so worker cleanup does not erase the evidence. A worker ID alone is not a review record.
+
+Recompute scope and identifier/dependency impacts from the new staged diff. Reuse only completed, nonblocking conclusions whose inputs still match. Changed callers, contracts, related docs, rules, or validation inputs invalidate affected conclusions even when a file's blob is unchanged. Review changed or affected areas and close remaining coverage gaps. Unresolved or previously skipped findings never become cached approvals.
+
+Scope, temporary-file, and final staged-boundary checks always run on the current staged snapshot.
 
 **How you close the review:**
 
-1. Collect every subagent result.
-2. Deduplicate by location and problem summary.
-3. Re-classify each finding yourself. Subagent labels are advice, not the call.
-4. Check identifier coverage. Every item in the identifier list must have been examined by at least one subagent. If not, do a targeted follow-up for the ones nobody touched.
-5. Make the final commit or stop decision.
+1. Collect results and check their coverage and evidence, including reused records.
+2. Deduplicate by location and problem; re-classify findings yourself.
+3. Account for every staged change and affected identifier through the main reviewer or a valid result. Close gaps with targeted inspection or a bounded follow-up, not a fresh whole-diff fan-out.
+4. Make the final commit or stop decision.
 
 ### Step 3. Classify findings
 
