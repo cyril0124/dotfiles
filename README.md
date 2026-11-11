@@ -1,6 +1,6 @@
 # Dotfiles
 
-Personal configuration files for nvim, tmux, shell, pixi, opencode, claude, and codex.
+Personal configuration files for nvim, tmux, shell, pixi, opencode, claude, codex, and pi.
 
 ## Installation
 
@@ -23,6 +23,7 @@ The bootstrap script will:
 - Install and configure opencode (if needed)
 - Configure claude settings
 - Configure codex settings
+- Link pi prompt templates from `prompts/` into `~/.pi/agent/prompts/`
 - Install the skills recorded in `./my-skills.sh`
 
 ### Install Specific Components
@@ -41,6 +42,7 @@ Available components:
 - `opencode` - OpenCode AI configuration
 - `claude` - Claude Code configuration
 - `codex` - Codex configuration (`~/.codex`)
+- `pi` - Pi prompt templates (`~/.pi/agent/prompts/`)
 - `skills` - Install remote skills via `./my-skills.sh`
 - `codex_sync` - Sync and sanitize local Codex config into this repo
 
@@ -48,6 +50,7 @@ Examples:
 ```bash
 ./bootstrap claude           # Install only claude config
 ./bootstrap codex            # Install only codex config
+./bootstrap pi               # Link pi prompt templates
 ./bootstrap skills           # Install skills only
 ./bootstrap codex_sync       # Sync ~/.codex -> repo/codex (sanitized)
 ./bootstrap dotfiles claude  # Install multiple components
@@ -71,6 +74,7 @@ dotfiles/
 ├── pixi/            # Pixi global packages
 ├── opencode/        # OpenCode AI configuration
 ├── claude/          # Claude Code configuration
+├── prompts/         # Pi prompt templates
 └── codex/           # Codex configuration
 ```
 
@@ -117,6 +121,12 @@ Codex configuration and prompt files:
 - `config.toml` - Codex user configuration (sanitized; excludes machine-specific absolute-path `[projects."..."]` trust blocks and `[[skills.config]]` entries)
 - `prompts/` - Custom prompts
 - `codex_sync` will sync from `~/.codex` and sanitize machine-specific project entries and skill path entries with `scripts/sanitize_codex_config.py`
+
+### Pi (prompts/)
+Prompt templates linked into `~/.pi/agent/prompts/`, each one available as a `/` command:
+- `clean.md` - run `$sanitize-artifacts` and `$readable-code`
+- `repro.md` - build a one-command reproduction under `tmp/`
+- `sync.md` - rebase onto the latest base branch and update the PR
 
 ## Skills
 

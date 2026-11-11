@@ -65,6 +65,7 @@ Components:
   opencode    OpenCode configuration
   claude      Claude configuration
   codex       Codex configuration
+  pi          Pi prompt templates from prompts/
   nvim_setup  Neovim plugins, treesitter parsers, and LSP servers
   skills      Install skills recorded in ./my-skills.sh
   codex_sync  Sync ~/.codex into repo/codex with sanitization
@@ -491,6 +492,27 @@ install_codex() {
     done
 }
 
+install_pi() {
+    info 'installing pi configuration'
+
+    local overwrite_all=false backup_all=false skip_all=false
+    local src_dir="$DOTFILES_ROOT/prompts"
+    local dst_dir="$HOME/.pi/agent/prompts"
+
+    if [ ! -d "$src_dir" ]; then
+        info "No prompts directory at $src_dir, skipped"
+        return 0
+    fi
+
+    mkdir -p "$dst_dir"
+
+    # Link each template so machine-local prompts can live alongside
+    for item in "$src_dir"/*; do
+        [ -e "$item" ] || continue
+        link_file "$item" "$dst_dir/$(basename "$item")"
+    done
+}
+
 install_codex_sync() {
     info 'syncing codex configuration from ~/.codex to dotfiles'
 
@@ -582,6 +604,7 @@ if [ $# -eq 0 ]; then
     install_opencode
     install_claude
     install_codex
+    install_pi
     install_nvim_setup
     if [ "${DOTFILES_CI:-}" != "1" ]; then
         install_skills
