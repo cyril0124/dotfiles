@@ -28,6 +28,7 @@ rest of their words passed through unchanged:
 | `xpra-web` alone, or "open X in the browser on this host" | `ensure`, preceded by `run -- X` when a program is named |
 | "add X to my session :10" | `run --display :10 -- X` |
 | `xpra-web ls`, `xpra-web list` | `list` |
+| `xpra-web doctor` | `doctor` |
 | `xpra-web close-all` | `close-all` |
 | `xpra-web close xclock` | `close xclock` |
 | `xpra-web stop :10` | `stop :10` |
@@ -51,6 +52,7 @@ bash scripts/xpra-web.sh ensure --no-password  # no password on this session's T
 bash scripts/xpra-web.sh run -- xclock         # launch xclock in a session of its own
 bash scripts/xpra-web.sh run --display :10 -- myapp  # add a window to a session the user named
 bash scripts/xpra-web.sh list                  # displays, ports, windows, programs, directories (`ls` also works)
+bash scripts/xpra-web.sh doctor                # can a browser client actually complete the handshake?
 bash scripts/xpra-web.sh close xclock          # close matching programs, port stays
 bash scripts/xpra-web.sh close --all           # close every program, keep the session
 bash scripts/xpra-web.sh close-all             # close every program everywhere, then stop every session
@@ -98,6 +100,11 @@ APP_PID=12345
 children actually run in, read from `/proc/<pid>/cwd` and deduplicated, so programs
 started from one directory show one path; it is `none` when nothing runs or when
 procfs hides the directory.
+
+Every probe is capped at `XPRA_WEB_PROBE_SECONDS` (default 5s), so a session whose
+control channel stays silent prints one row with `tcp=unresponsive` and a
+`note=no answer from the session within 5s` column, and the command finishes
+instead of hanging on it.
 
 ## Passwords
 
@@ -169,6 +176,8 @@ Give the user the port, the password when there is one, and both access paths:
 
 With `AUTH=none`, state that the port is unprotected instead of naming a password.
 
+Report a session as usable only after `doctor` returns `DOCTOR=ok`; [Verifying a session](#verifying-a-session) gives the checks it makes.
+
 When `WEB=no`, no browser client was served, which means the html5 web root is missing. Leave `--html` unset so the configured path applies: `--html=on` or `--html=auto` overrides it and the server logs `Error: cannot find the html web root`.
 
 ## When xpra is missing
@@ -223,11 +232,23 @@ An old session keeps its old environment. Restart it (`stop :N`, then `ensure`) 
 
 ## Verifying a session
 
+Readiness is a completed xpra handshake. An HTTP 200 on the port proves only that
+the html5 files were served from disk, and a live child process proves only that
+the program started; both can hold while every client hangs at
+`Sending handshake`. `doctor` checks the protocol side:
+
 ```bash
-bash scripts/xpra-web.sh list
-curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:$PORT/   # 200 means the browser client is served
-xpra info $DISPLAY | grep network.sockets.tcp.listeners           # the real bind address and port
+bash scripts/xpra-web.sh doctor                # CHECK/SESSION lines, then DOCTOR=ok|failed
+bash scripts/xpra-web.sh list                  # displays, ports, windows, programs, directories
 ```
+
+`doctor` fails on each of these:
+
+- the configured `xvfb` binary is missing or not executable
+- the html5 web root is missing
+- the server left a client unanswered for longer than `XPRA_WEB_PROBE_SECONDS` (default 5s), reported as `status=unresponsive`
+- the session log recorded a dropped handshake (`connection timed out`)
+- the server is spinning: sampled CPU at `XPRA_WEB_SPIN_CPU_PERCENT` or above (default 50%)
 
 A client maps windows, so `xpra screenshot` stays empty until something attaches.
 

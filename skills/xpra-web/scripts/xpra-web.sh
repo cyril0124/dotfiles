@@ -15,6 +15,13 @@ DISPLAY_ARG=""
 PASSWORD=""
 AUTH_MODE="file"
 WAIT_SECONDS="${XPRA_WEB_WAIT_SECONDS:-10}"
+# Every probe of a live session is bounded: a busy-looping server leaves its
+# control channel unanswered for minutes, which would otherwise hang the command
+# that asked about it.
+PROBE_SECONDS="${XPRA_WEB_PROBE_SECONDS:-5}"
+# A server that cannot drive its Xvfb spins near a full core. Half a core averaged
+# over one second is the point where a session is reported as spinning.
+CPU_SPIN_PERCENT="${XPRA_WEB_SPIN_CPU_PERCENT:-50}"
 
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 RUN_IN="$SCRIPT_DIR/xpra-run-in.sh"
@@ -30,6 +37,7 @@ Usage:
   xpra-web.sh ensure [options]          Start a network-visible xpra session
   xpra-web.sh run [options] -- CMD ...  Start or name a session, then launch CMD inside it
   xpra-web.sh list | ls                 Show live sessions, ports, windows, programs and directories
+  xpra-web.sh doctor                    Check that a browser client can complete a handshake
   xpra-web.sh close PATTERN | --all     Close matching programs, keep the session alive
   xpra-web.sh close-all [--force]       Close every program everywhere, then stop every session
   xpra-web.sh stop :N | --all           Stop one named session, or every session
@@ -84,10 +92,37 @@ live_displays() {
   "$XPRA" list 2>/dev/null | sed -n 's/.*LIVE session at \(:[0-9][0-9]*\).*/\1/p' | sort -u || true
 }
 
+# Run a command with a hard time limit when `timeout` exists.
+bounded() {
+  if command -v timeout >/dev/null 2>&1; then
+    timeout "$PROBE_SECONDS" "$@"
+  else
+    "$@"
+  fi
+}
+
+# xpra info for one display, bounded by PROBE_SECONDS. Prints nothing and fails
+# when the session does not answer in time.
+xpra_info() {
+  bounded "$XPRA" info "$1" 2>/dev/null || return 1
+}
+
+# "live" when the session answers, "unresponsive" when xpra has it registered
+# but its control channel stayed silent, "absent" when xpra does not know it.
+session_state() {
+  local display=$1
+  live_displays | grep -qx -- "$display" || { printf 'absent\n'; return 0; }
+  if xpra_info "$display" >/dev/null; then
+    printf 'live\n'
+  else
+    printf 'unresponsive\n'
+  fi
+}
+
 # Print "<host> <port>" for the first TCP listener of a display, or fail.
 tcp_listener() {
   local display=$1 line parsed
-  line=$("$XPRA" info "$display" 2>/dev/null | grep -m1 '^network.sockets.tcp.listeners=' || true)
+  line=$(xpra_info "$display" | grep -m1 '^network.sockets.tcp.listeners=' || true)
   [ -n "$line" ] || return 1
   parsed=$(printf '%s\n' "$line" | sed -n "s/.*(('\([^']*\)', '\([0-9][0-9]*\)').*/\1 \2/p")
   [ -n "$parsed" ] || return 1
@@ -147,6 +182,36 @@ except OSError:
 finally:
     sock.close()
 PY
+}
+
+# The Xvfb command xpra will run, taken from its own effective configuration.
+configured_xvfb() {
+  "$XPRA" showconfig 2>/dev/null | awk -F"'" '/^xvfb +\(used\)/{print $2; exit}'
+}
+
+# Fail before starting when the configured Xvfb cannot run: xpra otherwise waits
+# out its whole startup timeout and leaves a traceback in server.log.
+xvfb_is_runnable() {
+  local bin
+  bin=$(configured_xvfb)
+  [ -n "$bin" ] || return 0
+  bin=${bin%% *}
+  case "$bin" in
+    /*) [ -x "$bin" ] ;;
+    *) command -v "$bin" >/dev/null 2>&1 ;;
+  esac
+}
+
+require_xvfb() {
+  xvfb_is_runnable && return 0
+  fail "xpra's configured Xvfb is not runnable: $(configured_xvfb | awk '{print $1}')
+point xvfb at a working binary in ~/.config/xpra/xpra.conf, keeping the extensions xpra needs:
+  xvfb = /path/to/Xvfb +extension GLX +extension Composite +extension RANDR +extension RENDER -screen 0 1920x1080x24 -nolisten tcp -noreset -dpi 96x96"
+}
+
+# The html5 web root xpra serves the browser client from.
+configured_html() {
+  "$XPRA" showconfig 2>/dev/null | awk -F"'" '/^html +\(used\)/{print $2; exit}'
 }
 
 # PID of the daemonized server, used to stop waiting the moment it dies.
@@ -239,7 +304,7 @@ prepare_password() {
 # "file" when the session's TCP bind carries a per-socket auth option, else "none".
 session_auth() {
   local argv
-  argv=$("$XPRA" info "$1" 2>/dev/null | grep -m1 '^server.argv=' || true)
+  argv=$(xpra_info "$1" | grep -m1 '^server.argv=' || true)
   case "$argv" in
     *",auth="*) printf 'file\n' ;;
     *) printf 'none\n' ;;
@@ -289,13 +354,18 @@ ensure_session() {
   fi
 
   if [ -n "$display" ]; then
-    if "$XPRA" info "$display" >/dev/null 2>&1; then
+    case "$(session_state "$display")" in
+    live)
       requested_live=1
       listener=$(tcp_listener "$display" || true)
       if [ -n "$listener" ] && ! listener_matches "$display" "$listener"; then
         fail "session $display listens on ${listener%% *}:${listener##* } (auth=$(session_auth "$display")); that does not match host=$HOST, port=$PORT, auth=$AUTH_MODE. Stop $display first, or drop --port / --no-password."
       fi
-    fi
+      ;;
+    unresponsive)
+      fail "session $display is registered but its control channel did not answer within ${PROBE_SECONDS}s; a spinning server blocks every client handshake. Stop it (server.pid $(server_pid "$display" || echo unknown)) or name another display."
+      ;;
+    esac
   elif [ "$may_reuse" = 1 ]; then
     while IFS= read -r candidate; do
       listener=$(tcp_listener "$candidate" || true)
@@ -338,6 +408,7 @@ ensure_session() {
   fi
 
   session="created"
+  require_xvfb
   if ! port_is_free "$HOST" "$PORT"; then
     fail "cannot bind $HOST:$PORT (already in use, or not a local address); drop --port to let the kernel pick one"
   fi
@@ -392,9 +463,13 @@ ensure_display() {
 cmd_list() {
   local display listener windows programs dirs found=0 all_windows
   # xpra lists every display at once; keep the rows that belong to this one.
-  all_windows=$("$XPRA" list-windows 2>/dev/null || true)
+  all_windows=$(bounded "$XPRA" list-windows 2>/dev/null || true)
   while IFS= read -r display; do
     found=1
+    if [ "$(session_state "$display")" = "unresponsive" ]; then
+      printf '%s\ttcp=unresponsive\twindows=unresponsive\tprograms=unresponsive\tcwd=unresponsive\tnote=no answer from the session within %ss\n' "$display" "$PROBE_SECONDS"
+      continue
+    fi
     listener=$(tcp_listener "$display" || true)
     [ -n "$listener" ] || listener="none"
     windows=$(
@@ -607,7 +682,7 @@ cmd_close_all() {
 # xpra marks its own infrastructure children (Xvfb, ibus) with ignore=True.
 child_table() {
   local display=$1
-  "$XPRA" info "$display" 2>/dev/null | awk -F'=' '
+  xpra_info "$display" | awk -F'=' '
     /^child\.[0-9]+\./ {
       split($1, key, ".")
       idx = key[2]; field = key[3]
@@ -694,6 +769,127 @@ cmd_run() {
   printf 'DISPLAY=%s\nCWD=%s\nAPP_PID=%s\n' "$display" "$cwd" "${pid:-unknown}"
 }
 
+# CPU time of one process, in clock ticks, read from procfs.
+proc_cpu_ticks() {
+  sed -e 's/^[0-9]* (.*) //' "/proc/$1/stat" 2>/dev/null | awk '{print $12 + $13}'
+}
+
+# CPU percent of one process, sampled over one second. `ps` reports a lifetime
+# average, which stays low on a server that only recently started spinning.
+cpu_percent() {
+  local pid=$1 before after hz
+  before=$(proc_cpu_ticks "$pid")
+  [ -n "$before" ] || return 1
+  sleep 1
+  after=$(proc_cpu_ticks "$pid")
+  [ -n "$after" ] || return 1
+  hz=$(getconf CLK_TCK 2>/dev/null || echo 100)
+  printf '%s\n' $(((after - before) * 100 / hz))
+}
+
+# Times this session dropped a client during the protocol handshake. A spinning
+# server accepts the TCP connection, receives the hello and never answers.
+handshake_timeouts() {
+  local log count
+  if log=$(server_log "$1"); then
+    count=$(grep -c 'connection timed out' "$log" 2>/dev/null || true)
+  else
+    count=0
+  fi
+  printf '%s\n' "${count:-0}"
+}
+
+# The two pieces a browser client needs from this machine: an Xvfb xpra can
+# drive, and the html5 web root it serves the client from.
+doctor_environment() {
+  local xvfb html xvfb_bin status=0
+
+  xvfb=$(configured_xvfb)
+  xvfb_bin=${xvfb%% *}
+  if xvfb_is_runnable; then
+    printf 'CHECK xvfb=%s status=ok\n' "${xvfb_bin:-none}"
+  else
+    printf 'CHECK xvfb=%s status=missing\n' "${xvfb_bin:-none}"
+    status=1
+  fi
+
+  html=$(configured_html)
+  if [ -n "$html" ] && [ -d "$html" ]; then
+    printf 'CHECK html=%s status=ok\n' "$html"
+  else
+    printf 'CHECK html=%s status=missing\n' "${html:-none}"
+    status=1
+  fi
+
+  return "$status"
+}
+
+# One SESSION line per live session, naming every reason its clients would fail.
+# status=ok requires all of it: the session answers, listens, and drops no handshakes.
+doctor_sessions() {
+  local display pid cpu cpu_text listener timeouts problem_list status=0
+  local -a problems
+
+  while IFS= read -r display; do
+    [ -n "$display" ] || continue
+    pid=$(server_pid "$display" || true)
+
+    if [ "$(session_state "$display")" = "unresponsive" ]; then
+      printf 'SESSION %s status=unresponsive server=%s note=control channel silent for %ss\n' \
+        "$display" "${pid:-unknown}" "$PROBE_SECONDS"
+      status=1
+      continue
+    fi
+
+    listener=$(tcp_listener "$display" || true)
+    timeouts=$(handshake_timeouts "$display")
+    if cpu=$(cpu_percent "$pid"); then
+      cpu_text="${cpu}%"
+    else
+      cpu_text="unknown"
+    fi
+
+    problems=()
+    [ -n "$listener" ] || problems+=("no-listener")
+    [ "$timeouts" = "0" ] || problems+=("dropped-handshakes=$timeouts")
+    if [ "$cpu_text" = "unknown" ]; then
+      problems+=("cpu-unknown")
+    elif [ "$cpu" -ge "$CPU_SPIN_PERCENT" ]; then
+      problems+=("spinning-cpu=$cpu_text")
+    fi
+
+    if [ "${#problems[@]}" -eq 0 ]; then
+      printf 'SESSION %s status=ok listener=%s cpu=%s handshake_timeouts=0\n' \
+        "$display" "${listener// /:}" "$cpu_text"
+      continue
+    fi
+
+    printf -v problem_list '%s,' "${problems[@]}"
+    printf 'SESSION %s status=bad listener=%s cpu=%s handshake_timeouts=%s problems=%s\n' \
+      "$display" "${listener// /:}" "$cpu_text" "$timeouts" "${problem_list%,}"
+    status=1
+  done < <(live_displays)
+
+  return "$status"
+}
+
+# Report what a browser client meets, and fail when any of it is missing. The
+# html5 files arrive over plain HTTP from disk, while the client still has to
+# complete an xpra handshake on the session's own port.
+cmd_doctor() {
+  local status=0
+
+  doctor_environment || status=1
+  doctor_sessions || status=1
+
+  if [ "$status" = 0 ]; then
+    printf 'DOCTOR=ok\n'
+  else
+    printf 'DOCTOR=failed\n'
+  fi
+  return "$status"
+}
+
 main() {
   local command="${1:-ensure}"
 
@@ -724,6 +920,7 @@ main() {
     ensure) ensure_session ;;
     run) [ "$#" -gt 0 ] || fail "run requires a command after --"; cmd_run "$@" ;;
     list|ls) cmd_list ;;
+    doctor) cmd_doctor ;;
     close) cmd_close "$@" ;;
     close-all) cmd_close_all "$@" ;;
     stop) cmd_stop "$@" ;;
