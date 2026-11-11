@@ -125,6 +125,7 @@ Codex configuration and prompt files:
 ### Pi (prompts/)
 Prompt templates linked into `~/.pi/agent/prompts/`, each one available as a `/` command:
 - `clean.md` - run `$sanitize-artifacts` and `$readable-code`
+- `pr.md` - commit, push, and open a PR
 - `repro.md` - build a one-command reproduction under `tmp/`
 - `sync.md` - rebase onto the latest base branch and update the PR
 
