@@ -1,6 +1,6 @@
 ---
 name: parallelize
-description: 'Use for explicit parallelism requests, including sub=N, or broad investigation with independent tasks.'
+description: 'Parallelize independent work. Use proactively whenever a task has at least two independent slices, including searches, investigations, review lenses, or non-overlapping edits. Also use for explicit requests such as sub=N.'
 ---
 
 # Parallelize
