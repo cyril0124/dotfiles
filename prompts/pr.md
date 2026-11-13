@@ -1,8 +1,8 @@
 ---
-description: 提交当前分支为 PR
+description: 提交 PR
 ---
 
-把当前分支的改动按 Conventional Commits 提交、push，再写好 PR 标题和描述，先给我看一遍，我同意后才用 `gh pr create` 建 PR，最后报出 PR 链接。
+把 ${@:-未说明，先问我} 的改动按 Conventional Commits 提交、push，再写好 PR 标题和描述，先给我看一遍，我同意后才用 `gh pr create` 建 PR，最后报出 PR 链接。
 
 仓库有 PR 模板时优先按模板的章节和顺序来写，模板占用的栏目不要删；没有模板才自己组织段落。
 
