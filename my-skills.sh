@@ -57,7 +57,6 @@ REMOTE_SKILLS=(
   "mattpocock/skills|teach@teach"
   "mattpocock/skills|retro@retro"
   "https://github.com/herdrdev/herdr|herdr@herdr"
-  "cursor/plugins|unslop@unslop"
   "seyedehsanhadi/sloptrim@sloptrim"
 )
 
