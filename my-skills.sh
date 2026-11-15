@@ -61,6 +61,7 @@ REMOTE_SKILLS=(
   "mattpocock/skills|writing-for-agents@writing-for-agents"
   "mattpocock/skills|teach@teach"
   "mattpocock/skills|retro@retro"
+  "mattpocock/skills|grilling@grilling"
   "https://github.com/herdrdev/herdr|herdr@herdr"
   "seyedehsanhadi/sloptrim@sloptrim"
 )
