@@ -5,12 +5,17 @@ set -euo pipefail
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 SKILLS_RUNNER=(npx --yes skills)
 SKILLS_TIMEOUT_SECONDS=${SKILLS_TIMEOUT_SECONDS:-120}
+# Every update run clones the upstream repository behind the skills it checks,
+# so updates get their own larger budget, timed per source group.
+SKILLS_UPDATE_TIMEOUT_SECONDS=${SKILLS_UPDATE_TIMEOUT_SECONDS:-300}
 AGENTS=(codex claude-code opencode)
 declare -A INSTALLED_SKILLS=()
+declare -A INSTALLED_SOURCES=()
 LOCAL_SKILLS_ROOT="$SCRIPT_DIR/skills"
 AGENTS_SKILLS_DIR="$HOME/.agents/skills"
 CLAUDE_SKILLS_DIR="$HOME/.claude/skills"
 CODEX_SKILLS_DIR="$HOME/.codex/skills"
+SKILL_LOCK_FILE="$HOME/.agents/.skill-lock.json"
 
 LOCAL_SKILLS=(
   "generic-writing"
@@ -83,7 +88,8 @@ Commands:
   help    Show this message
 
 Environment:
-  SKILLS_TIMEOUT_SECONDS  Per skills CLI command timeout (default: 120)
+  SKILLS_TIMEOUT_SECONDS         Per skills CLI command timeout (default: 120)
+  SKILLS_UPDATE_TIMEOUT_SECONDS  Per source-group update timeout (default: 300)
 EOF
 }
 
@@ -91,14 +97,17 @@ require_tools() {
   command -v npx >/dev/null 2>&1 || fail "npx is required to install skills"
 }
 
-run_skills() {
+run_skills_with_timeout() {
+  local timeout_seconds=$1
+  shift
+
   local timeout_cmd=()
   local status
 
   if command -v timeout >/dev/null 2>&1; then
-    timeout_cmd=(timeout "${SKILLS_TIMEOUT_SECONDS}s")
+    timeout_cmd=(timeout "${timeout_seconds}s")
   elif command -v gtimeout >/dev/null 2>&1; then
-    timeout_cmd=(gtimeout "${SKILLS_TIMEOUT_SECONDS}s")
+    timeout_cmd=(gtimeout "${timeout_seconds}s")
   fi
 
   if "${timeout_cmd[@]}" "${SKILLS_RUNNER[@]}" "$@"; then
@@ -108,10 +117,14 @@ run_skills() {
   fi
 
   if [ "$status" -eq 124 ]; then
-    fail "skills command timed out after ${SKILLS_TIMEOUT_SECONDS}s: skills $*"
+    printf 'ERROR: skills command timed out after %ss: skills %s\n' "$timeout_seconds" "$*" >&2
   fi
 
   return "$status"
+}
+
+run_skills() {
+  run_skills_with_timeout "$SKILLS_TIMEOUT_SECONDS" "$@"
 }
 
 spec_skill_name() {
@@ -154,6 +167,45 @@ load_installed_skills() {
   done < <(installed_skill_names)
 }
 
+lock_skill_sources() {
+  python3 - "$SKILL_LOCK_FILE" <<'PY'
+import json
+import sys
+
+try:
+    with open(sys.argv[1]) as handle:
+        lock = json.load(handle)
+except (OSError, ValueError):
+    sys.exit(1)
+
+for name, entry in lock.get("skills", {}).items():
+    print("{}\t{}".format(name, entry.get("source") or name))
+PY
+}
+
+# update groups skills by upstream source, so the authoritative installed set is
+# the lock file the CLI itself updates from. Reading it avoids a full scan of
+# every agent directory.
+load_installed_sources() {
+  local name source lock_entries
+  INSTALLED_SOURCES=()
+
+  if lock_entries=$(lock_skill_sources); then
+    while IFS=$'\t' read -r name source; do
+      [ -n "$name" ] || continue
+      INSTALLED_SOURCES["$name"]=$source
+    done <<< "$lock_entries"
+    return 0
+  fi
+
+  # Without the lock file the source of each skill is unknown, so every skill
+  # becomes its own group.
+  load_installed_skills
+  for name in "${!INSTALLED_SKILLS[@]}"; do
+    INSTALLED_SOURCES["$name"]=$name
+  done
+}
+
 run_skills_add() {
   # -g installs into the user-level skill scope so bootstrap can restore the same
   # global environment on a fresh machine instead of tying skills to one repo.
@@ -171,7 +223,7 @@ run_skills_remove() {
 run_skills_update() {
   # The update subcommand only handles scope and confirmation flags, so agent
   # targeting stays in the add/remove path and updated skills refresh in place.
-  DISABLE_TELEMETRY=1 run_skills update "$@" -g -y
+  DISABLE_TELEMETRY=1 run_skills_with_timeout "$SKILLS_UPDATE_TIMEOUT_SECONDS" update "$@" -g -y
 }
 
 run_skills_add_for_spec() {
@@ -252,26 +304,50 @@ install_remote_skills() {
 
 update_remote_skills() {
   info "updating remote skills"
-  load_installed_skills
+  load_installed_sources
 
-  local spec skill_name targets=()
+  declare -A skills_by_source=()
+  # Associative arrays keep no insertion order, so the update order is tracked
+  # next to them.
+  local source_order=()
+  local spec skill_name source skill_names
+
   for spec in "${REMOTE_SKILLS[@]}"; do
     skill_name=$(spec_skill_name "$spec")
-    if [ -z "${INSTALLED_SKILLS[$skill_name]:-}" ]; then
-      info "skip update for not installed skill: $skill_name"
+    source=${INSTALLED_SOURCES[$skill_name]:-}
+    if [ -z "$source" ]; then
+      info "skip update (not installed): $skill_name"
       continue
     fi
 
-    targets+=("$skill_name")
+    if [ -z "${skills_by_source[$source]:-}" ]; then
+      source_order+=("$source")
+      skills_by_source["$source"]=$skill_name
+    else
+      skills_by_source["$source"]="${skills_by_source[$source]} $skill_name"
+    fi
   done
 
-  if [ "${#targets[@]}" -eq 0 ]; then
+  if [ "${#source_order[@]}" -eq 0 ]; then
     info "no installed remote skills to update"
     return
   fi
 
-  info "update: ${targets[*]}"
-  run_skills_update "${targets[@]}"
+  local index=0 failed=()
+  for source in "${source_order[@]}"; do
+    index=$((index + 1))
+    read -r -a skill_names <<< "${skills_by_source[$source]}"
+    info "update ${index}/${#source_order[@]}: ${skill_names[*]} (source: $source)"
+    if ! run_skills_update "${skill_names[@]}"; then
+      failed+=("$source")
+    fi
+  done
+
+  if [ "${#failed[@]}" -gt 0 ]; then
+    fail "update failed for ${#failed[@]}/${#source_order[@]} sources: ${failed[*]}"
+  fi
+
+  info "updated ${#source_order[@]} sources"
 }
 
 print_list() {
