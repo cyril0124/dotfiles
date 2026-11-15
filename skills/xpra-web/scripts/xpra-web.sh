@@ -9,27 +9,30 @@ set -euo pipefail
 # `--display`/`--port` names it, so every program gets its own port unless the
 # caller asks to share one.
 
-HOST="0.0.0.0"
+HOST="127.0.0.1"
 PORT="0"
 DISPLAY_ARG=""
 PASSWORD=""
+PASSWORD_SOURCE=""
 AUTH_MODE="file"
+SSL_CERT=""
+SSL_KEY=""
+SSL_SERVER_VERIFY_MODE="${XPRA_WEB_SSL_SERVER_VERIFY_MODE:-required}"
+SSL_CHECK_HOSTNAME="${XPRA_WEB_SSL_CHECK_HOSTNAME:-yes}"
+ALLOW_INSECURE=0
 WAIT_SECONDS="${XPRA_WEB_WAIT_SECONDS:-10}"
 # Every probe of a live session is bounded: a busy-looping server leaves its
 # control channel unanswered for minutes, which would otherwise hang the command
 # that asked about it.
 PROBE_SECONDS="${XPRA_WEB_PROBE_SECONDS:-5}"
-# A server that cannot drive its Xvfb spins near a full core. Half a core averaged
-# over one second is the point where a session is reported as spinning.
-CPU_SPIN_PERCENT="${XPRA_WEB_SPIN_CPU_PERCENT:-50}"
+STOP_SECONDS="${XPRA_WEB_STOP_SECONDS:-10}"
 
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 RUN_IN="$SCRIPT_DIR/xpra-run-in.sh"
 
-# The TCP bind authenticates against this file. XDG_RUNTIME_DIR is per-boot and
-# private to the user, which is the right lifetime for a session password.
+# Each display gets its own password file. XDG_RUNTIME_DIR is per-boot and
+# private to the user, which is the right lifetime for session credentials.
 PASSWORD_DIR="${XDG_RUNTIME_DIR:-${TMPDIR:-/tmp}}/xpra-web-$USER"
-PASSWORD_FILE="$PASSWORD_DIR/password"
 
 usage() {
   cat <<'USAGE'
@@ -47,13 +50,17 @@ Usage:
   --force               With close/close-all: SIGKILL programs that ignore SIGTERM
 
 Options:
-  --host HOST      Bind address (default: 0.0.0.0)
-  --port PORT      Bind port; 0 lets the kernel pick one (default: 0)
-  --display :N     Use display :N instead of the first free one
-  --password PW    Password for the TCP bind (default: the user name)
-  --no-password    Bind with no password at all (auth=none)
+  --host HOST          Bind address (default: 127.0.0.1)
+  --port PORT          Bind port; 0 lets the kernel pick one (default: 0)
+  --display :N         Use display :N instead of the first free one
+  --password PW        Password for the TCP bind (default: random for each session)
+  --password-file FILE Read the password from FILE instead of the command line
+  --no-password        Bind with no password at all (auth=none)
+  --ssl-cert FILE      PEM certificate for HTTPS/WSS on the same TCP port
+  --ssl-key FILE       PEM private key for the certificate
+  --allow-insecure     Allow a non-loopback listener without WSS and authentication
 
---password and --no-password are mutually exclusive.
+--password, --password-file and --no-password are mutually exclusive.
 
 ensure and run start a new session on a free port by default. A live session is
 joined only when the request names it: --display names that live session, or
@@ -68,7 +75,8 @@ USAGE
 info() { printf '==> %s\n' "$1" >&2; }
 fail() { printf 'ERROR: %s\n' "$1" >&2; exit 1; }
 
-xpra_bin() {  if command -v xpra >/dev/null 2>&1; then
+xpra_bin() {
+  if command -v xpra >/dev/null 2>&1; then
     command -v xpra
   elif [ -x "$HOME/.local/bin/xpra" ]; then
     printf '%s\n' "$HOME/.local/bin/xpra"
@@ -87,18 +95,32 @@ missing_xpra() {
 
 XPRA=""
 
-# Live displays known to xpra, as ":N" lines.
-live_displays() {
-  "$XPRA" list 2>/dev/null | sed -n 's/.*LIVE session at \(:[0-9][0-9]*\).*/\1/p' | sort -u || true
+# Run a command with a hard time limit. Missing timeout is an error, not a reason
+# to remove the bound and risk hanging every later command.
+bounded_for() {
+  local seconds=$1
+  shift
+  if ! command -v timeout >/dev/null 2>&1; then
+    printf 'ERROR: timeout is required for bounded xpra commands\n' >&2
+    return 127
+  fi
+  timeout -k 2s "$seconds" "$@"
 }
 
-# Run a command with a hard time limit when `timeout` exists.
 bounded() {
-  if command -v timeout >/dev/null 2>&1; then
-    timeout "$PROBE_SECONDS" "$@"
-  else
-    "$@"
-  fi
+  bounded_for "$PROBE_SECONDS" "$@"
+}
+
+# Query displays without converting a failed listing into an empty session list.
+query_displays() {
+  local listing
+  listing=$(bounded "$XPRA" list 2>/dev/null) || return 1
+  printf '%s\n' "$listing" | sed -n 's/.*LIVE session at \(:[0-9][0-9]*\).*/\1/p' | sort -u
+}
+
+# Best-effort listing used by display selection and inventory output.
+live_displays() {
+  query_displays 2>/dev/null || true
 }
 
 # xpra info for one display, bounded by PROBE_SECONDS. Prints nothing and fails
@@ -131,11 +153,13 @@ tcp_listener() {
 
 # First display number that is free for both xpra and the X socket directory.
 pick_display() {
-  local used n
+  local used n live known
+  live=$(query_displays) || return 1
+  known=$(bounded "$XPRA" displays 2>/dev/null) || return 1
   used=$(
     {
-      live_displays
-      "$XPRA" displays 2>/dev/null | sed -n 's/.*\(:[0-9][0-9]*\).*/\1/p'
+      printf '%s\n' "$live"
+      printf '%s\n' "$known" | sed -n 's/.*\(:[0-9][0-9]*\).*/\1/p'
     } | sort -u
   )
   for n in $(seq 10 99); do
@@ -186,14 +210,16 @@ PY
 
 # The Xvfb command xpra will run, taken from its own effective configuration.
 configured_xvfb() {
-  "$XPRA" showconfig 2>/dev/null | awk -F"'" '/^xvfb +\(used\)/{print $2; exit}'
+  local config
+  config=$(bounded "$XPRA" showconfig 2>/dev/null) || return 1
+  printf '%s\n' "$config" | awk -F"'" '/^xvfb +\(used\)/{print $2; exit}'
 }
 
 # Fail before starting when the configured Xvfb cannot run: xpra otherwise waits
 # out its whole startup timeout and leaves a traceback in server.log.
 xvfb_is_runnable() {
   local bin
-  bin=$(configured_xvfb)
+  bin=$(configured_xvfb) || return 1
   [ -n "$bin" ] || return 0
   bin=${bin%% *}
   case "$bin" in
@@ -211,7 +237,9 @@ point xvfb at a working binary in ~/.config/xpra/xpra.conf, keeping the extensio
 
 # The html5 web root xpra serves the browser client from.
 configured_html() {
-  "$XPRA" showconfig 2>/dev/null | awk -F"'" '/^html +\(used\)/{print $2; exit}'
+  local config
+  config=$(bounded "$XPRA" showconfig 2>/dev/null) || return 1
+  printf '%s\n' "$config" | awk -F"'" '/^html +\(used\)/{print $2; exit}'
 }
 
 # PID of the daemonized server, used to stop waiting the moment it dies.
@@ -252,68 +280,170 @@ wait_for_listener() {
 }
 
 # 200 on "/" means the html5 web root was found and a browser client is served.
-# A window bound to one address is not reachable on loopback, so probe both.
-web_available() {
-  local bind_host=$1 port=$2 probe code
-  command -v curl >/dev/null 2>&1 || return 1
+# The TLS probe skips certificate verification but never sends credentials.
+web_status() {
+  local bind_host=$1 port=$2 transport=$3 probe code scheme="http"
+  local -a tls_options=()
+  command -v curl >/dev/null 2>&1 || { printf 'unknown\n'; return 0; }
+  if [ "$transport" = "wss" ]; then
+    scheme="https"
+    tls_options=(-k)
+  fi
   for probe in "$bind_host" 127.0.0.1; do
     [ "$probe" = "0.0.0.0" ] && probe=127.0.0.1
-    code=$(curl -s -o /dev/null -m 5 -w '%{http_code}' "http://$probe:$port/" || true)
-    [ "$code" = "200" ] && return 0
+    code=$(curl -s -o /dev/null -m 5 -w '%{http_code}' "${tls_options[@]}" "$scheme://$probe:$port/" || true)
+    [ "$code" = "200" ] && { printf 'yes\n'; return 0; }
   done
-  return 1
+  printf 'no\n'
+}
+
+is_loopback_host() {
+  case "$1" in
+    127.0.0.1|::1|localhost) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+requested_transport() {
+  if [ -n "$SSL_CERT" ]; then
+    printf 'wss\n'
+  else
+    printf 'ws\n'
+  fi
+}
+
+session_transport() {
+  # Accept joined and separate SSL certificate arguments in server.argv.
+  local argv
+  argv=$(xpra_info "$1" | grep -m1 '^server.argv=' || true)
+  case "$argv" in
+    *--ssl-cert=*|*--ssl-cert\',*) printf 'wss\n' ;;
+    *) printf 'ws\n' ;;
+  esac
+}
+
+validate_access_request() {
+  if [ -n "$SSL_CERT" ] || [ -n "$SSL_KEY" ]; then
+    [ -n "$SSL_CERT" ] && [ -n "$SSL_KEY" ] || fail "--ssl-cert and --ssl-key must be used together for WSS"
+    [ -r "$SSL_CERT" ] || fail "cannot read SSL certificate: $SSL_CERT"
+    [ -r "$SSL_KEY" ] || fail "cannot read SSL private key: $SSL_KEY"
+  fi
+  is_loopback_host "$HOST" && return 0
+  [ "$ALLOW_INSECURE" = "1" ] && return 0
+  [ -z "$SSL_CERT" ] && fail "non-loopback access requires WSS (--ssl-cert and --ssl-key) or explicit --allow-insecure"
+  [ "$AUTH_MODE" = "none" ] && fail "non-loopback access without a password requires explicit --allow-insecure"
+  return 0
+}
+
+warn_if_insecure() {
+  local bind_host=$1 transport=$2
+  is_loopback_host "$bind_host" && return 0
+  [ "$transport" = "wss" ] && return 0
+  printf 'WARNING: %s is unencrypted; the HTML5 client may refuse its password. Use WSS or an SSH tunnel.\n' "$bind_host" >&2
 }
 
 print_result() {
-  local session=$1 display=$2 bind_host=$3 port=$4 auth=$5 password=$6 password_file=$7 host
+  local session=$1 display=$2 bind_host=$3 port=$4 auth=$5 password=$6 password_file=$7 transport=$8
+  local host url_host scheme="http" attach_scheme="tcp"
   host=$(hostname -f 2>/dev/null || hostname)
+  url_host=$host
+  if is_loopback_host "$bind_host"; then
+    url_host=127.0.0.1
+  fi
+  if [ "$transport" = "wss" ]; then
+    scheme="https"
+    attach_scheme="wss"
+  fi
   printf 'SESSION=%s\n' "$session"
   printf 'DISPLAY=%s\n' "$display"
   printf 'BIND=%s:%s\n' "$bind_host" "$port"
   printf 'PORT=%s\n' "$port"
-  printf 'BROWSER=http://%s:%s/\n' "$host" "$port"
-  if [ "$auth" = "none" ]; then
-    printf 'ATTACH=xpra attach tcp://%s:%s\n' "$host" "$port"
+  printf 'TRANSPORT=%s\n' "$transport"
+  printf 'BROWSER=%s://%s:%s/\n' "$scheme" "$url_host" "$port"
+  if [ "$auth" = "file" ]; then
+    printf 'ATTACH=xpra attach --password-file=%s %s://%s:%s\n' "$password_file" "$attach_scheme" "$host" "$port"
   else
-    printf 'ATTACH=xpra attach --password-file=%s tcp://%s:%s\n' "$password_file" "$host" "$port"
+    printf 'ATTACH=xpra attach %s://%s:%s\n' "$attach_scheme" "$host" "$port"
   fi
-  printf 'LOCAL=http://127.0.0.1:%s/\n' "$port"
+  printf 'LOCAL=%s://127.0.0.1:%s/\n' "$scheme" "$port"
+  printf 'SSH=ssh -L %s:127.0.0.1:%s %s@%s\n' "$port" "$port" "$USER" "$host"
   printf 'AUTH=%s\n' "$auth"
   if [ -n "$password" ]; then
     printf 'PASSWORD=%s\n' "$password"
   fi
-  if [ "$auth" != "none" ]; then
+  if [ "$auth" = "file" ]; then
     printf 'PASSWORD_FILE=%s\n' "$password_file"
   fi
-  printf 'WEB=%s\n' "$(web_available "$bind_host" "$port" && echo yes || echo no)"
+  printf 'WEB=%s\n' "$(web_status "$bind_host" "$port" "$transport")"
 }
 
-# Password file for the TCP bind: written before the server starts, readable only
-# by this user, and re-read by xpra whenever its mtime changes.
+password_file_for_display() {
+  printf '%s/%s/password\n' "$PASSWORD_DIR" "${1#:}"
+}
+
+random_password() {
+  # 24 bytes become a 48-character hexadecimal password.
+  od -An -N24 -tx1 /dev/urandom | tr -d ' \n'
+}
+
+# Write credentials atomically and fail closed when their permissions cannot be set.
+# Xpra re-reads the file when its mtime changes, so this also works on a live session.
 prepare_password() {
-  mkdir -p -- "$PASSWORD_DIR" || fail "cannot create $PASSWORD_DIR"
-  chmod 700 -- "$PASSWORD_DIR" 2>/dev/null || true
-  if [ -n "$PASSWORD" ]; then
-    printf '%s' "$PASSWORD" > "$PASSWORD_FILE"
-  elif [ ! -f "$PASSWORD_FILE" ]; then
-    printf '%s' "$(id -un)" > "$PASSWORD_FILE"
+  local file=$1 mode=$2 dir tmp
+  case "$file" in
+    "$PASSWORD_DIR"/*) ;;
+    *) fail "refusing to rewrite a password file outside $PASSWORD_DIR: $file" ;;
+  esac
+
+  dir=${file%/*}
+  mkdir -p -- "$dir" || fail "cannot create $dir"
+  chmod 700 -- "$PASSWORD_DIR" "$dir" || fail "cannot restrict password directory permissions under $PASSWORD_DIR"
+
+  if [ "$mode" = "created" ] || [ -n "$PASSWORD" ] || [ -n "$PASSWORD_SOURCE" ] || [ ! -f "$file" ]; then
+    tmp=$(mktemp "$dir/.password.XXXXXX") || fail "cannot create a temporary password file in $dir"
+    if ! chmod 600 -- "$tmp"; then
+      rm -f -- "$tmp"
+      fail "cannot restrict temporary password file permissions: $tmp"
+    fi
+    if [ -n "$PASSWORD_SOURCE" ]; then
+      if ! cat -- "$PASSWORD_SOURCE" > "$tmp"; then
+        rm -f -- "$tmp"
+        fail "cannot read password file: $PASSWORD_SOURCE"
+      fi
+    elif [ -n "$PASSWORD" ]; then
+      if ! printf '%s' "$PASSWORD" > "$tmp"; then
+        rm -f -- "$tmp"
+        fail "cannot write temporary password file: $tmp"
+      fi
+    else
+      if ! random_password > "$tmp"; then
+        rm -f -- "$tmp"
+        fail "cannot generate a random password"
+      fi
+    fi
+    if [ ! -s "$tmp" ]; then
+      rm -f -- "$tmp"
+      fail "password must not be empty"
+    fi
+    if ! mv -f -- "$tmp" "$file"; then
+      rm -f -- "$tmp"
+      fail "cannot install password file: $file"
+    fi
   fi
-  chmod 600 -- "$PASSWORD_FILE" 2>/dev/null || true
+  chmod 600 -- "$file" || fail "cannot restrict password file permissions: $file"
 }
 
-# "file" when the session's TCP bind carries a per-socket auth option, else "none".
+# Read the authentication module used by the session's TCP bind.
 session_auth() {
-  local argv
+  local argv auth
   argv=$(xpra_info "$1" | grep -m1 '^server.argv=' || true)
-  case "$argv" in
-    *",auth="*) printf 'file\n' ;;
-    *) printf 'none\n' ;;
-  esac
+  auth=$(printf '%s\n' "$argv" | sed -n 's/.*,auth=\([A-Za-z0-9_-][A-Za-z0-9_-]*\).*/\1/p' | head -1)
+  printf '%s\n' "${auth:-none}"
 }
 
 # A live session is reusable only when its listener matches the request on every
-# axis. Host, port and auth mode are all fixed at startup, so a mismatch means a
-# new session, never a silently different one.
+# axis. Host, port, auth mode and transport are fixed at startup, so a mismatch
+# means a new session, never a silently different one.
 listener_matches() {
   local display=$1 listener=$2
   [ "${listener%% *}" = "$HOST" ] || return 1
@@ -321,11 +451,12 @@ listener_matches() {
     return 1
   fi
   [ "$(session_auth "$display")" = "$AUTH_MODE" ] || return 1
+  [ "$(session_transport "$display")" = "$(requested_transport)" ] || return 1
   return 0
 }
 
 # An unauthenticated listener on a routable address is open to everyone who can
-# reach it, which the caller has to say out loud when reporting the port.
+# reach it, which the caller must include in the access report.
 warn_if_unauthenticated() {
   local bind_host=$1 port=$2
   case "$bind_host" in
@@ -335,17 +466,26 @@ warn_if_unauthenticated() {
   printf '%s\n' "Use --host 127.0.0.1 to keep it local, or keep the port on a trusted network." >&2
 }
 
-# The password file a running session authenticates against, when it is visible.
+# The password file a running file-authenticated session uses, when visible.
 session_password_file() {
   local argv
-  argv=$("$XPRA" info "$1" 2>/dev/null | grep -m1 '^server.argv=' || true)
-  printf '%s\n' "$argv" | sed -n "s/.*,auth=[^,]*,filename=\([^,']*\).*/\1/p" | head -1
+  argv=$(xpra_info "$1" | grep -m1 '^server.argv=' || true)
+  printf '%s\n' "$argv" | sed -n \
+    -e "s/.*,auth=file,filename=\([^,')]*\).*/\1/p" \
+    -e "s/.*,auth=file(filename=\([^,')]*\).*/\1/p" | head -1
 }
 
 # Find a reusable session, or start one. Prints the result block.
 ensure_session() {
   local display="$DISPLAY_ARG" session="reused" listener="" bind_host="" port=""
   local requested_live=0 skipped=0 bind_opt="" may_reuse=1 reason=""
+  local password_file="" display_password="" transport
+  local -a ssl_args=()
+  transport=$(requested_transport)
+  validate_access_request
+  if [ "$transport" = "wss" ]; then
+    ssl_args=(--ssl=auto "--ssl-cert=$SSL_CERT" "--ssl-key=$SSL_KEY")
+  fi
 
   # A fresh session is the default: only a named display or port joins a live one.
   if [ "$PORT" = "0" ] && [ -z "$DISPLAY_ARG" ]; then
@@ -359,7 +499,7 @@ ensure_session() {
       requested_live=1
       listener=$(tcp_listener "$display" || true)
       if [ -n "$listener" ] && ! listener_matches "$display" "$listener"; then
-        fail "session $display listens on ${listener%% *}:${listener##* } (auth=$(session_auth "$display")); that does not match host=$HOST, port=$PORT, auth=$AUTH_MODE. Stop $display first, or drop --port / --no-password."
+        fail "session $display listens on ${listener%% *}:${listener##* } (auth=$(session_auth "$display"), transport=$(session_transport "$display")); that does not match host=$HOST, port=$PORT, auth=$AUTH_MODE, transport=$transport. Stop $display first, or change the matching options."
       fi
       ;;
     unresponsive)
@@ -387,15 +527,16 @@ ensure_session() {
     local auth pw_file
     auth=$(session_auth "$display")
     pw_file=$(session_password_file "$display")
-    [ -n "$pw_file" ] || pw_file="$PASSWORD_FILE"
-    if [ "$auth" = "file" ] && [ "$pw_file" = "$PASSWORD_FILE" ] && { [ -n "$PASSWORD" ] || [ ! -f "$PASSWORD_FILE" ]; }; then
-      # xpra re-reads the file when its mtime changes, so this applies at once.
-      # Rewriting a missing file keeps a live session reachable.
-      prepare_password
-      info "password file written to $PASSWORD_FILE; the running session uses it on the next connection"
+    if [ "$auth" = "file" ] && [ -z "$pw_file" ]; then
+      fail "cannot determine the password file for $display; pass a session created by this script"
     fi
-    print_result "$session" "$display" "$bind_host" "$port" "$auth" "" "$pw_file"
+    if [ "$auth" = "file" ] && { [ -n "$PASSWORD" ] || [ -n "$PASSWORD_SOURCE" ] || [ ! -f "$pw_file" ]; }; then
+      prepare_password "$pw_file" "reused"
+      info "password file written to $pw_file; the running session uses it on the next connection"
+    fi
+    print_result "$session" "$display" "$bind_host" "$port" "$auth" "" "$pw_file" "$(session_transport "$display")"
     [ "$auth" = "none" ] && warn_if_unauthenticated "$bind_host" "$port"
+    warn_if_insecure "$bind_host" "$(session_transport "$display")"
     return 0
   fi
 
@@ -404,7 +545,7 @@ ensure_session() {
   fi
 
   if [ -z "$display" ]; then
-    display=$(pick_display) || fail "no free display number found in :10-:99"
+    display=$(pick_display) || fail "cannot find a free display in :10-:99 (xpra list/displays failed or all are in use)"
   fi
 
   session="created"
@@ -423,12 +564,14 @@ ensure_session() {
     bind_opt="$HOST:$PORT"
     info "starting xpra session $display on $HOST:$PORT with no password (auth=none)"
   else
-    prepare_password
-    bind_opt="$HOST:$PORT,auth=file,filename=$PASSWORD_FILE"
-    info "starting xpra session $display on $HOST:$PORT (password in $PASSWORD_FILE)"
+    password_file=$(password_file_for_display "$display")
+    prepare_password "$password_file" "created"
+    bind_opt="$HOST:$PORT,auth=file,filename=$password_file"
+    info "starting xpra session $display on $HOST:$PORT (password in $password_file)"
   fi
   if ! "$XPRA" start "$display" \
     --bind-tcp="$bind_opt" \
+    "${ssl_args[@]}" \
     --daemon=yes \
     --mdns=no \
     --start-new-commands=yes >/dev/null 2>&1; then
@@ -443,11 +586,15 @@ ensure_session() {
   bind_host=${listener%% *}
   port=${listener##* }
   if [ "$AUTH_MODE" = "none" ]; then
-    print_result "$session" "$display" "$bind_host" "$port" "none" "" ""
+    print_result "$session" "$display" "$bind_host" "$port" "none" "" "" "$transport"
     warn_if_unauthenticated "$bind_host" "$port"
   else
-    print_result "$session" "$display" "$bind_host" "$port" "file" "$(cat "$PASSWORD_FILE")" "$PASSWORD_FILE"
+    if [ -z "$PASSWORD_SOURCE" ]; then
+      display_password=$(cat "$password_file") || fail "cannot read password file: $password_file"
+    fi
+    print_result "$session" "$display" "$bind_host" "$port" "file" "$display_password" "$password_file" "$transport"
   fi
+  warn_if_insecure "$bind_host" "$transport"
 }
 
 # Resolve the display to launch in, starting a session when the request names none.
@@ -488,7 +635,10 @@ cmd_list() {
 # Say what a destructive command is about to take down, before it does.
 report_inventory() {
   local display=$1 table
-  table=$(child_table "$display" || true)
+  if ! table=$(child_table "$display"); then
+    printf 'about to stop %s, programs=unknown (inventory query failed)\n' "$display" >&2
+    return 0
+  fi
   if [ -n "$table" ]; then
     printf '%s\n' "about to stop $display, running programs:" >&2
     printf '%s\n' "$table" | while IFS=$'\t' read -r pid cmd; do
@@ -499,8 +649,50 @@ report_inventory() {
   fi
 }
 
+cleanup_session_password() {
+  local display=$1 dir
+  dir="$PASSWORD_DIR/${display#:}"
+  [ -f "$dir/password" ] && rm -f -- "$dir/password"
+  [ -d "$dir" ] && rmdir -- "$dir" 2>/dev/null || true
+}
+
+# Stop 1 display and verify both the command result and its disappearance.
+stop_session() {
+  local display=$1 status remaining deadline
+  info "stopping xpra session $display"
+  if bounded_for "$STOP_SECONDS" "$XPRA" stop "$display"; then
+    status=0
+  else
+    status=$?
+  fi
+  if [ "$status" -ne 0 ]; then
+    printf 'STOP_FAILED=%s\n' "$display"
+    printf 'ERROR: stopping %s failed with exit %d (limit %ss)\n' "$display" "$status" "$STOP_SECONDS" >&2
+    return 1
+  fi
+
+  deadline=$((SECONDS + PROBE_SECONDS))
+  while [ "$SECONDS" -lt "$deadline" ]; do
+    if ! remaining=$(query_displays); then
+      printf 'STOP_FAILED=%s\n' "$display"
+      printf 'ERROR: cannot verify that %s stopped: xpra list failed\n' "$display" >&2
+      return 1
+    fi
+    if ! printf '%s\n' "$remaining" | grep -qx -- "$display"; then
+      cleanup_session_password "$display"
+      printf 'SESSION_STOPPED=%s\n' "$display"
+      return 0
+    fi
+    sleep 0.2
+  done
+
+  printf 'STOP_FAILED=%s\n' "$display"
+  printf 'ERROR: %s is still registered after xpra stop\n' "$display" >&2
+  return 1
+}
+
 cmd_stop() {
-  local display="" all=0 arg sessions
+  local display="" all=0 arg sessions stopped=0 failed=0
   for arg in "$@"; do
     case "$arg" in
       --all) all=1 ;;
@@ -510,15 +702,25 @@ cmd_stop() {
   done
 
   if [ "$all" = 1 ]; then
-    sessions=$(live_displays)
-    [ -n "$sessions" ] || { printf 'no live xpra sessions\n'; return 0; }
+    sessions=$(query_displays) || fail "cannot list sessions before stop --all"
+    if [ -z "$sessions" ]; then
+      printf 'no live xpra sessions\nSESSIONS_STOPPED=0\nSESSIONS_FAILED=0\n'
+      return 0
+    fi
     while IFS= read -r display; do
       report_inventory "$display"
     done <<< "$sessions"
     while IFS= read -r display; do
-      info "stopping xpra session $display"
-      "$XPRA" stop "$display" || true
+      if stop_session "$display"; then
+        stopped=$((stopped + 1))
+      else
+        failed=$((failed + 1))
+      fi
     done <<< "$sessions"
+    printf 'SESSIONS_STOPPED=%s\nSESSIONS_FAILED=%s\n' "$stopped" "$failed"
+    if [ "$failed" -gt 0 ]; then
+      return 1
+    fi
     return 0
   fi
 
@@ -533,8 +735,7 @@ cmd_stop() {
     exit 2
   fi
   report_inventory "$display"
-  info "stopping xpra session $display"
-  "$XPRA" stop "$display"
+  stop_session "$display"
 }
 
 # Close programs inside one session, leaving the session and its port alive.
@@ -545,7 +746,11 @@ close_session_programs() {
   local -a patterns=("$@") pids=() labels=() alive=()
   local table pid cmd label pattern i deadline
 
-  table=$(child_table "$display" || true)
+  if ! table=$(child_table "$display"); then
+    printf 'DISPLAY=%s\nCLOSED=0\nSTILL_RUNNING=unknown\n' "$display"
+    printf 'ERROR: cannot query programs in session %s\n' "$display" >&2
+    return 1
+  fi
   if [ -z "$table" ]; then
     printf 'DISPLAY=%s\nCLOSED=0\n' "$display"
     printf 'no programs running in session %s\n' "$display" >&2
@@ -647,7 +852,7 @@ cmd_close() {
 # Close every program in every session and then stop those sessions, so nothing
 # survives and every port is released.
 cmd_close_all() {
-  local force=0 arg display sessions stopped=0
+  local force=0 arg display sessions stopped=0 failed=0
 
   for arg in "$@"; do
     case "$arg" in
@@ -657,25 +862,31 @@ cmd_close_all() {
     esac
   done
 
-  sessions=$(live_displays)
+  sessions=$(query_displays) || fail "cannot list sessions before close-all"
   if [ -z "$sessions" ]; then
-    printf 'no live xpra sessions\n'
+    printf 'no live xpra sessions\nSESSIONS_STOPPED=0\nSESSIONS_FAILED=0\n'
     return 0
   fi
 
   while IFS= read -r display; do
     [ -n "$display" ] || continue
-    close_session_programs "$display" "$force" 1
+    close_session_programs "$display" "$force" 1 || true
   done <<< "$sessions"
 
   while IFS= read -r display; do
     [ -n "$display" ] || continue
-    info "stopping xpra session $display"
-    "$XPRA" stop "$display" || true
-    stopped=$((stopped + 1))
+    if stop_session "$display"; then
+      stopped=$((stopped + 1))
+    else
+      failed=$((failed + 1))
+    fi
   done <<< "$sessions"
 
-  printf 'SESSIONS_STOPPED=%s\n' "$stopped"
+  printf 'SESSIONS_STOPPED=%s\nSESSIONS_FAILED=%s\n' "$stopped" "$failed"
+  if [ "$failed" -gt 0 ]; then
+    return 1
+  fi
+  return 0
 }
 
 # Print "<pid>\t<command>" for the programs running in a display.
@@ -799,12 +1010,65 @@ handshake_timeouts() {
   printf '%s\n' "${count:-0}"
 }
 
-# The two pieces a browser client needs from this machine: an Xvfb xpra can
-# drive, and the html5 web root it serves the client from.
-doctor_environment() {
-  local xvfb html xvfb_bin status=0
+html5_version() {
+  local html=$1
+  sed -n 's/.*<h5>Version \([^<]*\)<\/h5>.*/\1/p' "$html/connect.html" 2>/dev/null | head -1
+}
 
-  xvfb=$(configured_xvfb)
+html5_min_protocol() {
+  local html=$1
+  sed -n 's/^const MIN_PROTOCOL_VERSION = \[\([0-9][0-9]*\), *\([0-9][0-9]*\)\].*/\1.\2/p' \
+    "$html/js/Client.js" 2>/dev/null | head -1
+}
+
+version_at_least() {
+  local actual=${1#xpra v} required=$2 actual_major actual_minor required_major required_minor
+  actual=${actual%%[^0-9.]*}
+  IFS=. read -r actual_major actual_minor _ <<< "$actual"
+  IFS=. read -r required_major required_minor _ <<< "$required"
+  [[ "$actual_major" =~ ^[0-9]+$ && "$actual_minor" =~ ^[0-9]+$ ]] || return 1
+  [[ "$required_major" =~ ^[0-9]+$ && "$required_minor" =~ ^[0-9]+$ ]] || return 1
+  if [ "$actual_major" -gt "$required_major" ]; then
+    return 0
+  fi
+  if [ "$actual_major" -lt "$required_major" ]; then
+    return 1
+  fi
+  [ "$actual_minor" -ge "$required_minor" ]
+}
+
+# Check the same WebSocket protocol path used by the HTML5 client, with authentication.
+active_handshake() {
+  local display=$1 listener=$2 auth=$3 transport=$4
+  local host port password_file uri
+  local -a args=(id)
+  host=${listener%% *}
+  port=${listener##* }
+  [ "$host" = "0.0.0.0" ] && host=127.0.0.1
+  uri="$transport://$host:$port/"
+
+  case "$auth" in
+    file)
+      password_file=$(session_password_file "$display")
+      [ -n "$password_file" ] && [ -r "$password_file" ] || return 1
+      args+=("--password-file=$password_file")
+      ;;
+    none) ;;
+    *) return 1 ;;
+  esac
+  if [ "$transport" = "wss" ]; then
+    args+=("--ssl-server-verify-mode=$SSL_SERVER_VERIFY_MODE" "--ssl-check-hostname=$SSL_CHECK_HOSTNAME")
+  fi
+  args+=("$uri")
+  bounded "$XPRA" "${args[@]}" >/dev/null 2>&1
+}
+
+# The two pieces a browser client needs from this machine: an Xvfb xpra can
+# drive, and a compatible html5 web root it serves the client from.
+doctor_environment() {
+  local xvfb html xvfb_bin xpra_version html_version min_protocol status=0
+
+  xvfb=$(configured_xvfb || true)
   xvfb_bin=${xvfb%% *}
   if xvfb_is_runnable; then
     printf 'CHECK xvfb=%s status=ok\n' "${xvfb_bin:-none}"
@@ -813,25 +1077,48 @@ doctor_environment() {
     status=1
   fi
 
-  html=$(configured_html)
+  xpra_version=$(bounded "$XPRA" --version 2>/dev/null || true)
+  printf 'CHECK xpra-version=%s status=info\n' "${xpra_version#xpra v}"
+
+  html=$(configured_html || true)
   if [ -n "$html" ] && [ -d "$html" ]; then
+    html_version=$(html5_version "$html")
+    min_protocol=$(html5_min_protocol "$html")
     printf 'CHECK html=%s status=ok\n' "$html"
+    printf 'CHECK html5-version=%s status=info protocol-min=%s\n' \
+      "${html_version:-unknown}" "${min_protocol:-unknown}"
+    if [ -n "$min_protocol" ] && ! version_at_least "$xpra_version" "$min_protocol"; then
+      printf 'CHECK html5-compatibility=bad server=%s required=%s\n' "$xpra_version" "$min_protocol"
+      status=1
+    fi
   else
     printf 'CHECK html=%s status=missing\n' "${html:-none}"
+    printf 'CHECK html5-version=unknown status=missing\n'
     status=1
   fi
 
   return "$status"
 }
 
-# One SESSION line per live session, naming every reason its clients would fail.
-# status=ok requires all of it: the session answers, listens, and drops no handshakes.
+# Active handshakes and HTTP responses determine readiness. CPU and historical
+# timeouts remain diagnostic context because neither proves a current failure.
 doctor_sessions() {
-  local display pid cpu cpu_text listener timeouts problem_list status=0
+  local display pid cpu cpu_text listener transport web timeouts problem_list
+  local displays status=0 found=0
   local -a problems
+
+  if ! displays=$(query_displays); then
+    printf 'SESSIONS=unknown reason=xpra-list-failed\n'
+    return 1
+  fi
+  if [ -z "$displays" ]; then
+    printf 'SESSIONS=0 reason=no-live-sessions\n'
+    return 1
+  fi
 
   while IFS= read -r display; do
     [ -n "$display" ] || continue
+    found=1
     pid=$(server_pid "$display" || true)
 
     if [ "$(session_state "$display")" = "unresponsive" ]; then
@@ -842,6 +1129,7 @@ doctor_sessions() {
     fi
 
     listener=$(tcp_listener "$display" || true)
+    transport=$(session_transport "$display")
     timeouts=$(handshake_timeouts "$display")
     if cpu=$(cpu_percent "$pid"); then
       cpu_text="${cpu}%"
@@ -850,32 +1138,36 @@ doctor_sessions() {
     fi
 
     problems=()
-    [ -n "$listener" ] || problems+=("no-listener")
-    [ "$timeouts" = "0" ] || problems+=("dropped-handshakes=$timeouts")
-    if [ "$cpu_text" = "unknown" ]; then
-      problems+=("cpu-unknown")
-    elif [ "$cpu" -ge "$CPU_SPIN_PERCENT" ]; then
-      problems+=("spinning-cpu=$cpu_text")
+    web="unknown"
+    if [ -z "$listener" ]; then
+      problems+=("no-listener")
+    else
+      web=$(web_status "${listener%% *}" "${listener##* }" "$transport")
+      if ! active_handshake "$display" "$listener" "$(session_auth "$display")" "$transport"; then
+        problems+=("handshake-failed")
+      fi
+      [ "$web" = "yes" ] || problems+=("web-$web")
     fi
 
     if [ "${#problems[@]}" -eq 0 ]; then
-      printf 'SESSION %s status=ok listener=%s cpu=%s handshake_timeouts=0\n' \
-        "$display" "${listener// /:}" "$cpu_text"
+      printf 'SESSION %s status=ok listener=%s transport=%s cpu=%s web=yes handshake=id historical_timeouts=%s\n' \
+        "$display" "${listener// /:}" "$transport" "$cpu_text" "$timeouts"
       continue
     fi
 
     printf -v problem_list '%s,' "${problems[@]}"
-    printf 'SESSION %s status=bad listener=%s cpu=%s handshake_timeouts=%s problems=%s\n' \
-      "$display" "${listener// /:}" "$cpu_text" "$timeouts" "${problem_list%,}"
+    printf 'SESSION %s status=bad listener=%s transport=%s cpu=%s web=%s historical_timeouts=%s problems=%s\n' \
+      "$display" "${listener:-none}" "$transport" "$cpu_text" "$web" "$timeouts" "${problem_list%,}"
     status=1
-  done < <(live_displays)
+  done <<< "$displays"
 
+  [ "$found" = "1" ] || status=1
   return "$status"
 }
 
-# Report what a browser client meets, and fail when any of it is missing. The
-# html5 files arrive over plain HTTP from disk, while the client still has to
-# complete an xpra handshake on the session's own port.
+# Report what a browser client meets, and fail when any of it is missing.
+# The HTML5 files arrive over HTTP(S), and the active probe checks the WebSocket
+# transport and authentication that the client will use.
 cmd_doctor() {
   local status=0
 
@@ -906,14 +1198,21 @@ main() {
       --port) [ "$#" -ge 2 ] || fail "--port requires a value"; PORT=$2; shift 2 ;;
       --display) [ "$#" -ge 2 ] || fail "--display requires a value"; DISPLAY_ARG=$2; shift 2 ;;
       --password) [ "$#" -ge 2 ] || fail "--password requires a value"; PASSWORD=$2; shift 2 ;;
+      --password-file) [ "$#" -ge 2 ] || fail "--password-file requires a value"; PASSWORD_SOURCE=$2; shift 2 ;;
       --no-password) AUTH_MODE="none"; shift ;;
+      --ssl-cert) [ "$#" -ge 2 ] || fail "--ssl-cert requires a value"; SSL_CERT=$2; shift 2 ;;
+      --ssl-key) [ "$#" -ge 2 ] || fail "--ssl-key requires a value"; SSL_KEY=$2; shift 2 ;;
+      --allow-insecure) ALLOW_INSECURE=1; shift ;;
       --) shift; break ;;
       *) break ;;
     esac
   done
 
-  if [ "$AUTH_MODE" = "none" ] && [ -n "$PASSWORD" ]; then
-    fail "--password and --no-password are mutually exclusive"
+  if [ "$AUTH_MODE" = "none" ] && { [ -n "$PASSWORD" ] || [ -n "$PASSWORD_SOURCE" ]; }; then
+    fail "--password, --password-file and --no-password are mutually exclusive"
+  fi
+  if [ -n "$PASSWORD" ] && [ -n "$PASSWORD_SOURCE" ]; then
+    fail "--password and --password-file are mutually exclusive"
   fi
 
   case "$command" in

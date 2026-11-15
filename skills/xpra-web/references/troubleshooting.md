@@ -4,16 +4,18 @@ Read this when a `xpra-web.sh` command exits non-zero, or when the symptom in th
 
 | Symptom | Cause | Action |
 | --- | --- | --- |
-| exit code 3, `xpra is not installed` | the dependency is absent | ask the user, then install (see [When xpra is missing](../SKILL.md#when-xpra-is-missing)) |
+| exit code 3, `xpra is not installed` | the dependency is absent | ask the user, then install (see [Missing dependencies and troubleshooting](../SKILL.md#missing-dependencies-and-troubleshooting)) |
 | `Error: cannot find the html web root` in `server.log` | `--html=on` or `auto` overrode the config path | drop `--html`, restart the session |
 | no listener within 10s | Xvfb or xpra startup failed after the bind check passed | the script prints the `server.log` tail; read it |
 | `FileNotFoundError: '/usr/bin/Xvfb'` in `server.log` | the `xvfb` line in `~/.config/xpra/xpra.conf` names a binary that is not on this machine | point `xvfb` at a real Xvfb; `ensure` refuses this configuration before starting |
 | `Fatal server error: could not open default font 'fixed'` | that `xvfb` command has no font path | add `-fp /usr/share/fonts/X11/misc` to the `xvfb` line |
-| browser sits at `Sending handshake` | the session answers TCP but never the protocol, most often because the server is spinning on an Xvfb it cannot drive | `doctor` marks it `status=bad` or `status=unresponsive`, and the session log records `connection timed out`. Point `xvfb` at an Xvfb that offers `+extension GLX +extension Composite +extension RANDR +extension RENDER`, then start a fresh session |
-| `status=unresponsive`, and `list`/`stop` never return | a spinning server never reads its control channel | kill the pid from `SESSION ... server=<pid>`; `xpra stop :N` waits on that same channel, so it will hang too |
-| `WEB=no` but the session is live | the html5 root is missing on this machine | use the xpra client path, or set `html = <dir>` in `~/.config/xpra/xpra.conf` |
-| the user does not know the password | the default is the user name, stored in `PASSWORD_FILE` | read the file, or rewrite it with `ensure --password PW` |
-| `AUTH=none` and that was not requested | the session was started with `--no-password`, or by another tool without `auth=` | report the port as unprotected; `stop :N` then a plain `ensure` gives a password-protected session |
+| browser sits at `Sending handshake` | the session answers TCP but the WebSocket handshake fails | `doctor` runs an authenticated `xpra id` probe and reports `handshake-failed` or `status=unresponsive`. Check the session log and configured Xvfb extensions, then start a fresh session |
+| `status=unresponsive`, or stop times out | a spinning server never reads its control channel | stop returns `STOP_FAILED` after `XPRA_WEB_STOP_SECONDS` (default 10s). Kill the pid from `SESSION ... server=<pid>`; do not repeat an unbounded `xpra stop` |
+| `WEB=no` or `WEB=unknown` but the session is live | HTTP did not return 200, or the probe could not run | check the configured html5 root and port; install `curl` when it is missing. The native xpra client path remains available |
+| the user does not know the password | each new display has a random password in its own `PASSWORD_FILE` | read the file, or replace only that session's password with `ensure --display :N --password-file FILE` |
+| browser reports `refusing to send a password over an insecure connection` | remote plain HTTP/WS does not satisfy the HTML5 client's password policy | use the printed SSH tunnel, configure WSS with `--ssl-cert` and `--ssl-key`, or explicitly request `--allow-insecure` on a trusted network |
+| `STOP_FAILED` or `SESSIONS_FAILED=<n>` | xpra stop failed, timed out, or the display remained registered | read the per-display error; failed sessions are not included in `SESSIONS_STOPPED` and the command returns non-zero |
+| `AUTH=none` and that was not requested | the session was started with `--no-password`, or by another tool without `auth=` | report the port as unprotected; `stop :N` then a plain `ensure` gives a password-protected loopback session |
 | a second session appeared while a session was live | `ensure` and `run` both start a fresh session by default; only a named `--display`/`--port` joins one | expected; `list` shows both, `stop :N` ends the one you no longer need, `--display :N` targets the one you keep |
 | `cannot bind <host>:<port>` | the port is held by a process that is not a matching live session | drop `--port` to let the kernel pick one, or choose another port |
 | window never appears in the browser | nothing attached yet, or the child exited | `list`, then check the child with `ps` |
