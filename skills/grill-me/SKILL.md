@@ -4,206 +4,75 @@ description: Use when asked to stress-test a plan or design through an interview
 disable-model-invocation: true
 ---
 
-Interview me relentlessly about every aspect of this plan until we reach a shared understanding. Walk down each branch of the design tree, resolving dependencies between decisions one-by-one. For each question, provide your recommended answer.
+Interview the user relentlessly until you reach a shared understanding. Map this as a **design tree**: every decision branches into the decisions that hang off it.
 
-Use the `question` tool to ask questions. If multiple questions have no dependency on each other, batch them into a single `questions` array. When providing options, mark the recommended one with "(Recommended)" so the user has a clear reference.
+Work the tree in **rounds**. The **frontier** is every decision whose prerequisites are already settled: the questions you can ask _now_ without guessing at answers you haven't heard yet. Ask the whole frontier in one round: number each question and give your recommended answer. Then wait for the user's answers before the next round.
 
-If a question can be answered by exploring the codebase, explore the codebase instead.
+Format a round like so:
 
-## Closing phase
+```
+❓ **Q1** - **<question title>**: <question body, might be multiple paragraphs, including multiple choices>
 
-When all branches are resolved and no further questions remain, produce a final summary in this format:
+➡️ <your recommended answer>
 
-```markdown
-## Design Summary
+---
 
-### Decisions Made
-- <Decision>: <chosen answer> — <one-line rationale>
+❓ **Q2** - **<question title>**: <question body, might be multiple paragraphs, including multiple choices>
 
-### Scope
-- <What this plan covers>
-- <What is explicitly out of scope>
-
-### Suggested Skills
-- <skill-name> — <one-line reason it helps>
-
-### Implementation Steps
-1. <Concrete implementation step>
-2. <Concrete implementation step>
-3. <Concrete implementation step>
-
-Confirm: proceed with implementation? (run / run-verify / no / revise / save / show / to-add)
+➡️ <your recommended answer>
 ```
 
-Rules for `### Suggested Skills`:
-- Always include the section. If no skill is a good fit, write a single bullet: `- None`.
-- Only recommend skills that are loadable in the current session's `<available_skills>` list. Do not recommend skills the user has not installed.
-- Keep each bullet to one line: skill name plus a brief reason it applies to this plan.
+Word each question so "yes" accepts your recommended answer.
 
-Rules for `### Implementation Steps`:
-- Include only implementation actions, not rationale, alternatives, or discussion history.
-- Keep each numbered step to one line.
-- Keep each step concrete enough that another agent can execute it directly.
-- Preserve the current design decisions and scope; do not reopen resolved questions.
+Each round the user answers reshapes the tree: settled decisions push the frontier outward and unblock questions that depended on them. Recompute the frontier and ask the next round. A question whose answer depends on another question still open in this round belongs to a _later_ round, not this one.
 
-Do not implement until user says "run" or "run-verify".
+Finding _facts_ is your job, never the user's. When a frontier question needs a fact from the environment (filesystem, tools, etc.), dispatch a sub-agent with a fresh context window to find it; don't ask the user for anything you could look up yourself. Don't block on it: a running exploration is an unsettled prerequisite, so only the questions downstream of it wait for the sub-agent to report; ask the rest of the frontier now. The _decisions_ are the user's: put each to them and wait.
 
-### Run-verify option
+The session is done when the frontier is empty: every branch of the design tree visited, nothing left silently assumed. Do not act on it until the user confirms you have reached a shared understanding.
 
-On **run-verify**, do same as **run**, then launch independent subagent to verify before completion report.
+## Question tool
+
+Use `ask_user_question` to present interview rounds when available. Batch independent questions in one call, up to four questions. If the frontier is larger, use successive rounds without asking dependent questions early. Give each question two to four concrete options; put the recommended option first and append `(Recommended)` to its label. Use the upstream Markdown round format when the tool is unavailable.
+
+## Execution controls
+
+When the frontier is empty, confirm that you and the user have reached a shared understanding. Then present:
+
+`Confirm: proceed with implementation? (run / run-verify / no / revise / show)`
+
+Do not implement until the user says `run` or `run-verify`.
+
+### Run
+
+On **run**, implement the design established by the interview. Preserve the confirmed decisions and scope; do not reopen resolved questions.
+
+### Run-verify
+
+On **run-verify**, do the same as **run**, then launch an independent subagent to verify before the completion report.
 
 Subagent verify rules:
-- Use general-purpose subagent unless specific verify/review subagent clearly fits.
-- Subagent verify implementation against final `Design Summary`: decisions, scope, acceptance checklist, validation plan.
-- Subagent inspect real diff + relevant files, not implementer summary only.
-- Implementer wait for subagent result, then report pass/fail.
-- If fail: summarize findings, fix, re-run independent subagent verification.
-- Repeat fix-and-verify loop until subagent passes, or real blocker prevents completion.
-- Implementer cannot accept own work without passing independent subagent result.
+- Use a general-purpose subagent unless a specific verify/review subagent clearly fits.
+- Give the subagent the confirmed decisions and scope, actual changed-file scope, and checks already performed.
+- Verify the implementation against the confirmed decisions, scope, acceptance criteria, and validation plan established during the interview.
+- Inspect the real diff and relevant files, not the implementer summary only.
+- Run feasible checks and report evidence for each requirement.
+- The implementer waits for the subagent result, then reports pass/fail.
+- If verification fails, summarize the findings, fix them, and rerun independent subagent verification.
+- Repeat the fix-and-verify loop until the subagent passes or a real blocker prevents completion.
+- The implementer cannot accept its own work without a passing independent subagent result.
 
-### To-ADD option
+### Revise
 
-On **to-add**, write the grill outcome as an Architecture Design Document (ADD), using an arc42-inspired structure by default:
+On **revise**, resume the interview to incorporate the requested changes. Recompute the frontier and ask the next round of questions.
 
-1. Detect whether an ADD for the current topic/system already exists before creating a new file.
-   - First inspect likely locations in the current repo: `docs/architecture/`, `docs/design/`, `architecture/`, `design/`, `docs/`, `doc/`.
-   - Look for filenames/titles such as `architecture-design.md`, `software-architecture.md`, `architecture.md`, `design.md`, `add.md`, or topic-specific architecture/design documents.
-   - Use filename/title/topic matching against the plan topic, system name, feature name, and major components.
-   - If a likely existing document is found, read it and enrich it instead of creating a duplicate.
-2. If an existing ADD is found, preserve its accepted facts and local structure while adding missing detail from the grill result:
-   - overview / concise purpose and scope
-   - constraints
-   - system scope/context
-   - solution strategy
-   - technology stack
-   - building-block/component view
-   - runtime flows
-   - deployment view
-   - cross-cutting concepts
-   - key design decisions
-   - quality requirements
-   - risks/technical debt
-   - validation plan
-   - acceptance checklist
-   - implementation steps / concrete delivery plan
-   - glossary/links when useful
-3. If no existing ADD is found, create a new Markdown ADD.
-   - Prefer an existing architecture/design docs directory if present.
-   - Otherwise create `docs/architecture/`.
-   - Filename: `architecture-design-<topic-slug>.md` for topic-specific designs, or `architecture-design.md` for repo/system-level designs.
-4. Use this structure unless the existing file has a clear local convention. Treat it as a section menu, not a mandatory checklist: include only sections that help explain the design, and omit empty or irrelevant sections.
+### No
 
-```markdown
-# Architecture Design Document: <System / Feature Name>
+On **no**, stop without implementing.
 
-## Overview
+### Show
 
-Summarize purpose, scope, core design, key decisions, and how to read this document. Concise only; no acceptance details.
+On **show**, render the confirmed design as an ASCII architecture diagram:
 
-## Related Documents
-
-- <URL or relative path from this ADD file to the related document>
-
-## 1. Architecture Constraints
-
-## 2. System Scope and Context
-
-## 3. Solution Strategy
-
-## 4. Technology Stack
-
-Summarize the concrete technologies, frameworks, infrastructure, data stores, protocols, and tools chosen for this design, plus the reason each major choice matters.
-
-## 5. Building Block View
-
-## 6. Runtime View
-
-## 7. Deployment View
-
-## 8. Cross-cutting Concepts
-
-## 9. Key Design Decisions
-
-## 10. Quality Requirements
-
-## 11. Risks and Technical Debt
-
-## 12. Validation Plan
-
-## 13. Acceptance Checklist
-
-Use checkboxes for end-to-end acceptance criteria. Each checkbox validates full user/system flow: trigger/input → processing → observable outcome. Independent subagent must verify acceptance; implementing agent cannot accept own work. When every checkbox has evidence, ADD is implemented + accepted. Evidence: review, tests, metrics, demos, rollout checks, or production proof.
-
-## 14. Implementation Steps
-
-List concrete delivery steps, one numbered step per line.
-
-## 15. Glossary
-```
-
-   Section selection rules:
-   - Always include `Overview` and `Acceptance Checklist`.
-   - Include `Implementation Steps` when the grill outcome includes concrete implementation steps.
-   - Usually include `System Scope and Context`, `Solution Strategy`, `Technology Stack`, and `Key Design Decisions` for a meaningful ADD.
-   - Do not include `Introduction and Goals`; put high-level purpose + scope in `Overview`.
-   - Include `Related Documents` only when useful links or paths exist; file paths must be relative to the ADD file that contains the link.
-   - Include `Architecture Constraints` only when constraints materially shape the design.
-   - Include `Technology Stack` when concrete technology choices affect implementation, operations, compatibility, or acceptance; keep it as a concise stack/rationale summary and avoid duplicating detailed component, runtime, or deployment views.
-   - Include `Building Block View`, `Runtime View`, and `Deployment View` only when those views clarify the design.
-   - Include `Cross-cutting Concepts`, `Quality Requirements`, `Risks and Technical Debt`, `Validation Plan`, and `Glossary` only when they add non-obvious information.
-   - Write `Acceptance Checklist` as end-to-end implementation acceptance checkboxes, not vague goals, documentation tasks, or component-local TODOs.
-   - Keep acceptance criteria out of `Overview`; `Acceptance Checklist` is only verifiable acceptance source.
-   - Independent subagent verifies checklist; implementing agent cannot accept own work.
-   - The checklist must be complete enough that checking every item means the ADD has been fully implemented and accepted.
-   - Never emit placeholder sections with no useful content.
-
-5. If the ADD would become too long to stay readable or safe to edit, split it into an index document plus detail pages instead of writing one giant file.
-   - Keep the main ADD as the entry point with goals, scope, solution strategy, key decisions, and links to details.
-   - Put large sections into sibling files, for example:
-     - `context.md`
-     - `technology-stack.md`
-     - `building-block-view.md`
-     - `runtime-view.md`
-     - `deployment-view.md`
-     - `cross-cutting-concepts.md`
-     - `quality-requirements.md`
-     - `risks-and-validation.md`
-   - For new split topic-specific designs, use a topic folder to avoid name collisions:
-
-```text
-docs/architecture/<topic-slug>/
-├── README.md
-├── context.md
-├── technology-stack.md
-├── building-block-view.md
-├── runtime-view.md
-├── deployment-view.md
-├── cross-cutting-concepts.md
-├── quality-requirements.md
-└── risks-and-validation.md
-```
-
-   - If a topic folder cannot be used, prefix companion pages with the topic slug, for example `<topic-slug>-runtime-view.md`.
-   - If enriching an existing large ADD, avoid rewriting the whole document. Patch only the relevant section, or create a focused companion page and link it from the main ADD.
-   - Do not duplicate the same content in both the index and detail pages; the index summarizes, detail pages explain.
-6. After writing, tell the user whether the ADD was created, enriched, or split, and show the file path(s).
-7. Implementation is **not** started — "run" to proceed, "revise" to revisit.
-8. Re-prompt: `Confirm: proceed with implementation? (run / run-verify / no / revise / save / show / to-add)`
-
-### Save option
-
-On **save**, write summary to file:
-
-1. Filename: `plan-<topic-slug>.md` (topic lowercased, spaces→`-`, strip non-alnum/dash).
-2. If exists, try `plan-<topic-slug>-1.md`, then `-2.md`, etc.
-3. Write full Design Summary (Decisions Made + Scope + Suggested Skills + Implementation Steps). Do not include the "Confirm" prompt line in the file.
-4. Tell user filename; implementation **not** started — "run" or "run-verify" to proceed, "revise" to revisit.
-5. Re-prompt: `Confirm: proceed with implementation? (run / run-verify / no / revise / save / show / to-add)`
-
-### Show option
-
-On **show**, render design as ASCII architecture diagram:
-
-1. Use box-drawing chars (`─`, `│`, `┌`, `┐`, `└`, `┘`, `├`, `┤`, `┬`, `┴`, `┼`) for components, data flow, relationships, layers.
-2. Bird's-eye view of final design, not discussion process.
-3. Re-prompt: `Confirm: proceed with implementation? (run / run-verify / no / revise / save / show / to-add)`
+1. Use box-drawing characters (`─`, `│`, `┌`, `┐`, `└`, `┘`, `├`, `┤`, `┬`, `┴`, `┼`) for components, data flow, relationships, and layers.
+2. Show a bird's-eye view of the final design, not the discussion process.
+3. Re-prompt: `Confirm: proceed with implementation? (run / run-verify / no / revise / show)`
