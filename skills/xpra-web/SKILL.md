@@ -64,7 +64,7 @@ ATTACH=xpra attach --password-file=/run/user/<uid>/xpra-web-<user>/10/password t
 LOCAL=http://127.0.0.1:35971/
 SSH=ssh -L 35971:127.0.0.1:35971 <user>@<host>
 AUTH=file|none
-PASSWORD=<value>            (new generated password or --password only)
+PASSWORD=<value>            (AUTH=file, on a session this run created)
 PASSWORD_FILE=<path>        (AUTH=file only)
 WEB=yes|no|unknown
 ```
@@ -73,8 +73,8 @@ WEB=yes|no|unknown
 
 ## Access and passwords
 
-- Each new display gets a random 48-character hexadecimal password in `${XDG_RUNTIME_DIR:-/tmp}/xpra-web-<user>/<N>/password`, mode 0600 inside mode 0700 directories. Permission or write failures abort startup.
-- Prefer `--password-file FILE`; it copies the secret exactly and does not print it. `--password PW` remains available, but command arguments can leak through history and process listings. A new password on a live session rewrites only that session's file atomically. A missing file is regenerated randomly. Older sessions can keep their original shared file.
+- Each new display gets the user name as its password in `${XDG_RUNTIME_DIR:-/tmp}/xpra-web-<user>/<N>/password`, mode 0600 inside mode 0700 directories. Permission or write failures abort startup. A user name is guessable, so it stops a stray connection, not a deliberate one.
+- Prefer `--password-file FILE`; it copies the secret exactly and does not print it. `--password PW` remains available, but command arguments can leak through history and process listings. A new password on a live session rewrites only that session's file atomically. A missing file is regenerated with the user name. Older sessions can keep their original shared file.
 - `--no-password` selects `AUTH=none` and omits password fields. Keep it on loopback. It never downgrades an existing password-protected session.
 - The default listener is loopback; use the printed `SSH` command and `LOCAL` URL remotely. Direct non-loopback access requires `--ssl-cert` and `--ssl-key` for HTTPS/WSS. Plain WS/TCP, or no authentication on a non-loopback listener, requires explicit `--allow-insecure`; report that exposure.
 - `auth=file` uses challenge-response and does not encrypt the stream. The HTML5 client may refuse remote plaintext passwords. Never put passwords or AES keys in URLs.

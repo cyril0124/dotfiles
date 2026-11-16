@@ -53,7 +53,7 @@ Options:
   --host HOST          Bind address (default: 127.0.0.1)
   --port PORT          Bind port; 0 lets the kernel pick one (default: 0)
   --display :N         Use display :N instead of the first free one
-  --password PW        Password for the TCP bind (default: random for each session)
+  --password PW        Password for the TCP bind (default: the user name)
   --password-file FILE Read the password from FILE instead of the command line
   --no-password        Bind with no password at all (auth=none)
   --ssl-cert FILE      PEM certificate for HTTPS/WSS on the same TCP port
@@ -381,11 +381,6 @@ password_file_for_display() {
   printf '%s/%s/password\n' "$PASSWORD_DIR" "${1#:}"
 }
 
-random_password() {
-  # 24 bytes become a 48-character hexadecimal password.
-  od -An -N24 -tx1 /dev/urandom | tr -d ' \n'
-}
-
 # Write credentials atomically and fail closed when their permissions cannot be set.
 # Xpra re-reads the file when its mtime changes, so this also works on a live session.
 prepare_password() {
@@ -416,9 +411,10 @@ prepare_password() {
         fail "cannot write temporary password file: $tmp"
       fi
     else
-      if ! random_password > "$tmp"; then
+      # No password given: fall back to the user name.
+      if ! printf '%s' "$(id -un)" > "$tmp"; then
         rm -f -- "$tmp"
-        fail "cannot generate a random password"
+        fail "cannot write the default password"
       fi
     fi
     if [ ! -s "$tmp" ]; then
