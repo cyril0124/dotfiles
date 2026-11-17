@@ -22,6 +22,9 @@ local function current_file_dir()
     end
 
     local path = current_file_path()
+    if path and vim.fn.isdirectory(path) == 1 then
+        return path
+    end
     return path and vim.fs.dirname(path) or nil
 end
 

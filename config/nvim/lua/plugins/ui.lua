@@ -171,6 +171,7 @@ return {
 							enabled = true,
 							leave_dirs_open = true,
 						},
+						hijack_netrw_behavior = "disabled",
 						use_libuv_file_watcher = false,
 					},
 					buffers = {
