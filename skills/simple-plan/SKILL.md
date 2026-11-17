@@ -41,7 +41,7 @@ Preserve related behavior unless the user explicitly approves changing it. Cover
 
 Preserve known latency, throughput, memory use, I/O volume, and algorithmic complexity on touched paths. A simpler implementation does not justify a known regression. If a tradeoff is necessary, obtain explicit approval before treating it as accepted.
 
-For a touched hot path, include a concrete performance check: a complexity comparison, benchmark, profile, or measured budget relevant to the change. If no baseline exists, plan to establish one before modifying that path. Do not invent measurements or promise measured equivalence from code inspection alone.
+For a touched hot path, include a concrete performance check: a complexity comparison, benchmark, profile, or measured budget relevant to the change. If no direct baseline exists, measure an equivalent workflow on the unmodified code before any hot-path edit. Define the comparison statistic, repetition count, and acceptance budget in that baseline step, then compare the modified path against the fixed baseline. Do not invent measurements or promise measured equivalence from code inspection alone.
 
 ## Plan format
 
