@@ -1,17 +1,23 @@
 ---
 name: parallelize
-description: 'Parallelize independent work. Use proactively whenever a task has at least two independent slices, including searches, investigations, review lenses, or non-overlapping edits. Also use for explicit requests such as sub=N.'
+description: 'Use subagents for substantial independent investigations, review lenses, or implementation tasks, or when the user explicitly requests agents, such as sub=N. Batch short searches and known-file reads with direct tools.'
 ---
 
 # Parallelize
 
 Main owns plan, dispatch, merge, final answer.
 
+## Choose the execution method
+
+- Batch independent known-file reads, targeted searches, help lookups, and small local edits with direct tools.
+- Use subagents when at least two substantial independent slices each require multi-step exploration or reasoning and have a distinct deliverable.
+- Explicit user requests for agents override the workload threshold. Keep assignments independent and cap the count to safe, useful work.
+
 ## Workflow
 
-1. Parse integer `sub=N`; default `3`. Invalid → state format and stop.
+1. If `sub=N` is provided, parse a positive integer; invalid → state the format and stop. Otherwise choose the fewest agents justified by the work.
 2. Split only by independent file, subsystem, hypothesis, query, or review lens.
-3. 🔴 CHECKPOINT: if fewer than 2 safe slices exist, say `not parallelizable` and handle directly.
+3. If no useful independent assignment exists, handle directly and explain any departure from an explicit agent request.
 4. Prompt each agent with scope, permission, success check, output format.
 5. Dispatch all agents in one round. If runtime cannot parallelize, report it.
 6. Merge: dedupe, resolve conflicts by evidence, synthesize one result.
@@ -19,7 +25,7 @@ Main owns plan, dispatch, merge, final answer.
 ## Patterns
 
 - Review: correctness / security / performance / tests.
-- Search: paths/query families; overlap allowed.
+- Search: broad investigations across subsystems or competing hypotheses.
 - Debug/build: hypotheses or non-overlapping files.
 
 ## Failures
@@ -31,6 +37,6 @@ Main owns plan, dispatch, merge, final answer.
 ## Do Not
 
 - Do not edit same file/shared state from multiple agents.
-- Do not force 3 agents when fewer parts exist.
+- Do not create extra assignments to fill an agent count.
 - Do not concatenate raw outputs.
 - Do not hide failures, missing evidence, or conflicts.
