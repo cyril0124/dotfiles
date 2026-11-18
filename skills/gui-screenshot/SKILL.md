@@ -5,6 +5,8 @@ description: Use Xpra to launch Linux desktop apps, map windows, capture and ann
 
 # GUI Screenshots
 
+先运行 `command -v xpra`。如果找不到 `xpra`，告知用户截图流程需要它，并询问是否同意安装。仅在用户明确同意后，按当前系统的安装方式协助安装。确认 `xpra` 已在 `PATH` 中后再继续。
+
 运行 `xpra list`，确认可用会话。按以下 5 步截取目标程序，逐张看图验收。
 
 脚本路径相对于本 Skill 目录；在其他目录执行时，换成绝对路径。
