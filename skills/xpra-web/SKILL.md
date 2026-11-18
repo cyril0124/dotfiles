@@ -118,7 +118,7 @@ Report `BROWSER`, `ATTACH`, `SSH`, `LOCAL`, the port, and a printed password whe
 - the active handshake fails
 - HTTP(S) fails or cannot be probed
 
-CPU and historical `connection timed out` entries are informational only. The doctor checks server-side readiness without launching a browser. A client must attach before `xpra screenshot` can capture windows.
+CPU and historical `connection timed out` entries are informational only. The doctor checks server-side readiness without launching a browser. For a screenshot without an attached client, map the target window with `xpra control <display> map <window-id>` before running `xpra screenshot`.
 
 ## Missing dependencies and troubleshooting
 

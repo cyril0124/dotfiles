@@ -49,6 +49,7 @@ LOCAL_SKILLS=(
   "worktree-dev"
   "sync-feature"
   "xpra-web"
+  "gui-screenshot"
   "explain-by-questions"
 )
 
