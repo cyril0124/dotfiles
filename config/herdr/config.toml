@@ -83,6 +83,12 @@ command = "python3 \"$(dirname \"$(readlink -f \"${HERDR_CONFIG_PATH:-${XDG_CONF
 description = "focus right (wrap)"
 
 [[keys.command]]
+key = "prefix+shift+z"
+type = "shell"
+command = "python3 \"$(dirname \"$(readlink -f \"${HERDR_CONFIG_PATH:-${XDG_CONFIG_HOME:-$HOME/.config}/herdr/config.toml}\")\")/pane-half-zoom.py\""
+description = "toggle half-screen zoom"
+
+[[keys.command]]
 key = "prefix+x"
 type = "plugin_action"
 command = "local.pane-close.open"
