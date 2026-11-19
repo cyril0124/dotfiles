@@ -27,7 +27,9 @@ WAIT_SECONDS="${XPRA_WEB_WAIT_SECONDS:-10}"
 PROBE_SECONDS="${XPRA_WEB_PROBE_SECONDS:-5}"
 STOP_SECONDS="${XPRA_WEB_STOP_SECONDS:-10}"
 
-SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+SESSION_NAME_ARGS=()
+LAUNCHER_DIR=""
 RUN_IN="$SCRIPT_DIR/xpra-run-in.sh"
 
 # Each display gets its own password file. XDG_RUNTIME_DIR is per-boot and
@@ -37,6 +39,7 @@ PASSWORD_DIR="${XDG_RUNTIME_DIR:-${TMPDIR:-/tmp}}/xpra-web-$USER"
 usage() {
   cat <<'USAGE'
 Usage:
+  xpra-web.sh create SLUG [-- CMD ...]  Generate .xpra-web/SLUG/{open,status,close}.sh
   xpra-web.sh ensure [options]          Start a network-visible xpra session
   xpra-web.sh run [options] -- CMD ...  Start or name a session, then launch CMD inside it
   xpra-web.sh list | ls                 Show live sessions, ports, windows, programs and directories
@@ -165,6 +168,8 @@ pick_display() {
   for n in $(seq 10 99); do
     printf '%s\n' "$used" | grep -qx ":$n" && continue
     [ -e "/tmp/.X11-unix/X$n" ] && continue
+    # SSH-forwarded X displays may have only a loopback TCP listener.
+    port_is_free 127.0.0.1 "$((6000 + n))" || continue
     printf ':%s\n' "$n"
     return 0
   done
@@ -200,7 +205,10 @@ import socket
 import sys
 sock = socket.socket()
 try:
+    # Match a restarting TCP server: TIME_WAIT connections can outlive its listener.
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     sock.bind((sys.argv[1], int(sys.argv[2])))
+    sock.listen(1)
 except OSError:
     sys.exit(1)
 finally:
@@ -354,6 +362,13 @@ print_result() {
     scheme="https"
     attach_scheme="wss"
   fi
+  if [[ -n $LAUNCHER_DIR ]]; then
+    local identity uuid
+    identity=$(bounded "$XPRA" id "$display") || fail "cannot identify $display"
+    uuid=$(sed -n 's/^uuid=//p' <<< "$identity")
+    [[ $uuid =~ ^[a-fA-F0-9-]+$ ]] || fail "missing session UUID for $display"
+    printf '%s uuid=%s\n' "$display" "$uuid" > "$LAUNCHER_DIR/.session"
+  fi
   printf 'SESSION=%s\n' "$session"
   printf 'DISPLAY=%s\n' "$display"
   printf 'BIND=%s:%s\n' "$bind_host" "$port"
@@ -492,6 +507,7 @@ ensure_session() {
   if [ -n "$display" ]; then
     case "$(session_state "$display")" in
     live)
+      [ "${#SESSION_NAME_ARGS[@]}" = 0 ] || fail "display $display was claimed during startup; retry open.sh"
       requested_live=1
       listener=$(tcp_listener "$display" || true)
       if [ -n "$listener" ] && ! listener_matches "$display" "$listener"; then
@@ -567,7 +583,7 @@ ensure_session() {
   fi
   if ! "$XPRA" start "$display" \
     --bind-tcp="$bind_opt" \
-    "${ssl_args[@]}" \
+    "${ssl_args[@]}" "${SESSION_NAME_ARGS[@]}" \
     --daemon=yes \
     --mdns=no \
     --start-new-commands=yes >/dev/null 2>&1; then
@@ -956,10 +972,14 @@ quote_arg() {
 }
 
 cmd_run() {
-  local display out pid cwd=$PWD cmdline arg
-  # Like ensure, a launched program gets a session of its own unless the request
-  # names a live one to join with --display/--port.
+  local display
   display=$(ensure_display) || exit 1
+  launch_program "$display" "$@"
+}
+
+launch_program() {
+  local display=$1 out pid cwd=$PWD cmdline arg
+  shift
 
   # Pass the whole command as one shlex-quoted string: xpra drops extra argv
   # entries, and splits a string itself.
@@ -1182,10 +1202,8 @@ main() {
   local command="${1:-ensure}"
 
   case "$command" in
-    -h|--help|help) usage; exit 0 ;;
+    create) shift; create_launchers "$@"; return ;;
   esac
-
-  XPRA=$(xpra_bin) || missing_xpra
 
   shift || true
   while [ "$#" -gt 0 ]; do
@@ -1211,9 +1229,22 @@ main() {
     fail "--password and --password-file are mutually exclusive"
   fi
 
+  local slug=$command
+  case "$command" in
+    run)
+      (($#)) || fail 'run requires a command after --'
+      slug=${1##*/}
+      slug=${slug//[^a-zA-Z0-9._-]/-}
+      [[ $slug =~ ^[a-zA-Z0-9] ]] || slug=program-$slug
+      automatic_launchers "$slug" "$@" ;;
+    ensure) automatic_launchers "$slug" ;;
+    -h|--help|help) usage; return ;;
+  esac
+  XPRA=$(xpra_bin) || missing_xpra
+
   case "$command" in
     ensure) ensure_session ;;
-    run) [ "$#" -gt 0 ] || fail "run requires a command after --"; cmd_run "$@" ;;
+    run) cmd_run "$@" ;;
     list|ls) cmd_list ;;
     doctor) cmd_doctor ;;
     close) cmd_close "$@" ;;
@@ -1223,4 +1254,54 @@ main() {
   esac
 }
 
-main "$@"
+automatic_launchers() {
+  local slug=$1
+  shift
+  mkdir -p -- .xpra-web
+  LAUNCHER_DIR=$(mktemp -d -- ".xpra-web/${slug:0:80}-XXXXXX")
+  write_launchers "$LAUNCHER_DIR" "$@"
+}
+
+create_launchers() {
+  local slug=${1:-} dir
+  [[ $slug =~ ^[a-zA-Z0-9][a-zA-Z0-9._-]*$ ]] || fail 'create requires a slug such as waveform-view'
+  shift
+  if (($#)); then
+    [[ $1 == -- && $# -ge 2 ]] || fail 'usage: create SLUG [-- CMD ...]'
+    shift
+  fi
+  dir=".xpra-web/$slug"
+  mkdir -p -- .xpra-web
+  mkdir -m 700 -- "$dir" || fail "cannot create $dir; choose a new slug"
+  write_launchers "$dir" "$@"
+}
+
+write_launchers() {
+  local dir=$1 action
+  shift
+  for action in close open status; do
+    {
+      printf '#!/usr/bin/env bash\nset -euo pipefail\n'
+      printf 'dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)\n'
+      if [[ $action == open ]]; then
+        printf 'export XPRA_LAUNCH_HOST=%q XPRA_LAUNCH_PORT=%q XPRA_LAUNCH_AUTH=%q\n' "$HOST" "$PORT" "$AUTH_MODE"
+        printf 'export XPRA_LAUNCH_CERT=%q XPRA_LAUNCH_KEY=%q XPRA_LAUNCH_INSECURE=%q\n' "$SSL_CERT" "$SSL_KEY" "$ALLOW_INSECURE"
+        printf 'export XPRA_LAUNCH_PASSWORD_FILE=%q XPRA_LAUNCH_PROMPT=%q\n' "$PASSWORD_SOURCE" "${PASSWORD:+yes}"
+        printf '\nprogram_args=(\n'
+        if (($#)); then printf '  %q\n' "$@"; fi
+        printf ')\n\n'
+      fi
+      printf 'exec flock --close "$dir" bash %q %q "$dir" ' "$SCRIPT_DIR/xpra-launcher.sh" "$action"
+      if [[ $action == open ]]; then
+        printf '%q "$@" -- "${program_args[@]}"\n' "$PWD"
+      else
+        printf '"$@"\n'
+      fi
+    } > "$dir/$action.sh"
+    chmod 700 "$dir/$action.sh"
+  done
+  printf 'LAUNCHER_DIR=%s/%s\n' "$PWD" "$dir"
+  printf 'OPEN=%s/open.sh\nCLOSE=%s/close.sh\nSTATUS=%s/status.sh\n' "$dir" "$dir" "$dir"
+}
+
+if [[ ${BASH_SOURCE[0]} == "$0" ]]; then main "$@"; fi

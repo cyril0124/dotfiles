@@ -1,6 +1,6 @@
 ---
 name: xpra-web
-description: Use when asked to open or view a GUI program on a remote, headless, or shared Linux host, in a browser or with an xpra client. Invoked directly as `xpra-web <ensure|run|list|doctor|close|close-all|stop>`.
+description: Use when asked to open or view a GUI program on a remote, headless, or shared Linux host, in a browser or with an xpra client. Invoked directly as `xpra-web <create|ensure|run|list|doctor|close|close-all|stop>`.
 disable-model-invocation: true
 ---
 
@@ -18,11 +18,12 @@ caller shell ──> xpra server (daemon, DISPLAY=:N, binds 127.0.0.1:PORT)
 
 ## Invocation
 
-Run `bash scripts/xpra-web.sh <subcommand> ...` from this skill's directory. The user's subcommand and options pass through unchanged.
+Resolve `scripts/xpra-web.sh` relative to this skill and invoke it by absolute path from the user's working directory. The user's subcommand and options pass through unchanged.
 
 | User request | Command |
 | --- | --- |
 | `xpra-web`, or open a program in a browser | `ensure`, or `run -- X` when naming a program |
+| generate reusable open/close scripts for X | `create SLUG -- X` from the project directory |
 | add X to session :10 | `run --display :10 -- X` |
 | `ls`, `list` | `list` |
 | `doctor` | `doctor` |
@@ -32,6 +33,22 @@ Run `bash scripts/xpra-web.sh <subcommand> ...` from this skill's directory. The
 | `help`, `--help` | `help`, then show the output |
 
 Run exactly the requested scope. Do not widen `close` into `close-all`, or another command into `stop`. Ask only when a request without a subcommand is not covered above.
+
+## Project launchers
+
+`run`, `ensure` (the default), and `create` generate a directory under `.xpra-web/` in the caller's project and print the paths to `open.sh`, `status.sh`, and `close.sh`. Automatic directory names use the program or subcommand name plus a unique suffix. `create SLUG [-- CMD ...]` selects an explicit name. The launchers require this skill to remain installed at the generated path.
+
+For `run` and `ensure`, `status.sh` and `close.sh` target the actual session created or joined, including all programs on a shared display. The CLI prints `LAUNCHER_DIR` on stdout with the absolute path of the generated directory.
+
+Edit the `program_args` array in `open.sh` to change the saved command. Use a separate shell word for each argument and quote values that contain spaces. Pass Xpra options such as `--port` to `open.sh`.
+
+To change the saved command, edit `program_args` in the generated `open.sh`. The first array entry is the executable. Add or remove one entry per argument and quote entries containing spaces. The wrapper passes launcher options before `--` and the array after it.
+
+Run `open.sh [--port PORT]` to start a dedicated session and launch the saved command from its original directory. It uses the original access options and requested port by default. With `--password`, reopening prompts for the secret. A busy port fails by default. Use `open.sh --port PORT --force` only when the user requests termination of the current listener. If the recorded session is running, `--force` first stops it and its programs, including other programs on a shared display. It sends SIGKILL to matching listeners owned by the current user if they still block the requested loopback port.
+
+Run `status.sh` to show `STATUS=stopped` or the running session’s display, port, browser URL, SSH tunnel command, and programs.
+
+Run `close.sh` to stop the recorded session and release its port.
 
 ## Start and reuse
 
@@ -108,6 +125,8 @@ Before closing, run `list` and identify the requested programs by name and worki
 Stop operations use `XPRA_WEB_STOP_SECONDS` (default 10s), verify that each display disappears, and remove its per-display password file. Global operations print actual `SESSIONS_STOPPED` and `SESSIONS_FAILED`; any failure returns non-zero. An inventory query failure reports `programs=unknown`.
 
 ## Verify and report
+
+For `run`, `ensure`, and `create`, include the exact `LAUNCHER_DIR` from that invocation as a clickable directory link in the final reply. Keep that path through any subsequent `doctor` check.
 
 Report `BROWSER`, `ATTACH`, `SSH`, `LOCAL`, the port, and a printed password when present. Report a session as usable only after `doctor` returns `DOCTOR=ok`.
 
