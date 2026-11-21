@@ -4,7 +4,7 @@ Read this when a `xpra-web.sh` command exits non-zero, or when the symptom in th
 
 | Symptom | Cause | Action |
 | --- | --- | --- |
-| exit code 3, `xpra is not installed` | the dependency is absent | ask the user, then install (see [Missing dependencies and troubleshooting](../SKILL.md#missing-dependencies-and-troubleshooting)) |
+| exit code 3, `Xpra 7.0 or newer is required` | no supported `xpra7` or `xpra` executable was found | see [Missing dependencies and troubleshooting](../SKILL.md#missing-dependencies-and-troubleshooting) |
 | `Error: cannot find the html web root` in `server.log` | `--html=on` or `auto` overrode the config path | drop `--html`, restart the session |
 | no listener within 10s | Xvfb or xpra startup failed after the bind check passed | the script prints the `server.log` tail; read it |
 | `FileNotFoundError: '/usr/bin/Xvfb'` in `server.log` | the `xvfb` line in `~/.config/xpra/xpra.conf` names a binary that is not on this machine | point `xvfb` at a real Xvfb; `ensure` refuses this configuration before starting |

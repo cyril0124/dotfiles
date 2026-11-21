@@ -79,20 +79,24 @@ info() { printf '==> %s\n' "$1" >&2; }
 fail() { printf 'ERROR: %s\n' "$1" >&2; exit 1; }
 
 xpra_bin() {
-  if command -v xpra >/dev/null 2>&1; then
-    command -v xpra
-  elif [ -x "$HOME/.local/bin/xpra" ]; then
-    printf '%s\n' "$HOME/.local/bin/xpra"
-  else
-    return 1
-  fi
+  local name candidate version
+  for name in xpra7 xpra; do
+    for candidate in "$(command -v "$name" || true)" "$HOME/.local/bin/$name"; do
+      [ -x "$candidate" ] || continue
+      version=$(bounded "$candidate" --version 2>/dev/null) || continue
+      if version_at_least "$version" 7.0; then
+        printf '%s\n' "$candidate"
+        return 0
+      fi
+    done
+  done
+  return 1
 }
 
-# Exit 3 means the dependency is missing: that is a question for the user, not
-# something to work around here.
+# Exit 3 means no supported Xpra executable was found.
 missing_xpra() {
-  printf '%s\n' "ERROR: xpra is not installed (checked PATH and $HOME/.local/bin/xpra)." >&2
-  printf '%s\n' "See 'When xpra is missing' in SKILL.md: ask the user, then install it." >&2
+  printf '%s\n' "ERROR: Xpra 7.0 or newer is required (checked xpra7 and xpra on PATH and in $HOME/.local/bin)." >&2
+  printf '%s\n' "See 'Missing dependencies and troubleshooting' in SKILL.md." >&2
   exit 3
 }
 
@@ -146,28 +150,23 @@ session_state() {
 
 # Print "<host> <port>" for the first TCP listener of a display, or fail.
 tcp_listener() {
-  local display=$1 line parsed
+  local display=$1 line listener
   line=$(xpra_info "$display" | grep -m1 '^network.sockets.tcp.listeners=' || true)
   [ -n "$line" ] || return 1
-  parsed=$(printf '%s\n' "$line" | sed -n "s/.*(('\([^']*\)', '\([0-9][0-9]*\)').*/\1 \2/p")
-  [ -n "$parsed" ] || return 1
-  printf '%s\n' "$parsed"
+  # Xpra 7 quotes each address tuple. Older sessions report the tuple directly.
+  listener=$(printf '%s\n' "$line" | sed -nE "s/^[^(]*\([\"']?\('([^']*)', '([0-9]+)'\).*/\1 \2/p")
+  [ -n "$listener" ] || return 1
+  printf '%s\n' "$listener"
 }
 
 # First display number that is free for both xpra and the X socket directory.
 pick_display() {
-  local used n live known
+  local n live
   live=$(query_displays) || return 1
-  known=$(bounded "$XPRA" displays 2>/dev/null) || return 1
-  used=$(
-    {
-      printf '%s\n' "$live"
-      printf '%s\n' "$known" | sed -n 's/.*\(:[0-9][0-9]*\).*/\1/p'
-    } | sort -u
-  )
   for n in $(seq 10 99); do
-    printf '%s\n' "$used" | grep -qx ":$n" && continue
+    printf '%s\n' "$live" | grep -qx ":$n" && continue
     [ -e "/tmp/.X11-unix/X$n" ] && continue
+    [ -e "/tmp/.X$n-lock" ] && continue
     # SSH-forwarded X displays may have only a loopback TCP listener.
     port_is_free 127.0.0.1 "$((6000 + n))" || continue
     printf ':%s\n' "$n"
@@ -195,8 +194,7 @@ report_server_log() {
   fi
 }
 
-# A port that is already taken makes `xpra start` spin for about 20s before giving
-# up, so reject it up front instead of waiting that out.
+# Reject an occupied TCP port before starting the server.
 port_is_free() {
   local host=$1 port=$2
   command -v python3 >/dev/null 2>&1 || return 0
@@ -320,10 +318,15 @@ requested_transport() {
   fi
 }
 
+session_start_args() {
+  # Xpra 7 reports argv at the top level. Older sessions use server.argv.
+  xpra_info "$1" | grep -m1 -E '^(server\.)?argv=' || true
+}
+
 session_transport() {
-  # Accept joined and separate SSL certificate arguments in server.argv.
+  # Accept both --ssl-cert=FILE and --ssl-cert FILE.
   local argv
-  argv=$(xpra_info "$1" | grep -m1 '^server.argv=' || true)
+  argv=$(session_start_args "$1")
   case "$argv" in
     *--ssl-cert=*|*--ssl-cert\',*) printf 'wss\n' ;;
     *) printf 'ws\n' ;;
@@ -447,7 +450,7 @@ prepare_password() {
 # Read the authentication module used by the session's TCP bind.
 session_auth() {
   local argv auth
-  argv=$(xpra_info "$1" | grep -m1 '^server.argv=' || true)
+  argv=$(session_start_args "$1")
   auth=$(printf '%s\n' "$argv" | sed -n 's/.*,auth=\([A-Za-z0-9_-][A-Za-z0-9_-]*\).*/\1/p' | head -1)
   printf '%s\n' "${auth:-none}"
 }
@@ -480,7 +483,7 @@ warn_if_unauthenticated() {
 # The password file a running file-authenticated session uses, when visible.
 session_password_file() {
   local argv
-  argv=$(xpra_info "$1" | grep -m1 '^server.argv=' || true)
+  argv=$(session_start_args "$1")
   printf '%s\n' "$argv" | sed -n \
     -e "s/.*,auth=file,filename=\([^,')]*\).*/\1/p" \
     -e "s/.*,auth=file(filename=\([^,')]*\).*/\1/p" | head -1
@@ -581,8 +584,9 @@ ensure_session() {
     bind_opt="$HOST:$PORT,auth=file,filename=$password_file"
     info "starting xpra session $display on $HOST:$PORT (password in $password_file)"
   fi
-  if ! "$XPRA" start "$display" \
+  if ! "$XPRA" seamless "$display" \
     --bind-tcp="$bind_opt" \
+    --min-port=0 \
     "${ssl_args[@]}" "${SESSION_NAME_ARGS[@]}" \
     --daemon=yes \
     --mdns=no \
@@ -978,18 +982,21 @@ cmd_run() {
 }
 
 launch_program() {
-  local display=$1 out pid cwd=$PWD cmdline arg
+  local display=$1 out pid cwd=$PWD server_version cmdline arg
   shift
-
-  # Pass the whole command as one shlex-quoted string: xpra drops extra argv
-  # entries, and splits a string itself.
-  cmdline="$(quote_arg "$RUN_IN") $(quote_arg "$cwd")"
-  for arg in "$@"; do
-    cmdline="$cmdline $(quote_arg "$arg")"
-  done
+  local command_args=("$RUN_IN" "$cwd" "$@")
+  server_version=$(bounded "$XPRA" version "$display") || fail "cannot read Xpra version on $display"
+  if ! version_at_least "$server_version" 7.0; then
+    # Servers before 7 read one shell-quoted command string.
+    cmdline=$(quote_arg "$RUN_IN")
+    for arg in "${command_args[@]:1}"; do
+      cmdline+=" $(quote_arg "$arg")"
+    done
+    command_args=("$cmdline")
+  fi
 
   info "launching in session $display (cwd=$cwd): $*"
-  out=$("$XPRA" control "$display" start-child "$cmdline" 2>&1) ||
+  out=$("$XPRA" control "$display" start-child -- "${command_args[@]}" 2>&1) ||
     fail "xpra refused to launch $*: $out"
   printf '%s\n' "$out" >&2
   pid=$(printf '%s\n' "$out" | sed -n 's/.*pid=\([0-9][0-9]*\).*/\1/p' | head -1)

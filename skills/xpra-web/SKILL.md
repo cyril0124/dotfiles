@@ -40,9 +40,7 @@ Run exactly the requested scope. Do not widen `close` into `close-all`, or anoth
 
 For `run` and `ensure`, `status.sh` and `close.sh` target the actual session created or joined, including all programs on a shared display. The CLI prints `LAUNCHER_DIR` on stdout with the absolute path of the generated directory.
 
-Edit the `program_args` array in `open.sh` to change the saved command. Use a separate shell word for each argument and quote values that contain spaces. Pass Xpra options such as `--port` to `open.sh`.
-
-To change the saved command, edit `program_args` in the generated `open.sh`. The first array entry is the executable. Add or remove one entry per argument and quote entries containing spaces. The wrapper passes launcher options before `--` and the array after it.
+Edit `program_args` in `open.sh` to change the saved command. Put the executable first and use one array entry per argument. Quote entries containing spaces. Pass launcher options such as `--port` to `open.sh`.
 
 Run `open.sh [--port PORT]` to start a dedicated session and launch the saved command from its original directory. It uses the original access options and requested port by default. With `--password`, reopening prompts for the secret. A busy port fails by default. Use `open.sh --port PORT --force` only when the user requests termination of the current listener. If the recorded session is running, `--force` first stops it and its programs, including other programs on a shared display. It sends SIGKILL to matching listeners owned by the current user if they still block the requested loopback port.
 
@@ -66,7 +64,7 @@ Options: `--host HOST` (default `127.0.0.1`), `--port PORT` (default `0`, kernel
 - `ensure` and `run` create a fresh session by default, taking a free display from `:10` to `:99` and a free port. Plain `run --port 0` also creates one.
 - Join a session only when the user names it with `--display :N` or `--port N`. Reuse must match host, requested non-zero port, auth mode and WS/WSS transport. A display mismatch fails; a port mismatch may create a session only when that port is available.
 - A non-zero port held by another process fails before startup. An existing session is never restarted or reinterpreted.
-- New sessions daemonize in about 3 seconds. A bad host or occupied port is rejected before `xpra start` when possible.
+- New sessions daemonize in about 3 seconds. A bad host or occupied port is rejected before `xpra seamless` when possible.
 
 `ensure` reports:
 
@@ -141,7 +139,9 @@ CPU and historical `connection timed out` entries are informational only. The do
 
 ## Missing dependencies and troubleshooting
 
-If `xpra` is missing, the script exits 3. Ask before installing, show the command and get agreement before running it. Choose a method appropriate for the host and prefer a reversible rootless install. After `xpra --version` works, re-run the original command. Without Xpra or permission to install it, stop and report the limitation.
+Session commands require Xpra 7.0 or newer. The script checks `xpra7` first, then `xpra`, looking on `PATH` and in `~/.local/bin`. Xpra 7 supports the HTML5 all-window refresh request when a hidden tab becomes visible. Use an HTML5 client that supports your server version.
+
+If the script exits 3, choose an [Xpra installation method](https://github.com/Xpra-org/xpra/wiki/Download) for the host and prefer a reversible rootless install. Show the command and ask before installing. Once `xpra7 --version` or `xpra --version` reports 7.0 or newer, re-run the original command.
 
 The browser also needs an HTML5 web root, normally configured as `html = <dir>` in `~/.config/xpra/xpra.conf`. The native `ATTACH` path works without it.
 
