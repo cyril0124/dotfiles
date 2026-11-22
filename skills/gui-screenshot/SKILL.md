@@ -43,7 +43,15 @@ XVFB=${XVFB:-$(command -v Xvfb)}
 env DISPLAY="$DISPLAY_ID" /absolute/path/to/application
 ```
 
-无窗口管理器时，应用按自身请求的尺寸贴在根窗口左上角，而尺寸可能来自应用自己的配置文件（命令行 `-geometry` 常被忽略）。按实际截图确认尺寸；要改大小用 `xwininfo` 取窗口 ID 后调 `XMoveResizeWindow`，再重新截图看布局是否跟随。
+无窗口管理器时，应用按自身请求的尺寸贴在根窗口左上角，而尺寸可能来自应用自己的配置文件（命令行 `-geometry` 常被忽略）。用 `scripts/xwin.py` 取窗口 ID 和几何信息，再直接改尺寸和位置，然后重新截图看布局是否跟随：
+
+```bash
+python3 scripts/xwin.py geometry "$DISPLAY_ID"
+python3 scripts/xwin.py resize "$DISPLAY_ID" <window-id> 1800 1060 --x 0 --y 0
+python3 scripts/xwin.py move "$DISPLAY_ID" <window-id> 0 0
+```
+
+`geometry` 只列可见的顶层窗口，输出里的 `id` 就是 `resize` / `move` 要的 `<window-id>`；`x`、`y`、`width`、`height` 就是截图和输入使用的根窗口坐标。
 
 ### Xpra 会话
 
