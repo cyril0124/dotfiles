@@ -1,29 +1,51 @@
 ---
 name: gui-screenshot
-description: Use Xpra to launch Linux desktop apps, map windows, capture and annotate screenshots, and verify the result. Use for GUI walkthroughs, documentation images, and troubleshooting blank captures or hidden dialogs.
+description: Launch Linux desktop apps on Xvfb or Xpra, drive them with XTEST, capture and annotate screenshots, and verify the result. Use for GUI walkthroughs, documentation images, and troubleshooting unresponsive clicks, blank captures, or hidden dialogs.
 ---
 
 # GUI Screenshots
 
-先运行 `command -v xpra`。如果找不到 `xpra`，告知用户截图流程需要它，并询问是否同意安装。仅在用户明确同意后，按当前系统的安装方式协助安装。确认 `xpra` 已在 `PATH` 中后再继续。
+先选通路，再决定依赖：
 
-运行 `xpra list`，确认可用会话。按以下 5 步截取目标程序，逐张看图验收。
+- **单机 Xvfb 直连**（默认）：只需在本机抓图，不需要浏览器或远程查看。用 Xvfb + XTEST，输入按 X11 原生语义投递。
+- **Xpra 会话**：需要远程/浏览器查看同一桌面，或要复用已有会话的窗口状态。此路需要 `xpra`，先运行 `command -v xpra`；找不到时告知用户流程需要它，仅在用户明确同意后协助安装。
+
+按以下 5 步截取目标程序，逐张看图验收。
 
 脚本路径相对于本 Skill 目录；在其他目录执行时，换成绝对路径。
 
 ## 1. Launch the App
 
 1. 选未占用的 `DISPLAY_ID`；复用已有会话时，记录原有窗口。
-2. 检查依赖：`xpra`、`Xvfb`、Python 3.10+、Pillow；按键需要 `xmodmap`，实时 X11 截图需要 Pillow 的 XCB 支持。缺项时先报告。
-3. 将 `APP_COMMAND` 设为应用及参数，选择系统 Xvfb：
+2. 按所选通路检查依赖：`Xvfb`、Python 3.10+、Pillow 为公共项，Xpra 会话另需 `xpra`；按键需要 `xmodmap`，实时 X11 截图需要 Pillow 的 XCB 支持。缺项时先报告。
+3. 将 `APP_COMMAND` 设为应用及参数，选定 Xvfb 可执行文件：
 
 ```bash
-if [ -x /usr/bin/Xvfb ]; then
-  XVFB=/usr/bin/Xvfb
-else
-  XVFB="$(command -v Xvfb)"
-fi
+# Prefer the Xpra-bundled Xvfb: the system one can fail with
+# "could not open default font 'fixed'" and refuses to start.
+for candidate in "$HOME/.local/share/xpra-web/xvfb/Xvfb" /usr/bin/Xvfb; do
+  [ -x "$candidate" ] && XVFB=$candidate && break
+done
+XVFB=${XVFB:-$(command -v Xvfb)}
 ```
+
+### 单机 Xvfb 直连（默认）
+
+不需要远程查看时优先用这条，它省掉 Xpra 的合成与输入转发。选未占用的 `DISPLAY_ID`，用进程管理工具启动前台命令：
+
+```bash
+"$XVFB" "$DISPLAY_ID" -screen 0 1800x1060x24 -nolisten tcp
+```
+
+系统或其他 Xvfb 都可能报 `could not open default font 'fixed'`。第 1 步的候选顺序已优先 Xpra 自带的 Xvfb，仍失败时再核对 `-fp` 字体路径。确认 Xvfb 就绪后再把应用拉起：
+
+```bash
+env DISPLAY="$DISPLAY_ID" /absolute/path/to/application
+```
+
+无窗口管理器时，应用按自身请求的尺寸贴在根窗口左上角，而尺寸可能来自应用自己的配置文件（命令行 `-geometry` 常被忽略）。按实际截图确认尺寸；要改大小用 `xwininfo` 取窗口 ID 后调 `XMoveResizeWindow`，再重新截图看布局是否跟随。
+
+### Xpra 会话
 
 通过进程管理工具启动下面的前台命令，监听 `xpra is ready`。显式指定独立工作目录，保存 display、进程 ID 和日志。
 
@@ -57,6 +79,8 @@ env DISPLAY="$DISPLAY_ID" /absolute/path/to/application
 
 ## 2. Show the Target Window
 
+Xpra 会话用查询和映射：
+
 ```bash
 python3 scripts/xpra_capture.py windows "$DISPLAY_ID"
 python3 scripts/xpra_capture.py map "$DISPLAY_ID" <window-id>
@@ -64,21 +88,26 @@ python3 scripts/xpra_capture.py map "$DISPLAY_ID" <window-id>
 
 按 `title` 和 `geometry` 确认目标，再映射当前 ID。`shown=false` 的窗口可能已启动但未显示；菜单的 `shown=null` 不能证明它不可见，先截图确认。
 
+单机 Xvfb 下没有映射概念，用 `xwininfo -root -children` 取真实窗口 ID 和绝对坐标；子窗口（含对话框、菜单弹层）要单独列出，必要时对子窗口再截一次。
+
 **完成条件：** 截图中能看到正确应用。菜单或对话框出现后，重新查询 ID，只映射画面中缺失的窗口。
 
 ## 3. Interact and Capture
 
 1. 截当前画面，打开图片确定下一步。
-2. 用命名按键打开目标菜单，已确定的序列合并到一次调用：
+2. 按键和文本输入：单机 Xvfb 用 XTEST 工具，Xpra 会话用 `xpra_capture.py key`。
 
 ```bash
+python3 scripts/xlib_input.py keysym "$DISPLAY_ID" Down Escape Alt_L+f
+python3 scripts/xlib_input.py type "$DISPLAY_ID" /abs/path/file.txt
+
 python3 scripts/xpra_capture.py key "$DISPLAY_ID" --window <window-id> Alt_L+f
 python3 scripts/xpra_capture.py key "$DISPLAY_ID" Down Right Down
 ```
 
-`--window` 设置初始焦点；操作已打开的菜单时省略它。脚本按当前 display 的键位映射发送 X11 keysym，每个组合键后释放按键。每展开一级，截图确认位置。文本输入使用应用 API 或已有自动化工具。
+`keysym` 接收命名键和 `修饰键+键` 组合；`type` 逐字符发送，含大写时自动加 Shift。Xpra 的 `--window` 设置初始焦点；操作已打开的菜单时省略它。每展开一级，截图确认位置。
 
-点菜单、页签、表格行，或拖列宽时，用鼠标工具：
+点菜单、页签、表格行，或拖列宽时，用鼠标工具（两条通路通用）：
 
 ```bash
 python3 scripts/xpra_pointer.py click "$DISPLAY_ID" 200 160
@@ -86,7 +115,18 @@ python3 scripts/xpra_pointer.py move "$DISPLAY_ID" 200 240
 python3 scripts/xpra_pointer.py drag "$DISPLAY_ID" 400 160 600 160 --duration 0.5
 ```
 
-坐标取自未裁剪的 `--source x11` 全图，统一相对于 X11 根窗口；裁剪图坐标需加回裁剪偏移。按当前画面替换示例坐标，再操作并看图确认。鼠标工具用 `ctypes` 调用现有 `libX11`、`libXtst`，需要 display 支持 XTEST，无需 C 头文件或编译；拖拽正常结束或抛出异常时会释放按钮。
+单机 Xvfb 下另有带按住时长和滚轮的形式：
+
+```bash
+python3 scripts/xlib_input.py click "$DISPLAY_ID" 200 160 --hold 0.2
+python3 scripts/xlib_input.py wheel "$DISPLAY_ID" 400 400 --button 5 --count 20
+```
+
+`wheel` 用于滚动长列表（按钮 4 上、5 下）。
+
+菜单栏和弹出菜单常在**按下**时展开、松开时关闭，普通 click 会一闪即过：用 `press` → 截图 → `release` 观察条目位置，再对条目发 click。
+
+坐标取自未裁剪的 `--source x11` 全图，统一相对于 X11 根窗口；裁剪图坐标需加回裁剪偏移。按当前画面替换示例坐标，再操作并看图确认。两个输入工具都用 `ctypes` 调用现有 `libX11`、`libXtst`，需要 display 支持 XTEST，无需 C 头文件或编译；拖拽正常结束或抛出异常时会释放按钮。
 
 3. 选择来源，保存图片：
 
@@ -94,6 +134,8 @@ python3 scripts/xpra_pointer.py drag "$DISPLAY_ID" 400 160 600 160 --duration 0.
 |---|---|---|
 | Xpra 合成窗口 | 默认，或 `--source xpra` | 可见窗口的合成图；原点可能不同于 X11 根窗口 |
 | 实时 X11 根窗口 | `--source x11` | 包含桌面、装饰和其他可见窗口；原点为根窗口左上角 |
+
+单机 Xvfb 只有一种来源：`--source x11`。
 
 ```bash
 python3 scripts/xpra_capture.py capture "$DISPLAY_ID" /absolute/path/menu.png
@@ -117,7 +159,10 @@ python3 scripts/xpra_capture.py capture "$DISPLAY_ID" /absolute/path/crop.png \
 |---|---|
 | 画面变化，Xpra 图仍旧 | 显式用 `--source x11` 重截并看图 |
 | X11 图没有目标窗口 | 确认窗口已映射、可见；seamless 窗口可能被重定向，必要时改用完整桌面会话 |
-| 点击或按键无效 | 查窗口和焦点，重新看图；坐标点击前核对 X11 窗口位置 |
+| 能选中列表行或文本框，但页签、菜单、展开框全无响应 | Xpra 输入通路退化，不是坐标问题。核对坐标正确后直接换单机 Xvfb 直连 |
+| 坐标核对无误却点不动 | 先查指针实际落点（`XQueryPointer`）与窗口绝对坐标；两者一致即换通路 |
+| 菜单按下即关 | 用 `press` → 截图 → `release`，不要用 click |
+| 系统 Xvfb 报 `could not open default font 'fixed'` | 换 Xpra 自带的 Xvfb 可执行文件 |
 | 空图、全透明、单色或裁剪越界 | 修正窗口状态或裁剪范围；失败图片不会发布 |
 | 命令或窗口信息格式不符 | 查本机命令帮助及 `xpra info` 输出 |
 
@@ -144,6 +189,6 @@ python3 scripts/xpra_capture.py annotate crop.png marked.png \
 
 ## 5. Clean Up and Deliver
 
-1. 自建会话：执行 `xpra stop "$DISPLAY_ID"`，关闭应用及会话。复用会话：只关闭本次启动的应用，保留原有窗口。
+1. 自建会话：Xpra 会话执行 `xpra stop "$DISPLAY_ID"`；单机 Xvfb 停掉 Xvfb 进程，同时关闭应用。复用会话：只关闭本次启动的应用，保留原有窗口。
 2. 保留最终图片与必要复现记录，删除临时操作脚本和中间图。
 3. 交付图片路径、逐张审核结果和未验证部分。若仍受阻，明确指出失败位置及下一步诊断动作。
