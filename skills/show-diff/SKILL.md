@@ -12,11 +12,11 @@ The conversation carries the change index plus the hunks that need a human decis
 
 ## Workflow
 
-1. Establish the problem and scope from the request and available context. Read the relevant source, project instructions, and existing changes. Use current working-tree content as the patch baseline, preserving the user's edits. Ask one focused question only if missing information prevents a concrete solution.
+1. Establish the problem and scope from the request and available context. Read the relevant source, project instructions, and existing changes. Use current working-tree content as the patch baseline, preserving the user's edits. Before preparing or revising the patch, record each target file’s digest or absence, along with its Git index entry. Ask one focused question only if missing information prevents a concrete solution.
 2. Work out the complete solution before shortening its presentation. Account for all required files, imports, call sites, configuration, and relevant regression tests. Keep changes within the requested scope.
 3. Construct the proposed unified diff in memory. Check removed and context lines against the source, and check that paths, hunk ranges, and line counts match the proposal. Use read-only inspection commands; avoid formatters, generators, or other commands that write project files. Any delegated work must follow the same preview boundary.
 4. Number every hunk in patch order across the whole patch: `h1`, `h2`, and so on. The numbering is per preview, and these ids are the handle for the inline hunks, the omitted-hunk list, and later `expand` or `full` requests.
-5. Print the preview, then the modification summary, then the validation status, and finish with the confirmation line. Stop at the checkpoint.
+5. Compare the target file and index snapshots. Report any change in the validation status. Print the preview, modification summary, validation status, and confirmation line. Stop at the checkpoint.
 
 ## Preview artifact
 
