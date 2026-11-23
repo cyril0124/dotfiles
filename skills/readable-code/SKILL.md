@@ -5,15 +5,11 @@ description: Use whenever writing, modifying, or reviewing code, including namin
 
 # Readable code
 
-Optimize for a maintainer reading and changing code with no memory of how it was written: spacious and explicit over compact, within requested scope, following language idioms and project conventions.
+Prefer spacious, explicit, idiomatic code that a maintainer can change without knowing its history. Stay within scope. Read repository style guidance (e.g. `CODE_STYLE.md`, `AGENTS.md`, `CONTRIBUTING.md`) first and follow it on conflicts.
 
-Repo style doc (`CODE_STYLE.md`, `AGENTS.md`, `CONTRIBUTING.md`) is more specific → outranks this skill. Read it before editing; it settles conflicts.
-
-Rules are numbered so a review comment can cite one directly (`violates 20`). Each rule states the observable behavior, and adds the reasoning behind it where the rule is not self-evident.
+Cite rule numbers in review comments, for example, `violates 20`.
 
 ## Code classes
-
-The class decides whether repetition is a defect or a specification.
 
 | Class | Examples | Default |
 |---|---|---|
@@ -23,42 +19,42 @@ The class decides whether repetition is a defect or a specification.
 
 ## Naming
 
-1. Names state domain meaning, action, unit. The reader infers the value or the effect from the name without opening the definition.
-2. Use the term the current domain already uses. A coined name must be learned, and a term imported from another domain arrives carrying that domain's meaning, so the reader applies the wrong mental model. When the domain has no word for the concept, extend an existing term with a qualifier; take a foreign term only when the domain itself has adopted it.
-3. Give complex conditions and intermediate results meaningful names. Name a literal only where its meaning is not visible at the use site, such as an encoded value or a unit conversion; a value the surrounding expression already explains stays literal.
-4. Prefix a name only where it competes for a shared namespace: file names, exported symbols, macros, module-level constants. Members, parameters, and locals are already separated by their container and take no prefix. A prefix there repeats the scope, and the reader strips it back off to find the name.
-5. Fix misleading names directly. A comment needed to correct a name's meaning signals a naming defect; design reasons and constraints can still need explanation.
-6. One concept, one name; parallel operations take parallel names. Different names imply different meanings, sending the reader hunting a difference that is not there.
+1. Name the domain value, action, or unit so the reader can infer it at the use site.
+2. Use established domain terms. For new concepts, qualify an existing term. Borrow terminology only when the domain already uses it.
+3. Name complex conditions and intermediate results. Name literals whose meaning is hidden, such as encoded values or conversion factors. Keep self-explanatory values inline.
+4. Prefix names only when they compete in a shared namespace, such as files, exports, macros, or module-level constants. Let the enclosing scope identify members, parameters, and locals.
+5. Rename misleading symbols directly. Use comments for design reasons and constraints.
+6. Use one name per concept and parallel names for parallel operations.
 7. Spell out abbreviation at first use, then short form.
 
 ## Structure
 
-8. Straightforward control flow: expand nested ternaries, dense chains, multi-action expressions into clear steps. Keep state changes + failure paths visible; guard clauses where they cut nesting.
-9. One responsibility per function. Extract helpers for meaningful operations, not to meet a line limit. A body under 10 lines, taking 3 or fewer parameters, with fewer than 4 call sites, stays inline.
+8. Expand nested ternaries, dense chains, and multi-action expressions into steps. Expose state changes and failure paths. Use guards to reduce nesting.
+9. Give each function one responsibility. Extract meaningful operations rather than splitting by line count. Keep bodies under 10 lines inline when they take at most 3 parameters and have fewer than 4 call sites.
 10. Call the primitive directly. A helper that only forwards arguments or renames a framework call adds a name to learn, no capability.
-11. Reuse existing behavior before adding an implementation. Two blocks are duplicates only when they must change together for the same reason: variants that differ in constants, thresholds, or the message they emit stay separate, and a flag added only to merge them proves they are not the same operation.
+11. Reuse existing behavior first. Consolidate blocks only if they must change together for the same reason. Keep variants with different constants, thresholds, or messages separate. A flag used solely to merge variants indicates separate operations.
 12. Keep related logic together; introduce abstractions only for current needs.
-13. Express pure, read-only, immutable, or asynchronous properties with declarations the language and toolchain support, so tools can check the contract. Propagate changes through callers only as required by that property's actual language and framework rules.
-14. Annotate types at callable boundaries where the language supports it: concrete domain type, not a generic container.
-15. Spacious layout: distinct operations on their own lines, logical phases separated by blank lines. Reader's scan is the cost, not line count. Similar branches get consistent structure; layout details go to the project formatter.
+13. Declare purity, read-only access, immutability, or async behavior where tools can check it. Update callers only as required by the language or framework.
+14. Annotate callable boundaries with concrete domain types where supported.
+15. Put distinct operations on separate lines and isolate phases with blank lines. Align similar branches. Use the project formatter for layout details.
 
 ## Values
 
-16. Keep environment-, caller-, or deployment-varying values out of the body: identifiers, paths, names, colors, sizes. Take them from caller or configuration, so the same code serves the next environment.
+16. Pass values that vary by environment, caller, or deployment through arguments or configuration. This includes identifiers, paths, names, colors, and sizes when they vary.
 17. Reuse the configuration surface that exists. A variable or knob invented for one value moves the coupling, does not remove it.
 
 ## Comments
 
-18. Comment only what names, signatures, and code structure leave unclear: intent, assumptions, invariants, units, tradeoffs, side effects, or failure behavior. Leave evident code blocks and routine contracts uncommented; remove comments that merely restate them. Use a one-line routine comment when it adds missing contract information, and section comments in multi-phase routines or complex algorithms only where names and layout leave a phase's purpose unclear.
-19. Explain the behavior a reader needs to understand: test comments describe the scenario verified; comments justifying checks state the protocol- or interface-level fact relied on. Include internal mechanics only when needed to explain that behavior; an internal mask, buffer, or upstream file and line number alone does not explain why a check is valid.
-20. Skip decorative markers and generated-sounding filler: "Part 1", "Step 2", machine-translated phrasing. A section label names what the section contains, not the order it runs in.
-21. Counts, sizes, offsets, indexes as digits, in comments and prose: digits read as the value, spelled-out numbers read as prose and drift from the code.
-22. Keep comments in sync with changes. One comment language per file: a file with an established non-English convention keeps it, a file opens in one language and continues in it.
+18. Comment what code leaves unclear: intent, assumptions, invariants, units, trade-offs, side effects, or failures. Remove restatements. Use one line for a missing routine contract. Label phases only where names and layout leave their purpose unclear.
+19. Name the scenario in test comments. For checks, state the protocol or interface fact that makes the check valid. Mention a mask, buffer, or source location only when it helps explain that fact.
+20. Name sections by purpose. Omit decorative markers, ordinal labels, and generated-sounding text.
+21. Use digits for counts, sizes, offsets, and indexes in comments and prose.
+22. Update comments with the code. Use one comment language per file and retain any established non-English convention.
 
 ## Consistency
 
-23. Use neighbouring implementations as the template, following the repository's conventions over personal style. Apply the same form to equivalent constructs and value representations in the edited file, comparable sibling files, and tests. When changing several files with comparable content and purpose, keep their section structure and header shape consistent.
+23. Follow comparable implementations. Use consistent forms and value representations across the edited file, sibling files, and tests. Match headings and section structure across files with similar purposes.
 
 ## Final check
 
-Before finishing, reread the changed code: can a maintainer follow the main path, understand the reasoning, find state changes and failure cases without unpacking dense expressions? Simplify or explain unclear parts. Keep each increment working end to end. Preserve behavior unless the task changes it; verify according to risk.
+Reread the change. Verify that the main path, reasoning, state changes, and failures are easy to find. Simplify or explain what remains unclear. Keep each increment working end to end. Preserve behavior unless the task changes it and verify according to risk.
