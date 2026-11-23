@@ -27,7 +27,8 @@ START_TIMEOUT = 20
 STOP_TIMEOUT = 10
 SESSION_ERRORS = (AttributeError, OSError, RuntimeError, ValueError, KeyError)
 SLUG = re.compile(r"[a-zA-Z0-9][a-zA-Z0-9._-]*")
-LEGACY_NAMES = {"open.sh", "status.sh", "close.sh", "config.yaml", "server.log", "user-data"}
+# Slugs avoid these names because every launcher directory holds files with them.
+RESERVED_NAMES = {"open.sh", "status.sh", "close.sh", "config.yaml", "server.log", "user-data"}
 
 
 def write_private(path, text):
@@ -331,7 +332,7 @@ def manage_project(action, project, port=0, expected_processes=None, *, password
     if not project.is_dir():
         raise RuntimeError(f"project is not a directory: {project}")
     default_slug = re.sub(r"[^a-zA-Z0-9._-]+", "-", project.name).lstrip("._-")[:80] or "project"
-    if default_slug in LEGACY_NAMES:
+    if default_slug in RESERVED_NAMES:
         default_slug = f"project-{default_slug}"
     slug = slug if slug is not None else default_slug
     root = project / ".code-server"
@@ -346,26 +347,12 @@ def manage_project(action, project, port=0, expected_processes=None, *, password
     try:
         fcntl.flock(lock, fcntl.LOCK_EX)
         directory = root / slug
-        legacy_data = root / "user-data"
-        uses_legacy_launcher = slug == default_slug and (root / ".managed").is_file()
-        if uses_legacy_launcher:
-            handle = session_handle(root / ".session.json", expected_processes)
-            if handle is not None:
-                os.close(handle)
-                return manage(action, project, root, port, expected_processes, password, force)
-
         if action == "open":
             directory.mkdir(exist_ok=True, mode=0o700)
         elif not directory.exists():
             print("STATUS=stopped")
             return
         require_private_directory(directory)
-        if action == "open" and uses_legacy_launcher and legacy_data.exists():
-            create_launchers(directory)
-            target_data = directory / "user-data"
-            if target_data.exists():
-                raise RuntimeError(f"cannot move {legacy_data}: {target_data} already exists")
-            legacy_data.rename(target_data)
         return manage(action, project, directory, port, expected_processes, password, force)
     finally:
         os.close(lock)
@@ -393,10 +380,8 @@ def discover_sessions() -> dict[Path, set[tuple[int, str]]]:
             if (
                 not config.is_absolute()
                 or config.name != "config.yaml"
-                or not (
-                    launcher_directory.name == ".code-server"
-                    or launcher_directory.parent.name == ".code-server" and SLUG.fullmatch(launcher_directory.name)
-                )
+                or launcher_directory.parent.name != ".code-server"
+                or not SLUG.fullmatch(launcher_directory.name)
             ):
                 continue
             if not (launcher_directory / ".session.json").is_file():
@@ -416,10 +401,7 @@ def close_all() -> int:
     stopped = 0
     failed = 0
     for directory, processes in sorted(discover_sessions().items()):
-        if directory.name == ".code-server":
-            project, slug = directory.parent, None
-        else:
-            project, slug = directory.parent.parent, directory.name
+        project, slug = directory.parent.parent, directory.name
         print(f"PROJECT={project}\nLAUNCHER_DIR={directory}", flush=True)
         try:
             if manage_project("close", project, expected_processes=processes, slug=slug):
@@ -463,8 +445,8 @@ def main():
     if args.slug is not None:
         if not SLUG.fullmatch(args.slug):
             parser.error("--slug must start with a letter or digit and contain only letters, digits, dots, underscores or hyphens")
-        if args.slug in LEGACY_NAMES:
-            parser.error(f"--slug {args.slug!r} is reserved for legacy launcher files")
+        if args.slug in RESERVED_NAMES:
+            parser.error(f"--slug {args.slug!r} is reserved for launcher file names")
     force = getattr(args, "force", False)
     manage_project(args.action, args.project, port, password=password, slug=args.slug, force=force)
 
