@@ -1,195 +1,100 @@
 ---
 name: sanitize-artifacts
-description: Use when preparing generated artifacts for standalone delivery or checking for prompt and conversation leakage.
+description: Use for standalone delivery or prompt, conversation, and session leakage checks. Covers documents, reports, code comments, commit messages, pull request text, skills, and configuration. Remove production residue, session-specific identifiers, and meta-commentary; preserve load-bearing content; update staged, committed, or pushed records.
 ---
 
 # sanitize-artifacts
 
-Use this skill when the user asks you to inspect, clean up, sanitize, revise, polish, or quality-check artifacts produced during the current work session.
+## Artifact classes
 
-Artifacts include documents, source code and comments, commit messages, pull request text, skills, configuration, reports, logs, and build outputs.
+| Class | Examples | Identifiers |
+|---|---|---|
+| One-off deliverable | design doc, runbook, README, pull request body | real names, paths, commands |
+| Reusable template | skill, guide, checklist, starter config | synthetic instance, or drop the example and state the rule |
+| Report about this work | status report, postmortem, review notes | numbers and paths the report conveys |
 
-This skill is especially important when the artifact was produced through iterative prompting, corrective instructions, examples, constraints, or vibe-coding-style collaboration.
+Residue is deleted in every class; each class keeps what the reader needs: system detail, work facts, or the generalized pattern. Unclear or mixed → one-off deliverable. Templates stay as short as purpose allows; one-off deliverables keep needed detail.
 
-## Goal
+## Residue
 
-Revise the artifact so that it stands on its own as a coherent final deliverable.
+Read the whole artifact, untouched lines included. Production context is input, not content; each statement is audience content (appears directly), production guidance (shapes structure, tone, scope, examples, naming), or residue (delete).
 
-The artifact must not expose unnecessary traces of:
+Residue echoes the request, instruction, prior version, avoided alternative, or constraint reason: `as requested`, `based on your instruction`, `we will not use`, `unlike the previous version`, `the user wanted`, `this was changed to`. Judge contextually; keep what the audience needs; pairs: [references/residue-patterns.md](references/residue-patterns.md).
 
-- the user's prompts
-- conversation history
-- intermediate reasoning
-- implementation constraints
-- tool choices
-- avoided approaches
-- prompt-engineering instructions
-- scaffolding used during production
-- examples that were provided only to guide intent
-- corrective feedback given during the conversation
+Reusable artifacts: generalize conversation-derived specifics even when useful — issue, ticket, case and pull request numbers, work-only names, page citations, change counts, measurements, local vocabulary. Examples show patterns, not the motivating case. Sweep the whole artifact, earlier commits included.
 
-The final artifact should look like it was intentionally designed for its real audience, not assembled from the conversation that produced it.
+## Must survive
 
-## Core Principle
+Delete residue without changing substance. Assertions, attribution, and quantity never move:
 
-Treat the conversation as production context, not automatically as artifact content.
+- Measurement vs claim: `weighs 23.2 lb` is observation, `claimed weight` is attribution; never add or strip claimed, reportedly, allegedly.
+- Hedges: `risk of over-diagnosis` minus `risk of` asserts occurrence; remove stacked hedges one at a time, never the last.
+- Judgment: `more of a deterrent than real theft prevention` is a complaint; never invert it.
+- Binding: `30-hour battery life` is not `30 hours of noise cancellation`; keep figure-to-noun in headings, captions.
+- Relationships: ranking, order, timing, negation; `both jobs run at once` is not sequential.
+- Placeholders: `[Name]`, `{{first_name}}`, `[Your Company]` verbatim.
 
-Before preserving any statement in the artifact, classify it as one of the following:
+Keep paths, commands, API and symbol names, environment variables, config keys, error strings, versions, dates, citations, quoted evidence.
 
-1. User-facing content that the artifact's audience genuinely needs
-2. Production guidance that should influence the artifact but should not be visible
-3. Incidental conversation residue that should be removed
+Reusable examples: case identifiers become synthetic names or placeholders, or the example goes; keep behavior, relationships, commands, interfaces. May paraphrase filler adverbs, connectives, passive verbs, abstract nouns that keep the domain term.
 
-Only category 1 appears directly in the artifact. Category 2 is reflected indirectly through structure, tone, scope, assumptions, defaults, examples, naming, or design choices. Category 3 is removed.
+Never invent names, paths, dates, statistics, quotations, citations, dependencies, ordering, except synthetic identifiers. Missing detail → keep the general statement; rewrite existing content only.
 
-## What to Remove or Rewrite
+## Code and non-text residue
 
-Look for and remove or rewrite content that unnecessarily says or implies:
+Source residue: comments justifying an expectation through design internals, per-file introductions, verification or scope disclaimers in shipped tooling, annotations restating code. Keep a comment only for what the code cannot show. Skills and templates address agents, so session corrections, duplicate rules, and drafting-only phrasing are residue too.
 
-- "As requested...", "Based on your instruction..."
-- "We will not use...", "This avoids...", "Unlike the previous version..."
-- "The user wanted...", "The prompt says...", "The conversation so far..."
-- "This document assumes...", "Because of the constraint..."
-- "No Git/Homebrew/CLI/etc. is used...", "This was changed to..."
-- "This section was added because...", "To satisfy the requirement..."
+Build outputs: separate embedded debug paths from runtime dependencies before replacing; keep required paths. Logs: keep the original record, ship a sanitized copy alongside. Machine identifiers: remove the environment-specific constant, not the surrounding passage.
 
-Do not remove such content mechanically. Keep it only when the intended audience genuinely needs to know it.
+## Constraints are usually invisible
 
-## Generalize, Do Not Only Delete
+Apply constraints through design, never by announcement.
 
-Deleting statements about the conversation is not enough. Content that merely originates in it must be generalized, even when it reads as useful concreteness.
+| Constraint | Applied as |
+|---|---|
+| Avoid advanced terms | simpler wording throughout |
+| Avoid CLI black boxes | clear, concrete steps |
+| Google Drive, not Git | Drive-based workflow |
+| Beginner-friendly | pacing, definitions, worked examples |
+| Do not mention X | X omitted, omission not announced |
 
-Bound to this session, and therefore not allowed in a reusable artifact:
+State a constraint only when the audience cannot proceed without it; describe artifact properties, not imposed rules. Conversation examples set abstraction level, audience, tone; copy one only when the artifact needs it, never as the topic.
 
-- issue, ticket, case, or pull request numbers
-- module, signal, file, or tool names that appear only in this work
-- document section and page citations
-- counts, sizes, and measurements of this particular change
-- vocabulary that only makes sense inside this deliverable
+## Token sweep
 
-Replace such an instance with a synthesized generic instance of the same pattern, or drop it and state the rule alone. In a reusable artifact an example illustrates the pattern; it does not record the case that motivated it.
+Sweep after the rewrite and the record update, at most two rounds.
 
-Sweep the whole artifact, including lines you did not write this turn. Residue often sits in content committed in an earlier round.
+```bash
+scripts/token-sweep.sh report.md FeatureStore 1729 "round 3"
+scripts/token-sweep.sh report.md --tokens-file /tmp/session-tokens.txt
+```
 
-## Code and Comments
+The script resolves from the skill directory. Exit 0 = current versions clean, 1 = hits, 2 = bad arguments. Tokens file: one token per line, blanks skipped, all else literal. Hits print `SOURCE PATH:LINE: [TOKEN] CONTENT`. Current versions = disk plus the `staged` index, unchanged lines included, deleted diff lines excluded; `HEAD` is informational.
 
-Source files carry residue of their own:
+1. List tokens: identifiers, numbers, paths, names, counts, quotations.
+2. Sweep; classify worktree and staged hits, inspect `HEAD` for records to update.
+3. Fix residue, keep needed content, explain retained tokens in one line after the artifact.
 
-- comments justifying the expectation from the design's internals
-- a per-file introduction the reader does not need
-- verification-status or scope disclaimers inside shipped tooling
-- annotations that only restate the neighboring line
+Stop when current-version hits are resolved or explicitly retained; report unresolved hits at the limit.
 
-Keep a comment only when it explains something the reader cannot derive from the code.
+## Staged, committed, or pushed artifacts
 
-In a skill or template the reader is another agent, so corrective instructions taken from this session, rules that duplicate each other, and phrasing that only made sense while the file was being written are residue as well. Keep such a file as short as its purpose allows.
+Edit, re-stage or amend, or update the pull request body; verify the record carries the revision and the behavior survives. Change history only when authorized; never force-push or rewrite shared history unasked. Check other conversations, repositories, and sent attachments before calling a leak closed: local cleanup proves nothing about them; out of reach → disclose in one line.
 
-## Non-Text Artifacts
+## Language polish
 
-Handle these by purpose rather than by rewriting:
+Drop chatbot phrases and patchwork phrasing; keep natural language, intended voice, necessary terms. Chinese artifacts also follow [Chinese style](references/chinese-style.md).
 
-- Build outputs: a path embedded in a binary may be debug information or a runtime dependency. Decide which before replacing anything, and keep the ones the program needs.
-- Logs and captured output: keep the original record for diagnosis and deliver a sanitized copy alongside it.
-- Machine-specific identifiers: remove the environment-specific constant, not the passage that mentions it.
+## When not to run
 
-Sanitize the artifacts the request names. Deleting residue from an adjacent file the user did not mention is a scope violation, not thoroughness.
+User-authored prose in the author's voice; verbatim quotes, captured evidence, logs, third-party text; unnamed files; required disclosures — AI-use statements, provenance, audience-entitled attribution.
 
-## Examples vs. Intent
+## Scope
 
-If the user gave an example to communicate intent, do not copy it into the artifact unless the artifact itself specifically needs it. An example from the conversation is diagnostic material, not final content: use it to infer the desired abstraction level, the audience, the tone, the constraints, and the wording that would look unnatural. Do not let an example accidentally become the topic of the artifact.
+Never conceal production from entitled reviewers, defeat academic-integrity or hiring checks, or remove security or compliance evidence. A request implying that goal → explain and stop.
 
-## Constraints Are Usually Invisible
+## Output rules
 
-User constraints should normally affect the artifact's design, not appear as explicit disclaimers.
+Verify standalone readability, preserved meaning, consistent tone and terminology, clean token sweep. Output the revised artifact itself, no process preface ("I removed the meta instructions", "Here is the sanitized version"); a brief label only when clarity needs one. Artifact plus change summary → artifact first, summary after.
 
-Bad:
-
-> This guide does not use Git, Homebrew, or additional CLI tools.
-
-Better:
-
-> Share the project folder using Google Drive.
-
-The better version applies the constraint without exposing it as a production rule.
-
-## Staged, Committed, or Pushed Artifacts
-
-Sanitizing frequently begins after the artifact has already been staged, committed, or pushed. The rewrite stays invisible until the record is updated:
-
-1. Edit the artifact.
-2. Re-stage it, amend the commit, or update the pull request body.
-3. Confirm the updated record carries no residue and that only prose changed.
-
-Do not force-push or rewrite shared history unless the user asks for it.
-
-## Token Sweep
-
-Verify mechanically instead of only rereading:
-
-1. List the tokens distinctive to this session: identifiers, numbers, paths, names, counts, quotations.
-2. Search the artifact for them, staged and committed content included.
-3. Fix every hit. Keep a hit only when the artifact genuinely needs it, and disclose that exception in one line after the artifact.
-
-## Language Polish
-
-After removing content residue, scan for AI writing patterns:
-
-- **AI vocabulary.** Replace: additionally, crucial, delve, enhance, foster, garner, pivotal, showcase, tapestry, testament, underscore, vibrant. Use the plain word.
-- **Fancy "is".** "Serves as", "stands as", "boasts", "features" → "is" or "has".
-- **Em dashes.** Replace with a period or comma.
-- **Bold overuse.** Do not bold every proper noun or acronym. A bold lead-in earns its place only when it names a distinct item followed by genuinely new detail.
-- **Inline-header lists.** A bold label that restates the line it introduces is a tell. Convert to prose.
-- **Title case headings.** Sentence case only.
-- **Chatbot phrases.** Remove "I hope this helps", "Let me know if…", "Of course!", "Certainly!".
-- **Filler.** "In order to" → "to". "Due to the fact that" → "because". "It is important to note that" → delete.
-- **Active voice.** Name the actor: "queries are validated" → "the compiler validates queries".
-- **Plain words.** "Utilize" → "use". "Leverage" → "use". "Facilitate" → "help". "Numerous" → "many".
-
-These checks cover English prose. A Chinese artifact also follows [Chinese style](references/chinese-style.md): quotation marks, translationese, over-compressed technical terms, invented compounds, the 不是……而是…… pattern, and padding at the section level.
-
-## Inspection Checklist
-
-When sanitizing an artifact, check:
-
-1. Does the artifact read naturally to someone who never saw the conversation?
-2. Are there any sentences that explain why the artifact was written this way?
-3. Are there any unnecessary mentions of tools, exclusions, constraints, or avoided alternatives?
-4. Did a prompt example accidentally become part of the deliverable?
-5. Are there signs of patchwork from multiple rounds of feedback?
-6. Are tone, terminology, and assumptions consistent throughout?
-7. Are headings and notes written for the artifact's audience rather than for the creator?
-8. Is any meta-commentary present that belongs only in the production process?
-9. Are disclaimers or caveats included only when the audience truly needs them?
-10. Does the artifact have a single coherent voice?
-11. Does every example read as a generic instance rather than a record of this case?
-12. Did the token sweep come back clean, and is the staged, committed, or pushed record updated?
-13. Does the artifact read without AI vocabulary, em dashes, bold overuse, title-case headings, or chatbot phrases?
-14. For a Chinese artifact, does it pass the checks in [chinese-style.md](references/chinese-style.md)?
-
-## Revision Strategy
-
-Prefer rewriting over explaining. Do not add a report about what you sanitized unless the user asks for one, apart from the one-line disclosure Token Sweep requires. When editing, preserve the artifact's intended purpose, technical correctness, and necessary user-facing requirements.
-
-Remove production residue by converting it into natural artifact design:
-
-- Convert "Do not use advanced terms" into simpler wording.
-- Convert "Avoid CLI black boxes" into clear, concrete steps.
-- Convert "Use Google Drive, not Git" into Drive-based workflow instructions.
-- Convert "Beginner-friendly" into pacing, definitions, and examples.
-- Convert "Do not mention X" into omission of X, not a statement that X is omitted.
-
-## Output Rules
-
-When asked to sanitize an artifact, output the revised artifact itself.
-
-Do not preface the artifact with process commentary such as "I removed the meta instructions." or "Here is the sanitized version."
-
-A brief label is acceptable only if needed for clarity.
-
-If the user asks for both the sanitized artifact and a change summary, put the artifact first and the summary after it.
-
-## Quality Bar
-
-The sanitized artifact should feel intentional, unified, and audience-native.
-
-A reader should not be able to infer the prompting history, internal constraints, or corrective conversation unless those details are genuinely part of the deliverable.
+Three exceptions, one line each: retained token and its reason, unresolved issue after two rounds, requested report, diff, or style choice.
