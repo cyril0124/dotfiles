@@ -118,6 +118,16 @@ def stop(handle):
         raise RuntimeError(f"code-server did not exit within {STOP_TIMEOUT} seconds")
 
 
+def stop_forced(handle):
+    """Stop a session, escalating to SIGKILL when it ignores SIGTERM."""
+    try:
+        stop(handle)
+    except RuntimeError:
+        signal.pidfd_send_signal(handle, signal.SIGKILL)
+        if not exited(handle, STOP_TIMEOUT):
+            raise RuntimeError(f"code-server survived SIGKILL for {STOP_TIMEOUT} seconds")
+
+
 def start(project, directory, state, port):
     binary = shutil.which("code-server")
     if binary is None:
@@ -197,7 +207,63 @@ def print_running(project, directory, port):
     print(f"LAUNCHER_DIR={directory}")
 
 
-def manage(action, project, directory, requested_port, expected_processes, password):
+def port_is_free(port):
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as probe:
+        probe.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        try:
+            probe.bind(("127.0.0.1", port))
+        except OSError:
+            return False
+        return True
+
+
+def blocking_listeners(port):
+    """This user's PIDs that block a loopback bind on port; error when another user holds it."""
+    if port_is_free(port):
+        return []
+    lsof = shutil.which("lsof")
+    if lsof is None:
+        raise RuntimeError("releasing an occupied port requires lsof")
+    result = subprocess.run(
+        [lsof, "-w", "-nP", "-a", "-u", str(os.getuid()), "-iTCP:" + str(port), "-sTCP:LISTEN", "-Fpn"],
+        capture_output=True, text=True,
+    )
+    # lsof exits 1 when it matches no file.
+    if result.returncode not in (0, 1):
+        raise RuntimeError(f"cannot identify listeners on port {port}: {result.stderr.strip()}")
+
+    # Only loopback and wildcard listeners can block this IPv4 loopback bind.
+    blocking_addresses = {f"*:{port}", f"0.0.0.0:{port}", f"127.0.0.1:{port}"}
+    pids = set()
+    pid = None
+    for line in result.stdout.splitlines():
+        if line.startswith("p"):
+            pid = int(line[1:])
+        elif line.startswith("n") and pid is not None and line[1:] in blocking_addresses:
+            pids.add(pid)
+
+    if not pids:
+        raise RuntimeError(f"port {port} is held by a listener this user does not own; --force cannot release it")
+    return sorted(pids)
+
+
+def release_port(port):
+    pids = blocking_listeners(port)
+    if not pids:
+        return
+    for pid in pids:
+        try:
+            os.kill(pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+    deadline = time.monotonic() + STOP_TIMEOUT
+    while not port_is_free(port):
+        if time.monotonic() >= deadline:
+            raise RuntimeError(f"port {port} is still busy after SIGKILL to {pids}")
+        time.sleep(0.1)
+
+
+def manage(action, project, directory, requested_port, expected_processes, password, force=False):
     if action == "open":
         create_launchers(directory)
     elif not (directory / ".managed").is_file():
@@ -205,7 +271,17 @@ def manage(action, project, directory, requested_port, expected_processes, passw
 
     state = directory / ".session.json"
     log = directory / "server.log"
+    if force and requested_port:
+        # Fail before stopping a session that could not be restarted on that port.
+        blocking_listeners(requested_port)
     handle = session_handle(state, expected_processes)
+    if handle is not None and force:
+        try:
+            stop_forced(handle)
+            state.unlink(missing_ok=True)
+        finally:
+            os.close(handle)
+        handle = None
     if handle is None and action != "open":
         print("STATUS=stopped")
         return
@@ -213,6 +289,8 @@ def manage(action, project, directory, requested_port, expected_processes, passw
     started = handle is None
     config = directory / "config.yaml"
     if started:
+        if force and requested_port:
+            release_port(requested_port)
         session_password = password if password is not None else pwd.getpwuid(os.getuid()).pw_name
         write_private(config, password_config(session_password))
         handle = start(project, directory, state, requested_port)
@@ -248,7 +326,7 @@ def require_private_directory(directory: Path) -> None:
         raise RuntimeError(f"launcher directory must be private and owned by the current user: {directory}")
 
 
-def manage_project(action, project, port=0, expected_processes=None, *, password=None, slug=None):
+def manage_project(action, project, port=0, expected_processes=None, *, password=None, slug=None, force=False):
     project = project.resolve(strict=True)
     if not project.is_dir():
         raise RuntimeError(f"project is not a directory: {project}")
@@ -274,7 +352,7 @@ def manage_project(action, project, port=0, expected_processes=None, *, password
             handle = session_handle(root / ".session.json", expected_processes)
             if handle is not None:
                 os.close(handle)
-                return manage(action, project, root, port, expected_processes, password)
+                return manage(action, project, root, port, expected_processes, password, force)
 
         if action == "open":
             directory.mkdir(exist_ok=True, mode=0o700)
@@ -288,7 +366,7 @@ def manage_project(action, project, port=0, expected_processes=None, *, password
             if target_data.exists():
                 raise RuntimeError(f"cannot move {legacy_data}: {target_data} already exists")
             legacy_data.rename(target_data)
-        return manage(action, project, directory, port, expected_processes, password)
+        return manage(action, project, directory, port, expected_processes, password, force)
     finally:
         os.close(lock)
 
@@ -364,6 +442,10 @@ def main():
         if action == "open":
             command.add_argument("--port", type=int, default=0, help="0 lets the kernel choose a port")
             command.add_argument("--password", help="override the account name as the password for a new session")
+            command.add_argument(
+                "--force", action="store_true",
+                help="restart the session and clear an owned listener blocking --port",
+            )
     commands.add_parser("close-all", help="stop all managed sessions on this host")
     args = parser.parse_args()
     port = getattr(args, "port", 0)
@@ -383,7 +465,8 @@ def main():
             parser.error("--slug must start with a letter or digit and contain only letters, digits, dots, underscores or hyphens")
         if args.slug in LEGACY_NAMES:
             parser.error(f"--slug {args.slug!r} is reserved for legacy launcher files")
-    manage_project(args.action, args.project, port, password=password, slug=args.slug)
+    force = getattr(args, "force", False)
+    manage_project(args.action, args.project, port, password=password, slug=args.slug, force=force)
 
 
 if __name__ == "__main__":
