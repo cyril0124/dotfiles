@@ -21,6 +21,7 @@ LOCAL_SKILLS=(
   "generic-writing"
   "cyril-notes"
   "commit-stage"
+  "dense-output"
   "grill-me"
   "update-agents-md"
   "cross-check"
