@@ -46,12 +46,39 @@ def pause(msg: str) -> None:
         pass
 
 
-def _matches(row: dict[str, str], query: str) -> bool:
-    q = query.strip().lower()
-    if not q:
-        return True
-    hay = f"{row['plugin_id']}.{row['action_id']} {row['title']}".lower()
-    return all(word in hay for word in q.split())
+def match_positions(label: str, word: str) -> list[int] | None:
+    folded = label.lower()
+    # Lowercasing can expand a character into multiple code points.
+    source_indexes = []
+    for index, character in enumerate(label):
+        source_indexes.extend([index] * len(character.lower()))
+
+    start = folded.find(word)
+    if start >= 0:
+        return source_indexes[start : start + len(word)]
+
+    positions = []
+    for index, character in enumerate(folded):
+        if character == word[len(positions)]:
+            positions.append(source_indexes[index])
+            if len(positions) == len(word):
+                return positions
+    return None
+
+
+def match_row(title: str, action_id: str, words: list[str]) -> tuple[set[int], set[int]] | None:
+    title_hits: set[int] = set()
+    id_hits: set[int] = set()
+    for word in words:
+        positions = match_positions(title, word)
+        if positions is not None:
+            title_hits.update(positions)
+            continue
+        positions = match_positions(action_id, word)
+        if positions is None:
+            return None
+        id_hits.update(positions)
+    return title_hits, id_hits
 
 
 def _fit(text: str, width: int) -> str:
@@ -74,8 +101,34 @@ def _put(stdscr: curses.window, y: int, x: int, text: str, attr: int = 0) -> Non
         pass
 
 
+def _put_fit(stdscr, y, x, label, width, attr, hits):
+    if not hits:
+        _put(stdscr, y, x, _fit(label, width), attr)
+        return
+
+    width = min(width, stdscr.getmaxyx()[1] - x - 1)
+    if width <= 0:
+        return
+    display = _fit(label, width)
+    visible_chars = min(len(label), width - 1 if len(label) > width and width > 1 else width)
+    start = 0
+    try:
+        stdscr.move(y, x)
+        for index in sorted(hit for hit in hits if hit < visible_chars):
+            if index > start:
+                stdscr.addstr(display[start:index], attr)
+            stdscr.addstr(display[index], attr | curses.A_BOLD | curses.A_UNDERLINE)
+            start = index + 1
+        if start < len(display):
+            stdscr.addstr(display[start:], attr)
+    except curses.error:
+        pass
+
+
 def pick(rows: list[dict[str, str]]) -> dict[str, str] | None:
     def _ui(stdscr: curses.window) -> dict[str, str] | None:
+        # Preserve Ctrl+J (LF) separately from Enter (CR).
+        curses.nonl()
         curses.curs_set(0)
         has_color = curses.has_colors()
         if has_color:
@@ -90,7 +143,14 @@ def pick(rows: list[dict[str, str]]) -> dict[str, str] | None:
         cursor = 0
 
         while True:
-            visible = [r for r in rows if _matches(r, query)]
+            visible = []
+            words = query.lower().split()
+            for row in rows:
+                title = row["title"] or row["action_id"]
+                action_id = f"{row['plugin_id']}.{row['action_id']}"
+                hits = match_row(title, action_id, words)
+                if hits is not None:
+                    visible.append((row, title, action_id, hits))
             cursor = max(0, min(cursor, len(visible) - 1))
 
             stdscr.erase()
@@ -103,7 +163,7 @@ def pick(rows: list[dict[str, str]]) -> dict[str, str] | None:
             _put(stdscr, 0, 1, prompt, prompt_attr)
             _put(stdscr, 0, 1 + len(prompt), query, curses.A_BOLD)
             _put(stdscr, 0, 1 + len(prompt) + len(query), "█", curses.A_DIM)
-            hint = "enter run · esc close"
+            hint = "ctrl-j/k move · enter run · esc close"
             if inner - len(hint) - 2 > len(prompt) + len(query) + 4:
                 _put(stdscr, 0, inner - len(hint) - 1, hint, curses.A_DIM)
 
@@ -116,15 +176,14 @@ def pick(rows: list[dict[str, str]]) -> dict[str, str] | None:
             view_h = max(1, sep_bottom - list_top)
             top = max(0, cursor - view_h + 1)
 
-            id_w = max((len(f"{r['plugin_id']}.{r['action_id']}") for r in visible), default=0)
+            id_w = max((len(action_id) for _, _, action_id, _ in visible), default=0)
             title_w = max(12, inner - id_w - 6)
 
             for i in range(view_h):
                 idx = top + i
                 if idx >= len(visible):
                     break
-                row = visible[idx]
-                qid = f"{row['plugin_id']}.{row['action_id']}"
+                _, title, action_id, (title_hits, id_hits) = visible[idx]
                 y = list_top + i
                 selected = idx == cursor
 
@@ -137,10 +196,10 @@ def pick(rows: list[dict[str, str]]) -> dict[str, str] | None:
                     base = curses.A_NORMAL
                     id_attr = (curses.color_pair(3) | curses.A_DIM) if has_color else curses.A_DIM
 
-                _put(stdscr, y, 3, _fit(row["title"] or row["action_id"], title_w), base)
+                _put_fit(stdscr, y, 3, title, title_w, base, title_hits)
                 id_at = 3 + title_w + 2
                 if id_at < inner:
-                    _put(stdscr, y, id_at, _fit(qid, max(0, inner - id_at)), id_attr)
+                    _put_fit(stdscr, y, id_at, action_id, inner - id_at, id_attr, id_hits)
 
             if not visible:
                 _put(stdscr, list_top, 1, "no matches — edit filter or esc", curses.A_DIM)
@@ -150,7 +209,7 @@ def pick(rows: list[dict[str, str]]) -> dict[str, str] | None:
             # footer: count + selected action's description
             if visible:
                 footer = f"{cursor + 1}/{len(visible)}"
-                desc = visible[cursor].get("desc") or ""
+                desc = visible[cursor][0].get("desc") or ""
                 if desc:
                     footer += f"  {desc}"
             else:
@@ -165,13 +224,13 @@ def pick(rows: list[dict[str, str]]) -> dict[str, str] | None:
                     query = ""
                 else:
                     return None
-            elif ch in (curses.KEY_ENTER, 10, 13):
+            elif ch in (curses.KEY_ENTER, 13):
                 if visible:
-                    return visible[cursor]
-            elif ch in (curses.KEY_DOWN, 14):  # down / ctrl-n
+                    return visible[cursor][0]
+            elif ch in (curses.KEY_DOWN, 10, 14):  # down / ctrl-j / ctrl-n
                 if visible:
                     cursor = (cursor + 1) % len(visible)
-            elif ch in (curses.KEY_UP, 16):  # up / ctrl-p
+            elif ch in (curses.KEY_UP, 11, 16):  # up / ctrl-k / ctrl-p
                 if visible:
                     cursor = (cursor - 1) % len(visible)
             elif ch == 21:  # ctrl-u

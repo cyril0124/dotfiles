@@ -6,3 +6,4 @@ link:config/herdr/action-palette
 link:config/herdr/tab-goto
 link:config/herdr/tab-goto-cpp
 link:config/herdr/pane-close
+link:config/herdr/tab-move

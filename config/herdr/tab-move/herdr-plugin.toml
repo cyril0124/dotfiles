@@ -1,0 +1,29 @@
+id = "local.tab-move"
+name = "Move Tab"
+version = "0.1.0"
+min_herdr_version = "0.9.5"
+platforms = ["linux", "macos"]
+
+[[actions]]
+id = "move-tab-left"
+title = "Move Tab Left"
+contexts = ["workspace", "pane"]
+command = ["python3", "move.py", "left"]
+
+[[actions]]
+id = "move-tab-right"
+title = "Move Tab Right"
+contexts = ["workspace", "pane"]
+command = ["python3", "move.py", "right"]
+
+[[actions]]
+id = "move-tab-head"
+title = "Move Tab to Start"
+contexts = ["workspace", "pane"]
+command = ["python3", "move.py", "head"]
+
+[[actions]]
+id = "move-tab-tail"
+title = "Move Tab to End"
+contexts = ["workspace", "pane"]
+command = ["python3", "move.py", "tail"]
