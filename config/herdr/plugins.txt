@@ -2,9 +2,7 @@
 # - GitHub: owner/repo[/subdir]  →  herdr plugin install --yes
 # - Local:  link:relative/path   →  herdr plugin link $DOTFILES_ROOT/relative/path
 # Lines starting with # are ignored.
-qu8n/herdr-automatic-rename
 link:config/herdr/action-palette
 link:config/herdr/tab-goto
 link:config/herdr/tab-goto-cpp
 link:config/herdr/pane-close
-alexarthurs/herdr-sidebar/plugins/herdr-sidebar

@@ -58,3 +58,31 @@ Cite rule numbers in review comments, for example, `violates 20`.
 ## Final check
 
 Reread the change. Verify that the main path, reasoning, state changes, and failures are easy to find. Simplify or explain what remains unclear. Keep each increment working end to end. Preserve behavior unless the task changes it and verify according to risk.
+
+## Good and bad examples
+
+```
+Bad(too dense):
+<code block>
+<code block>
+<code block>
+
+Good:
+<code block>
+
+<code block>
+
+<code block>
+```
+
+```
+Bad(useless comment, the intent can be inferred from the code):
+// if A is True, then print xxx
+if A:
+    print(xxx)
+
+Good:
+if A:
+    print(xxx)
+```
+
