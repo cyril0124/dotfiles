@@ -2,3 +2,10 @@ pi install https://github.com/ayghri/i-have-adhd
 pi install npm:pi-claude-bridge
 pi install npm:pi-web-access
 pi install npm:pi-context-view
+pi install npm:@juicesharp/rpiv-ask-user-question
+pi install npm:@narumitw/pi-btw
+pi install npm:@aliou/pi-processes
+pi install npm:@tintinweb/pi-subagents
+pi install npm:@tintinweb/pi-tasks
+pi install npm:pi-invisible-continue
+pi install npm:@monotykamary/pi-tps
