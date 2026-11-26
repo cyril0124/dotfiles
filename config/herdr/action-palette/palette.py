@@ -127,6 +127,8 @@ def _put_fit(stdscr, y, x, label, width, attr, hits):
 
 def pick(rows: list[dict[str, str]]) -> dict[str, str] | None:
     def _ui(stdscr: curses.window) -> dict[str, str] | None:
+        # Keep standalone Escape responsive while allowing time for arrow-key sequences.
+        curses.set_escdelay(25)
         # Preserve Ctrl+J (LF) separately from Enter (CR).
         curses.nonl()
         curses.curs_set(0)
