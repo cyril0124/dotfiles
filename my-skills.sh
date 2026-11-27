@@ -67,6 +67,7 @@ REMOTE_SKILLS=(
   "mattpocock/skills|grilling@grilling"
   "https://github.com/herdrdev/herdr|herdr@herdr"
   "seyedehsanhadi/sloptrim@sloptrim"
+  "op7418/humanizer-zh|humanizer-zh@humanizer-zh"
 )
 
 info() {
