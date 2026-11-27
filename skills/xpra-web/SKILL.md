@@ -42,7 +42,9 @@ For `run` and `ensure`, `status.sh` and `close.sh` target the actual session cre
 
 Edit `program_args` in `open.sh` to change the saved command. Put the executable first and use one array entry per argument. Quote entries containing spaces. Pass launcher options such as `--port` to `open.sh`.
 
-Run `open.sh [--port PORT]` to start a dedicated session and launch the saved command from its original directory. It uses the original access options and requested port by default. With `--password`, reopening prompts for the secret. A busy port fails by default. Use `open.sh --port PORT --force` only when the user requests termination of the current listener. If the recorded session is running, `--force` first stops it and its programs, including other programs on a shared display. It sends SIGKILL to matching listeners owned by the current user if they still block the requested loopback port.
+Run `open.sh` to start a dedicated session and launch the saved command from its original directory. It keeps the original access options and remembers the first successful port in `.port` across closes. If that port is busy, `open.sh` uses an automatically selected port for the current session and keeps the saved port. `open.sh --port PORT` overrides the port for one launch and fails if the specified port is busy. `--port 0` uses automatic port selection. With `--password`, reopening prompts for the secret.
+
+Use `open.sh --force` to reclaim the saved port, or `open.sh --port PORT --force` to reclaim a specific port, when the user requests termination of the current listener. If the recorded session is running, `--force` first stops it and its programs, including other programs on a shared display. It then uses `lsof` and SIGKILL on matching listeners owned by the current user if they still block the target port on `127.0.0.1`. The command fails if it cannot reclaim the target port.
 
 Run `status.sh` to show `STATUS=stopped` or the running session’s display, port, browser URL, SSH tunnel command, and programs.
 
@@ -59,9 +61,9 @@ bash scripts/xpra-web.sh list
 bash scripts/xpra-web.sh doctor
 ```
 
-Options: `--host HOST` (default `127.0.0.1`), `--port PORT` (default `0`, kernel picks), `--display :N`, `--password PW`, `--password-file FILE`, `--no-password`, `--ssl-cert FILE`, `--ssl-key FILE`, `--allow-insecure`. The 3 password modes are mutually exclusive.
+Options: `--host HOST` (default `127.0.0.1`), `--port PORT` (default `0`, automatic), `--display :N`, `--password PW`, `--password-file FILE`, `--no-password`, `--ssl-cert FILE`, `--ssl-key FILE`, `--allow-insecure`. The 3 password modes are mutually exclusive.
 
-- `ensure` and `run` create a fresh session by default, taking a free display from `:10` to `:99` and a free port. Plain `run --port 0` also creates one.
+- `ensure` and `run` create a fresh session by default, taking a free display from `:10` to `:99` and a free port. Automatic selection tries four identical digits first, starting with `4444` and `1111`, then pairs and alternating digits such as `1122` and `1212`. If no candidate is free, the kernel picks the port.
 - Join a session only when the user names it with `--display :N` or `--port N`. Reuse must match host, requested non-zero port, auth mode and WS/WSS transport. A display mismatch fails; a port mismatch may create a session only when that port is available.
 - A non-zero port held by another process fails before startup. An existing session is never restarted or reinterpreted.
 - New sessions daemonize in about 3 seconds. A bad host or occupied port is rejected before `xpra seamless` when possible.

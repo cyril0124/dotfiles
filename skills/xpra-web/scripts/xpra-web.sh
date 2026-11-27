@@ -54,7 +54,7 @@ Usage:
 
 Options:
   --host HOST          Bind address (default: 127.0.0.1)
-  --port PORT          Bind port; 0 lets the kernel pick one (default: 0)
+  --port PORT          Bind port; 0 prefers memorable free ports (default: 0)
   --display :N         Use display :N instead of the first free one
   --password PW        Password for the TCP bind (default: the user name)
   --password-file FILE Read the password from FILE instead of the command line
@@ -194,24 +194,56 @@ report_server_log() {
   fi
 }
 
-# Reject an occupied TCP port before starting the server.
-port_is_free() {
-  local host=$1 port=$2
-  command -v python3 >/dev/null 2>&1 || return 0
-  python3 - "$host" "$port" <<'PY'
+# Print the first candidate that can bind. Return 1 when all are busy and 2 on other bind errors.
+first_bindable_port() {
+  python3 - "$@" <<'PYTHON'
+import errno
 import socket
 import sys
-sock = socket.socket()
-try:
-    # Match a restarting TCP server: TIME_WAIT connections can outlive its listener.
-    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    sock.bind((sys.argv[1], int(sys.argv[2])))
-    sock.listen(1)
-except OSError:
-    sys.exit(1)
-finally:
-    sock.close()
-PY
+
+host, *ports = sys.argv[1:]
+for port in ports:
+    try:
+        with socket.socket() as sock:
+            # Match a restarting TCP server with connections in TIME_WAIT.
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            sock.bind((host, int(port)))
+            sock.listen(1)
+    except OSError as exc:
+        if exc.errno == errno.EADDRINUSE:
+            continue
+        if len(ports) > 1 and port != "0" and exc.errno == errno.EACCES:
+            continue
+        sys.exit(2)
+    print(port)
+    sys.exit(0)
+sys.exit(1)
+PYTHON
+}
+
+port_is_free() {
+  command -v python3 >/dev/null 2>&1 || return 0
+  first_bindable_port "$1" "$2" >/dev/null
+}
+
+automatic_port() {
+  if ! command -v python3 >/dev/null 2>&1; then
+    printf '0\n'
+    return 0
+  fi
+
+  local digit other
+  local -a candidates=()
+  for digit in 4 1 2 3 5 6 7 8 9; do
+    candidates+=("$digit$digit$digit$digit")
+  done
+  for digit in {1..9}; do
+    for other in {0..9}; do
+      [[ $digit != "$other" ]] || continue
+      candidates+=("$digit$digit$other$other" "$digit$other$digit$other")
+    done
+  done
+  first_bindable_port "$1" "${candidates[@]}" 0
 }
 
 # The Xvfb command xpra will run, taken from its own effective configuration.
@@ -353,6 +385,13 @@ warn_if_insecure() {
   printf 'WARNING: %s is unencrypted; the HTML5 client may refuse its password. Use WSS or an SSH tunnel.\n' "$bind_host" >&2
 }
 
+remember_launcher_port() {
+  local dir=$1 port=$2
+  [[ ! -e $dir/.port ]] || return 0
+  printf '%s\n' "$port" > "$dir/.port.tmp" || fail "cannot record port in $dir"
+  mv -- "$dir/.port.tmp" "$dir/.port" || fail "cannot install port record in $dir"
+}
+
 print_result() {
   local session=$1 display=$2 bind_host=$3 port=$4 auth=$5 password=$6 password_file=$7 transport=$8
   local host url_host scheme="http" attach_scheme="tcp"
@@ -371,6 +410,7 @@ print_result() {
     uuid=$(sed -n 's/^uuid=//p' <<< "$identity")
     [[ $uuid =~ ^[a-fA-F0-9-]+$ ]] || fail "missing session UUID for $display"
     printf '%s uuid=%s\n' "$display" "$uuid" > "$LAUNCHER_DIR/.session"
+    remember_launcher_port "$LAUNCHER_DIR" "$port"
   fi
   printf 'SESSION=%s\n' "$session"
   printf 'DISPLAY=%s\n' "$display"
@@ -565,8 +605,10 @@ ensure_session() {
 
   session="created"
   require_xvfb
-  if ! port_is_free "$HOST" "$PORT"; then
-    fail "cannot bind $HOST:$PORT (already in use, or not a local address); drop --port to let the kernel pick one"
+  if [ "$PORT" = "0" ]; then
+    PORT=$(automatic_port "$HOST") || fail "cannot select a port on $HOST"
+  elif ! port_is_free "$HOST" "$PORT"; then
+    fail "cannot bind $HOST:$PORT (already in use, or not a local address); drop --port to select a free port"
   fi
   if [ "$skipped" != "0" ]; then
     if [ -n "$reason" ]; then
