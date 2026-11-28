@@ -20,11 +20,11 @@ import stat
 import subprocess
 import sys
 from threading import Lock, Thread
-from time import monotonic, time
+from time import monotonic
 from urllib.parse import unquote, urlsplit
 
 ASSETS = Path(__file__).with_name("dashboard")
-SERVICE_VERSION = 8
+SERVICE_VERSION = 10
 UUID = re.compile(r"[a-fA-F0-9-]+")
 DISPLAY = re.compile(r":[0-9]+")
 WINDOW_PROPERTIES = re.compile(r"^windows\.(\d+)\.(title|pid|command|xid)=(.*)$", re.MULTILINE)
@@ -174,7 +174,12 @@ def inventory_entry(record):
     if info is None:
         return None
     windows = list(window_inventory(info))
-    return {"uuid": record["uuid"], "display": record["display"], "windows": windows}
+    return {
+        "uuid": record["uuid"],
+        "display": record["display"],
+        "port": record["port"],
+        "windows": windows,
+    }
 
 
 def force_close_windows(record, target=None):
@@ -333,7 +338,6 @@ class Dashboard(ThreadingHTTPServer):
         self.inventory_lock = Lock()
         self.inventory_time = float("-inf")
         self.windows = []
-        self.closed_windows = {}
         self.stopping = False
 
     def records(self):
@@ -346,7 +350,7 @@ class Dashboard(ThreadingHTTPServer):
                     self.windows = [entry for entry in workers.map(inventory_entry, self.records().values()) if entry]
                 self.inventory_time = monotonic()
             launches = read_json(self.directory / "launches.json", {})
-            groups = {}
+            groups = []
             for entry in self.windows:
                 uuid = entry["uuid"]
                 windows = []
@@ -354,11 +358,9 @@ class Dashboard(ThreadingHTTPServer):
                     public = {key: value for key, value in window.items() if key != "pid"}
                     public["can_reopen"] = bool(self.launch_for(launches.get(uuid, {}), window["pid"]))
                     windows.append(public)
-                groups[uuid] = {**entry, "windows": windows}
-            for (uuid, _), (window, _) in self.closed_windows.items():
-                if uuid in groups:
-                    groups[uuid]["windows"].append(window)
-            return [group for group in groups.values() if group["windows"]]
+                if windows:
+                    groups.append({**entry, "windows": windows})
+            return groups
 
     @staticmethod
     def launch_for(launches, pid):
@@ -381,30 +383,23 @@ class Dashboard(ThreadingHTTPServer):
             record = self.records().get(uuid)
             if not record or not (info := registered_session(record)):
                 raise ValueError("The Xpra session is no longer available.")
-            key = (uuid, window_id)
-            saved = self.closed_windows.get(key)
-            if saved:
-                if action != "reopen":
-                    raise ValueError("The window is already closed.")
-                window, recipe = saved
-            else:
-                window = next((item for item in window_inventory(info) if str(item["id"]) == window_id), None)
-                if not window:
-                    raise ValueError("The window is no longer available.")
-                launches = read_json(self.directory / "launches.json", {}).get(uuid, {})
-                recipe = self.launch_for(launches, window.pop("pid"))
-                if action == "reopen" and not recipe:
-                    raise ValueError("The original launch command is unavailable.")
-                closed, failed = force_close_windows(record, window_id)
-                if not closed or failed:
-                    raise ValueError("Could not close the window.")
-                if recipe:
-                    window.update(closed=True, can_reopen=True, closed_at=time())
-                    self.closed_windows[key] = window, recipe
-                self.inventory_time = float("-inf")
+            window = next((item for item in window_inventory(info) if str(item["id"]) == window_id), None)
+            if not window:
+                raise ValueError("The window is no longer available.")
+
+            recipe = None
             if action == "reopen":
+                launches = read_json(self.directory / "launches.json", {}).get(uuid, {})
+                recipe = self.launch_for(launches, window["pid"])
+                if not recipe:
+                    raise ValueError("The original launch command is unavailable.")
+
+            closed, failed = force_close_windows(record, window_id)
+            if not closed or failed:
+                raise ValueError("Could not close the window.")
+            self.inventory_time = float("-inf")
+            if recipe:
                 self.relaunch(record, recipe)
-                del self.closed_windows[key]
 
     def relaunch(self, record, recipe):
         command, display = record["command"], record["display"]
@@ -604,7 +599,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
         if not path.is_relative_to(html_root) or not path.is_file():
             self.send_content(404)
         elif path == html_root / "index.html":
-            self.send_asset(path, lambda page: window_client(page, window_id))
+            self.send_asset(path, lambda page: window_client(page, window_id, record["port"]))
         elif path == html_root / "js/Client.js":
             self.send_asset(path, checked_client)
         else:
@@ -729,7 +724,7 @@ def checked_client(script):
     return script.replace(CLIENT_ARGV, '"argv": []')
 
 
-def window_client(page, window_id):
+def window_client(page, window_id, port):
     if page.count(CLIENT_CONNECT) != 1:
         raise ValueError("This Xpra HTML5 release has no compatible window entry point.")
     focus = ("          client.host = window.location.hostname;\n"
@@ -739,11 +734,16 @@ def window_client(page, window_id):
              "          client.path = window.location.pathname + 'socket';\n"
              "          client.remote_logging = false;\n"
              "          client.webtransport = false;\n"
+             "          const updateFocus = XpraWindow.prototype.updateFocus;\n"
+             "          XpraWindow.prototype.updateFocus = function() {\n"
+             "            updateFocus.call(this);\n"
+             f"            if (this.focused) document.title = this.title + ' · {port}';\n"
+             "          };\n"
              "          document.addEventListener('connection-established', () => {\n"
              f"            const win = client.id_to_window[{int(window_id)}];\n"
              "            if (win) {\n"
              "              client.set_focus(win);\n"
-             "              document.title = win.title;\n"
+             f"              document.title = win.title + ' · {port}';\n"
              "            }\n"
              "          }, {once: true});\n")
     return page.replace(CLIENT_CONNECT, focus + CLIENT_CONNECT)
