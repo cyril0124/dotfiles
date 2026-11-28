@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Xpra Dashboard</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    font: 16px/1.5 "Aptos", "Segoe UI", sans-serif;
+    --page: #e9eef5;
+    --surface: #f9fbfe;
+    --ink: #152941;
+    --muted: #475d77;
+    --line: #c7d3e2;
+    --accent: #2454b4;
+    --accent-ink: #fff;
+    --rail: #e1eaf7;
+    --danger: #a1262f;
+    --danger-line: #cc8990;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --page: #172338;
+      --surface: #1e2e45;
+      --ink: #eff5ff;
+      --muted: #b9cbe3;
+      --line: #435975;
+      --accent: #aac7ff;
+      --accent-ink: #14294e;
+      --rail: #263b59;
+      --danger: #ffadb3;
+      --danger-line: #a86c76;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--page); color: var(--ink); }
+  main { max-width: 70rem; margin: auto; padding: clamp(1rem, 5vw, 4rem); }
+  header { display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; justify-content: space-between; margin-bottom: 1.5rem; }
+  h1 { margin: 0; font-size: 1.65rem; line-height: 1.2; }
+  button { padding: .55rem .95rem; border: 1px solid transparent; border-radius: .45rem; background: var(--accent); color: var(--accent-ink); font: inherit; font-weight: 650; cursor: pointer; }
+  .actions { display: flex; flex-wrap: wrap; gap: .5rem; }
+  footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .75rem; margin-top: 1.5rem; border-top: 1px solid var(--line); padding-top: .85rem; }
+  footer .actions { margin-inline-start: auto; }
+  #close-status { margin: 0; color: var(--muted); }
+  button:disabled { opacity: .55; cursor: default; }
+  :is(button, a, summary):focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+  #status { color: var(--muted); margin: 0 0 1rem; }
+  #status:empty { margin: 0; }
+  #sessions { display: grid; gap: .85rem; }
+  section { display: grid; grid-template-columns: 8.5rem minmax(0, 1fr); overflow: hidden; border: 1px solid var(--line); border-radius: .65rem; background: var(--surface); }
+  h2 { display: grid; align-content: start; gap: .15rem; margin: 0; padding: 1rem; color: var(--muted); background: var(--rail); font-size: .8rem; font-weight: 650; }
+  h2 code { color: var(--ink); font-size: 1.3rem; }
+  ul { margin: 0; padding: 0; list-style: none; }
+  li { padding: .85rem 1rem 1rem; }
+  li + li { border-top: 1px solid var(--line); }
+  .window-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .5rem; }
+  .window-heading button { padding: .25rem .6rem; border-color: var(--line); background: var(--surface); color: var(--ink); font-size: .85rem; }
+  button.destructive { border-color: var(--danger-line); background: var(--surface); color: var(--danger); }
+  .window-timing { display: flex; flex-wrap: wrap; gap: .15rem .85rem; margin: .25rem 0; color: var(--muted); font-size: .8rem; }
+  .window-timing time, .window-timing [data-started-at] { font-variant-numeric: tabular-nums; }
+  summary { width: fit-content; color: var(--muted); font-size: .8rem; cursor: pointer; }
+  .closed-title { color: var(--muted); font-weight: 650; overflow-wrap: anywhere; }
+  a { color: var(--accent); font-size: 1.06rem; font-weight: 700; text-underline-offset: .2em; overflow-wrap: anywhere; }
+  dl { display: grid; grid-template-columns: 8rem minmax(0, 1fr); gap: .25rem .65rem; max-width: 56rem; margin: .55rem 0 0; }
+  dt { color: var(--muted); font-size: .8rem; }
+  dd { margin: 0; font: .85rem/1.5 "IBM Plex Mono", ui-monospace, monospace; overflow-wrap: anywhere; }
+  @media (max-width: 38rem) {
+    section { grid-template-columns: minmax(0, 1fr); }
+    h2 { display: flex; gap: .55rem; align-items: center; padding: .55rem .85rem; }
+    h2 code { font-size: 1rem; }
+    li { padding: .65rem .85rem .4rem; }
+    .window-heading button { min-height: 44px; }
+    summary { min-height: 44px; line-height: 44px; }
+    dl { grid-template-columns: minmax(0, 1fr); }
+    dd + dt { margin-top: .4rem; }
+  }
+</style>
+<main>
+  <header>
+    <h1>Xpra Dashboard</h1>
+    <button type="button" id="refresh">Refresh</button>
+  </header>
+  <p id="status" role="status">Loading windows…</p>
+  <div id="sessions"></div>
+  <footer>
+    <p id="close-status" role="status" hidden></p>
+    <div class="actions">
+      <button type="button" id="close-all" class="destructive" disabled>Force close all</button>
+      <button type="button" id="close-and-stop" class="destructive" disabled>Close all and stop Dashboard</button>
+    </div>
+  </footer>
+</main>
+<script src="dashboard.js" defer></script>
+</html>

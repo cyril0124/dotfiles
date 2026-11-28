@@ -45,7 +45,7 @@ Usage:
   xpra-web.sh list | ls                 Show live sessions, ports, windows, programs and directories
   xpra-web.sh doctor                    Check that a browser client can complete a handshake
   xpra-web.sh close PATTERN | --all     Close matching programs, keep the session alive
-  xpra-web.sh close-all [--force]       Close every program everywhere, then stop every session
+  xpra-web.sh close-all [--force]       Close all programs, sessions and the dashboard
   xpra-web.sh stop :N | --all           Stop one named session, or every session
   xpra-web.sh help                      Show this message
 
@@ -71,7 +71,7 @@ joined only when the request names it: --display names that live session, or
 auth mode, so a different program gets its own port unless you ask to share one.
 
 Output: KEY=value lines (SESSION, DISPLAY, BIND, PORT, BROWSER, ATTACH, AUTH,
-PASSWORD, PASSWORD_FILE, WEB, ...).
+PASSWORD, PASSWORD_FILE, WEB, DASHBOARD, DASHBOARD_PORT, DASHBOARD_SSH, ...).
 USAGE
 }
 
@@ -226,12 +226,7 @@ port_is_free() {
   first_bindable_port "$1" "$2" >/dev/null
 }
 
-automatic_port() {
-  if ! command -v python3 >/dev/null 2>&1; then
-    printf '0\n'
-    return 0
-  fi
-
+automatic_port_candidates() {
   local digit other
   local -a candidates=()
   for digit in 4 1 2 3 5 6 7 8 9; do
@@ -243,7 +238,18 @@ automatic_port() {
       candidates+=("$digit$digit$other$other" "$digit$other$digit$other")
     done
   done
-  first_bindable_port "$1" "${candidates[@]}" 0
+  printf '%s\n' "${candidates[@]}" 0
+}
+
+automatic_port() {
+  if ! command -v python3 >/dev/null 2>&1; then
+    printf '0\n'
+    return 0
+  fi
+
+  local -a candidates
+  mapfile -t candidates < <(automatic_port_candidates)
+  first_bindable_port "$1" "${candidates[@]}"
 }
 
 # The Xvfb command xpra will run, taken from its own effective configuration.
@@ -411,6 +417,20 @@ print_result() {
     [[ $uuid =~ ^[a-fA-F0-9-]+$ ]] || fail "missing session UUID for $display"
     printf '%s uuid=%s\n' "$display" "$uuid" > "$LAUNCHER_DIR/.session"
     remember_launcher_port "$LAUNCHER_DIR" "$port"
+    local dashboard
+    local -a dashboard_ports
+    if command -v python3 >/dev/null 2>&1; then
+      mapfile -t dashboard_ports < <(automatic_port_candidates)
+      if dashboard=$(python3 "$SCRIPT_DIR/xpra-dashboard.py" register "$XPRA" "$display" "$uuid" \
+        "$bind_host" "$port" "$transport" "${SSL_CERT:+$(realpath -- "$SSL_CERT")}" "$PWD" "$session" \
+        "${dashboard_ports[@]}"); then
+        printf '%s\n' "$dashboard"
+        local dashboard_port=${dashboard##*=}
+        printf 'DASHBOARD_SSH=ssh -L %s:127.0.0.1:%s %s@%s\n' "$dashboard_port" "$dashboard_port" "$USER" "$host"
+      else
+        info 'Dashboard unavailable; the Xpra session is still running'
+      fi
+    fi
   fi
   printf 'SESSION=%s\n' "$session"
   printf 'DISPLAY=%s\n' "$display"
@@ -531,6 +551,19 @@ session_password_file() {
 
 # Find a reusable session, or start one. Prints the result block.
 ensure_session() {
+  with_session_lock ensure_session_locked
+}
+
+with_session_lock() (
+  local lock_dir="${XDG_RUNTIME_DIR:-${TMPDIR:-/tmp}}/xpra-web-lock-$(id -u)"
+  mkdir -m 700 -- "$lock_dir" 2>/dev/null || [[ -d $lock_dir ]] || fail "cannot create $lock_dir"
+  [[ -O $lock_dir && ! -L $lock_dir && $(stat -c %a -- "$lock_dir") == 700 ]] || fail 'session lock directory must be private'
+  exec 9>"$lock_dir/session.lock"
+  flock -x 9 || fail 'cannot lock Xpra session startup'
+  "$@"
+)
+
+ensure_session_locked() {
   local display="$DISPLAY_ARG" session="reused" listener="" bind_host="" port=""
   local requested_live=0 skipped=0 bind_opt="" may_reuse=1 reason=""
   local password_file="" display_password="" transport
@@ -538,7 +571,7 @@ ensure_session() {
   transport=$(requested_transport)
   validate_access_request
   if [ "$transport" = "wss" ]; then
-    ssl_args=(--ssl=auto "--ssl-cert=$SSL_CERT" "--ssl-key=$SSL_KEY")
+    ssl_args=(--ssl=auto "--ssl-cert=$(realpath -- "$SSL_CERT")" "--ssl-key=$(realpath -- "$SSL_KEY")")
   fi
 
   # A fresh session is the default: only a named display or port joins a live one.
@@ -632,7 +665,7 @@ ensure_session() {
     "${ssl_args[@]}" "${SESSION_NAME_ARGS[@]}" \
     --daemon=yes \
     --mdns=no \
-    --start-new-commands=yes >/dev/null 2>&1; then
+    --start-new-commands=yes 9>&- >/dev/null 2>&1; then
     report_server_log "$display"
     fail "xpra failed to start on $display (see the log above)"
   fi
@@ -910,7 +943,11 @@ cmd_close() {
 # Close every program in every session and then stop those sessions, so nothing
 # survives and every port is released.
 cmd_close_all() {
-  local force=0 arg display sessions stopped=0 failed=0
+  with_session_lock close_all_locked "$@"
+}
+
+close_all_locked() {
+  local force=0 arg display sessions stopped=0 failed=0 dashboard_failed=0
 
   for arg in "$@"; do
     case "$arg" in
@@ -920,10 +957,13 @@ cmd_close_all() {
     esac
   done
 
+  if command -v python3 >/dev/null 2>&1; then
+    python3 "$SCRIPT_DIR/xpra-dashboard.py" stop || dashboard_failed=1
+  fi
   sessions=$(query_displays) || fail "cannot list sessions before close-all"
   if [ -z "$sessions" ]; then
     printf 'no live xpra sessions\nSESSIONS_STOPPED=0\nSESSIONS_FAILED=0\n'
-    return 0
+    return "$dashboard_failed"
   fi
 
   while IFS= read -r display; do
@@ -944,7 +984,7 @@ cmd_close_all() {
   if [ "$failed" -gt 0 ]; then
     return 1
   fi
-  return 0
+  return "$dashboard_failed"
 }
 
 # Print "<pid>\t<command>" for the programs running in a display.
@@ -1042,6 +1082,10 @@ launch_program() {
     fail "xpra refused to launch $*: $out"
   printf '%s\n' "$out" >&2
   pid=$(printf '%s\n' "$out" | sed -n 's/.*pid=\([0-9][0-9]*\).*/\1/p' | head -1)
+  if [[ -n $pid && -n $LAUNCHER_DIR ]] && command -v python3 >/dev/null 2>&1; then
+    python3 "$SCRIPT_DIR/xpra-dashboard.py" remember "$LAUNCHER_DIR/.session" "$pid" "$cwd" "$@" ||
+      info 'Dashboard could not save the launch command'
+  fi
   printf 'DISPLAY=%s\nCWD=%s\nAPP_PID=%s\n' "$display" "$cwd" "${pid:-unknown}"
 }
 

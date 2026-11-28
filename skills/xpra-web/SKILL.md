@@ -50,6 +50,14 @@ Run `status.sh` to show `STATUS=stopped` or the running session’s display, por
 
 Run `close.sh` to stop the recorded session and release its port.
 
+## Dashboard
+
+- **Open:** `run`, `ensure`, and `open.sh` print a bare `DASHBOARD` URL after starting or joining a session. The Dashboard shares Xpra’s memorable port candidates. `create` only writes launcher scripts.
+- **Connect:** The Dashboard binds `127.0.0.1` and needs Python 3, `ss`, and a compatible Xpra HTML5 client. For remote access, run `DASHBOARD_SSH`, then open `DASHBOARD` locally. The tunnel carries both the Dashboard and viewer traffic. Window titles, directories, and commands are available only through connections owned by the user running the Dashboard. Xpra still prompts for its password when required.
+- **View:** Windows are grouped by display. Click a title to focus its window in a new tab. **Directory and command** shows the working directory and command when available; it starts collapsed on narrow screens. Closing the tab leaves the program running.
+- **Close or restart:** **Close** and **Force close all** use `xkill` and refresh the list. Unsaved work can be lost. **Restart** force-closes a running window; **Reopen** starts a closed one. Both rerun the command recorded by `run` or `open.sh` in its original directory on the same display. Closed entries with a saved command remain while their session is available.
+- **Stop:** **Close all and stop Dashboard** force-closes the listed windows, then stops the Dashboard service. If a close fails, the Dashboard stays available to show the result. The browser may leave the stopped tab open for manual closure. CLI `close-all` also stops the Dashboard.
+
 ## Start and reuse
 
 ```bash
@@ -118,7 +126,7 @@ WEB=yes|no|unknown
 | force stubborn programs | `close --all --force` | SIGKILL survivors |
 | stop one session | `stop :N` | stop the server and its children |
 | stop every session | `stop --all` | destructive, all live sessions |
-| close everything everywhere | `close-all [--force]` | close all children, then stop all sessions |
+| close everything everywhere | `close-all [--force]` | close all children, stop all sessions, and stop the Dashboard |
 
 Before closing, run `list` and identify the requested programs by name and working directory. `close` is case-insensitive substring matching against children of one session only; with multiple sessions it requires `--display`. `stop` requires `:N` or `--all` and prints the affected inventory first. A broad close destroys unsaved GUI state.
 
@@ -126,9 +134,19 @@ Stop operations use `XPRA_WEB_STOP_SECONDS` (default 10s), verify that each disp
 
 ## Verify and report
 
-For `run`, `ensure`, and `create`, include the exact `LAUNCHER_DIR` from that invocation as a clickable directory link in the final reply. Keep that path through any subsequent `doctor` check.
+Use this template for successful `run`, `ensure`, and `open.sh` replies. Keep the labels and order fixed.
 
-Report `BROWSER`, `ATTACH`, `SSH`, `LOCAL`, the port, and a printed password when present. Report a session as usable only after `doctor` returns `DOCTOR=ok`.
+```markdown
+Xpra Dashboard {DASHBOARD}
+
+- Dashboard 隧道 `{DASHBOARD_SSH}`
+- 浏览器地址 {BROWSER}
+- 会话端口 `{PORT}`
+- 密码 `{PASSWORD}`
+- 启动脚本目录 `{LAUNCHER_DIR}`
+```
+
+Use values from this invocation. Omit missing fields. Show bare URLs and render the list directly, without a code fence or fold. On successful `create`, reply `启动脚本已生成。` followed by the launcher directory line. Only report a session as usable after `DOCTOR=ok`.
 
 `doctor` checks Xvfb, the HTML5 root, Xpra and HTML5 versions, the declared minimum protocol, HTTP(S), and an authenticated `xpra id` handshake over WS/WSS. It fails when:
 

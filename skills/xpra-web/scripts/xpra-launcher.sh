@@ -188,4 +188,5 @@ printf '%s %s\n' "$DISPLAY_ARG" "$name" > "$state.tmp"
 mv -- "$state.tmp" "$state"
 LAUNCHER_DIR=$dir
 ensure_session
+printf 'LAUNCHER_DIR=%s\n' "$LAUNCHER_DIR"
 if ((${#command_args[@]})); then launch_program "$DISPLAY_ARG" "${command_args[@]}"; fi
