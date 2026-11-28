@@ -28,6 +28,7 @@ LOCAL_SKILLS=(
   "review"
   "explain-diff"
   "show-diff"
+  "answer-only"
   "minimal-change"
   "readable-code"
   "parallelize"
